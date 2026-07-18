@@ -21,6 +21,11 @@
 
 const std = @import("std");
 const lexicon = @import("lexicon.zig");
+
+test "guarantee is gram+window-1" {
+    try std.testing.expect(lexicon.guarantee == lexicon.gram + lexicon.window - 1);
+}
+
 const zipper = @import("zipper.zig");
 const sketch = @import("../../primitives/sketch.zig");
 
