@@ -1,0 +1,429 @@
+//! codex — the compressed self-index: the book that IS its own index.
+//!
+//! One structure holding a corpus at entropy-bound size while answering exact
+//! substring queries at the information-theoretic time floor:
+//!
+//!   count(P)   occurrences of any byte string, in |P| backward-search steps —
+//!              O(m) rank operations, INDEPENDENT of corpus size. Ω(m) is the
+//!              floor (an unread pattern byte can flip the answer), so this is
+//!              the lowest time complexity physically possible.
+//!   find(P)    every match position, via LF-walks to sampled suffix ranks —
+//!              O(m + occ·t) where t is the sampling stride (a space/time knob).
+//!   restore()  the ENTIRE original text, byte-exact, from the index alone.
+//!              This is the Shannon claim made mechanical: the index is a
+//!              decodable lossless code — a compression — not a companion to one.
+//!
+//! Pipeline: SA-IS suffix array (O(n), `sais.zig`) → Burrows–Wheeler transform
+//! (a permutation: zero information change, Manzini JACM 2001 bounds its
+//! zeroth-order-coded size by nH_k) → Huffman-shaped wavelet tree over
+//! RRR-compressed bitvectors (`wavelet.zig` + `rrr.zig` — Ferragina–Manzini
+//! FOCS 2000; Grossi–Gupta–Vitter SODA 2003; Raman–Raman–Rao SODA 2002).
+//! After `build` returns, the suffix array, the BWT, and the text itself are
+//! all gone — residency is the wavelet tree, a 257-entry C table, and the
+//! optional locate samples.
+//!
+//! Bytes are lifted to u16 symbols c+1 with a unique sentinel 0, so all 256
+//! byte values — including NUL — are ordinary content. The adversarial proof
+//! lives in `codex_test.zig`: every operation is differential against naive
+//! oracles over random, degenerate, and binary corpora.
+
+const std = @import("std");
+const sais = @import("sais.zig");
+const rrr = @import("rrr.zig");
+const wavelet = @import("wavelet.zig");
+
+const SIGMA: usize = 257; // 256 byte symbols shifted +1, sentinel 0
+
+pub const Options = struct {
+    /// Suffix-rank sampling stride for `find`. Smaller = faster locate,
+    /// larger = smaller index. 0 disables locate (count/restore only).
+    sample_rate: u32 = 32,
+    /// Bitvector posture: `.adopt_min` (entropy space — the nH_k rung) or
+    /// `.plain_only` (~2× the space, ~5× faster ranks). Same answers either way.
+    encoding: wavelet.Encoding = .adopt_min,
+};
+
+pub const Stats = struct {
+    text_len: usize,
+    index_bytes: usize,
+    tree_bytes: usize,
+    locate_bytes: usize,
+
+    pub fn bitsPerChar(self: Stats) f64 {
+        return @as(f64, @floatFromInt(self.index_bytes)) * 8.0 / @as(f64, @floatFromInt(@max(self.text_len, 1)));
+    }
+};
+
+pub const Codex = struct {
+    tree: wavelet.Tree,
+    c_table: [SIGMA]usize,
+    marks: ?rrr.Bits, // rows whose suffix rank is sampled
+    samples: []u32, // sampled suffix positions, in row order
+    sample_rate: u32,
+    n: usize, // symbol count = text len + 1
+    stats: Stats,
+
+    /// Build from `text` (any bytes, ≤ ~4GiB). The text is not retained.
+    pub fn build(gpa: std.mem.Allocator, text: []const u8, opts: Options) !Codex {
+        const n = text.len + 1;
+        const sa = try sais.build(gpa, text);
+        defer gpa.free(sa);
+
+        // BWT in symbol space: bwt[j] = sym at (sa[j] − 1 mod n)
+        const bwt = try gpa.alloc(u16, n);
+        defer gpa.free(bwt);
+        for (sa, 0..) |p, j| {
+            const prev = if (p == 0) n - 1 else p - 1;
+            bwt[j] = if (prev == n - 1) 0 else @as(u16, text[prev]) + 1;
+        }
+        var freq: [SIGMA]u64 = @splat(0);
+        for (bwt) |c| freq[c] += 1;
+        var c_table: [SIGMA]usize = undefined;
+        var acc: usize = 0;
+        for (0..SIGMA) |c| {
+            c_table[c] = acc;
+            acc += freq[c];
+        }
+
+        var tree = try wavelet.Tree.build(gpa, bwt, &freq, opts.encoding);
+        errdefer tree.deinit(gpa);
+
+        // locate scaffolding: mark rows whose suffix position is ≡ 0 (mod rate)
+        var marks: ?rrr.Bits = null;
+        var samples: []u32 = &.{};
+        errdefer if (marks) |*m| m.deinit(gpa);
+        errdefer gpa.free(samples);
+        if (opts.sample_rate > 0) {
+            var plain = try rrr.Plain.initEmpty(gpa, n);
+            errdefer plain.deinit(gpa);
+            var n_samples: usize = 0;
+            for (sa) |p| {
+                if (p % opts.sample_rate == 0) n_samples += 1;
+            }
+            samples = try gpa.alloc(u32, n_samples);
+            var w: usize = 0;
+            for (sa, 0..) |p, row| {
+                if (p % opts.sample_rate == 0) {
+                    plain.set(row);
+                    samples[w] = p;
+                    w += 1;
+                }
+            }
+            try plain.finalize(gpa);
+            marks = try rrr.Bits.adopt(gpa, plain);
+        }
+
+        var self = Codex{
+            .tree = tree,
+            .c_table = c_table,
+            .marks = marks,
+            .samples = samples,
+            .sample_rate = opts.sample_rate,
+            .n = n,
+            .stats = undefined,
+        };
+        const tree_bytes = tree.sizeBytes();
+        const locate_bytes = (if (marks) |*m| m.sizeBytes() else 0) + samples.len * 4;
+        self.stats = .{
+            .text_len = text.len,
+            .index_bytes = tree_bytes + locate_bytes + @sizeOf(Codex),
+            .tree_bytes = tree_bytes,
+            .locate_bytes = locate_bytes,
+        };
+        return self;
+    }
+
+    pub fn deinit(self: *Codex, gpa: std.mem.Allocator) void {
+        self.tree.deinit(gpa);
+        if (self.marks) |*m| m.deinit(gpa);
+        gpa.free(self.samples);
+    }
+
+    /// Original text length in bytes.
+    pub fn len(self: *const Codex) usize {
+        return self.n - 1;
+    }
+
+    /// A suffix-array row interval — the state of an incremental backward
+    /// search. `width() == 0` means the pattern so far does not occur.
+    pub const Span = struct {
+        lo: usize,
+        hi: usize,
+
+        pub fn width(self: Span) usize {
+            return self.hi - self.lo;
+        }
+    };
+
+    /// The interval of the empty pattern: every row.
+    pub fn whole(self: *const Codex) Span {
+        return .{ .lo = 0, .hi = self.n };
+    }
+
+    /// One backward-search step: the interval of `byte ++ P` given the
+    /// interval of `P`. Two occ descents — O(code length) rank operations,
+    /// independent of corpus size. An empty span stays empty.
+    pub fn extend(self: *const Codex, span: Span, byte: u8) Span {
+        if (span.lo >= span.hi) return .{ .lo = 0, .hi = 0 };
+        const sym: u16 = @as(u16, byte) + 1;
+        const lo = self.c_table[sym] + self.tree.occ(sym, span.lo);
+        const hi = self.c_table[sym] + self.tree.occ(sym, span.hi);
+        return if (lo >= hi) .{ .lo = 0, .hi = 0 } else .{ .lo = lo, .hi = hi };
+    }
+
+    /// FM backward search: the suffix-array row range [lo, hi) of `pattern`.
+    fn range(self: *const Codex, pattern: []const u8) Span {
+        var span = self.whole();
+        var j = pattern.len;
+        while (j > 0) {
+            j -= 1;
+            span = self.extend(span, pattern[j]);
+            if (span.lo >= span.hi) break;
+        }
+        return span;
+    }
+
+    /// Occurrences of `pattern` (overlapping counted). Empty pattern ⇒ 0 by
+    /// definition (a search answer, not the vacuous n+1 of the mathematics).
+    pub fn count(self: *const Codex, pattern: []const u8) usize {
+        if (pattern.len == 0) return 0;
+        const r = self.range(pattern);
+        return r.hi - r.lo;
+    }
+
+    /// One LF-mapping step: row of the text position one to the left.
+    fn lf(self: *const Codex, row: usize) usize {
+        const a = self.tree.access(row);
+        return self.c_table[a.sym] + a.occ;
+    }
+
+    /// Suffix position of `row`, by LF-walking to the nearest sampled row.
+    fn suffixAt(self: *const Codex, marks: *const rrr.Bits, row: usize) u32 {
+        var r = row;
+        var steps: u32 = 0;
+        while (marks.get(r) == 0) : (steps += 1) r = self.lf(r);
+        return self.samples[marks.rank1(r)] + steps;
+    }
+
+    /// Text position of one exemplar row of a suffix interval — the cheapest
+    /// possible locate (a single sampled-mark walk, O(sample_rate) LF steps).
+    /// Requires locate support (`sample_rate > 0` at build).
+    pub fn posOf(self: *const Codex, row: usize) !u32 {
+        const marks = if (self.marks) |*m| m else return error.LocateUnsupported;
+        std.debug.assert(row < self.n);
+        return self.suffixAt(marks, row);
+    }
+
+    /// Every match position of `pattern`, ascending. Requires locate support
+    /// (`sample_rate > 0` at build). Caller frees.
+    pub fn find(self: *const Codex, gpa: std.mem.Allocator, pattern: []const u8) ![]u32 {
+        const marks = if (self.marks) |*m| m else return error.LocateUnsupported;
+        if (pattern.len == 0) return gpa.alloc(u32, 0);
+        const r = self.range(pattern);
+        const out = try gpa.alloc(u32, r.hi - r.lo);
+        for (out, r.lo..) |*pos, row| pos.* = self.suffixAt(marks, row);
+        std.mem.sort(u32, out, {}, std.sort.asc(u32));
+        return out;
+    }
+
+    /// Reconstruct the full original text from the index alone — the proof the
+    /// index is a decodable code. Caller frees.
+    pub fn restore(self: *const Codex, gpa: std.mem.Allocator) ![]u8 {
+        const out = try gpa.alloc(u8, self.n - 1);
+        var row: usize = 0; // row 0 is the sentinel suffix; LF walks the text right-to-left
+        for (0..self.n - 1) |step| {
+            const a = self.tree.access(row);
+            std.debug.assert(a.sym != 0); // the sentinel can only close the walk
+            out[self.n - 2 - step] = @intCast(a.sym - 1);
+            row = self.c_table[a.sym] + a.occ;
+        }
+        return out;
+    }
+
+    // ── persistence ──
+    // The wire format stores only PRIMARY data — bitvector payloads, Huffman
+    // code lengths, tree topology, samples. Everything derived (rank samples,
+    // canonical codes, superblock cursors, the C table's validity) is rebuilt
+    // through the layers' validating constructors at load, so a mangled blob
+    // fails closed with `error.Corrupt` instead of answering wrong.
+
+    const MAGIC = "CDX1";
+    const VERSION: u32 = 1;
+
+    /// Serialize to an owned byte buffer (I/O stays with the caller). The
+    /// payload is framed magic + version up front, XxHash64 checksum at the
+    /// tail. Caller frees.
+    pub fn save(self: *const Codex, gpa: std.mem.Allocator) ![]u8 {
+        var out: std.ArrayList(u8) = .empty;
+        errdefer out.deinit(gpa);
+        try out.appendSlice(gpa, MAGIC);
+        try putInt(gpa, &out, u32, VERSION);
+        try putInt(gpa, &out, u64, self.n);
+        try putInt(gpa, &out, u32, self.sample_rate);
+        for (self.c_table) |v| try putInt(gpa, &out, u64, v);
+        try out.appendSlice(gpa, self.tree.huff.len);
+        try putInt(gpa, &out, u32, @intCast(self.tree.nodes.len));
+        for (self.tree.nodes) |*nd| {
+            try putInt(gpa, &out, i32, nd.child[0]);
+            try putInt(gpa, &out, i32, nd.child[1]);
+            try putBits(gpa, &out, &nd.bits);
+        }
+        try out.append(gpa, @intFromBool(self.marks != null));
+        if (self.marks) |*m| try putBits(gpa, &out, m);
+        try putInt(gpa, &out, u64, @intCast(self.samples.len));
+        for (self.samples) |s| try putInt(gpa, &out, u32, s);
+        try putInt(gpa, &out, u64, std.hash.XxHash64.hash(0, out.items));
+        return out.toOwnedSlice(gpa);
+    }
+
+    /// Deserialize a `save` buffer. Fails closed (`error.Corrupt`) on any
+    /// framing, checksum, or structural violation.
+    pub fn load(gpa: std.mem.Allocator, bytes: []const u8) !Codex {
+        if (bytes.len < MAGIC.len + 4 + 8 or !std.mem.eql(u8, bytes[0..4], MAGIC)) return error.Corrupt;
+        const body = bytes[0 .. bytes.len - 8];
+        var tail = Cursor{ .buf = bytes, .pos = bytes.len - 8 };
+        if (try tail.int(u64) != std.hash.XxHash64.hash(0, body)) return error.Corrupt;
+        var c = Cursor{ .buf = body, .pos = MAGIC.len };
+        if (try c.int(u32) != VERSION) return error.Corrupt;
+        const n = try c.int(u64);
+        if (n == 0) return error.Corrupt;
+        const sample_rate = try c.int(u32);
+        var c_table: [SIGMA]usize = undefined;
+        var prev: u64 = 0;
+        for (&c_table, 0..) |*v, i| {
+            const raw = try c.int(u64);
+            if (raw > n or (i > 0 and raw < prev)) return error.Corrupt; // must be monotone within [0, n]
+            v.* = @intCast(raw);
+            prev = raw;
+        }
+        if (c_table[0] != 0) return error.Corrupt;
+
+        var huff = try wavelet.Huff.fromLengths(gpa, try c.bytes(SIGMA));
+        errdefer huff.deinit(gpa);
+        const node_count = try c.int(u32);
+        if (node_count == 0 or node_count > SIGMA) return error.Corrupt;
+        var nodes: std.ArrayList(wavelet.Tree.Node) = .empty;
+        errdefer {
+            for (nodes.items) |*nd| nd.bits.deinit(gpa);
+            nodes.deinit(gpa);
+        }
+        for (0..node_count) |_| {
+            const l = try c.int(i32);
+            const r = try c.int(i32);
+            for ([2]i32{ l, r }) |ch| { // child: node id in range, or leaf −(sym+1)
+                if (ch >= 0 and ch >= node_count) return error.Corrupt;
+                if (ch < 0 and ch != std.math.minInt(i32) and -(ch + 1) >= SIGMA) return error.Corrupt;
+            }
+            try nodes.append(gpa, .{ .bits = try takeBits(gpa, &c), .child = .{ l, r } });
+        }
+        var tree = wavelet.Tree{ .nodes = try nodes.toOwnedSlice(gpa), .huff = huff, .n = n };
+        errdefer tree.deinit(gpa);
+        if (tree.nodes[0].bits.nbits() != n) return error.Corrupt;
+
+        var marks: ?rrr.Bits = null;
+        errdefer if (marks) |*m| m.deinit(gpa);
+        if (try c.int(u8) == 1) {
+            marks = try takeBits(gpa, &c);
+            if (marks.?.nbits() != n) return error.Corrupt;
+        }
+        const nsamples = try c.int(u64);
+        if (nsamples > n) return error.Corrupt;
+        const samples = try gpa.alloc(u32, @intCast(nsamples));
+        errdefer gpa.free(samples);
+        for (samples) |*s| s.* = try c.int(u32);
+        if (c.pos != body.len) return error.Corrupt;
+
+        var self = Codex{
+            .tree = tree,
+            .c_table = c_table,
+            .marks = marks,
+            .samples = samples,
+            .sample_rate = sample_rate,
+            .n = @intCast(n),
+            .stats = undefined,
+        };
+        const tree_bytes = self.tree.sizeBytes();
+        const locate_bytes = (if (self.marks) |*m| m.sizeBytes() else 0) + samples.len * 4;
+        self.stats = .{
+            .text_len = self.n - 1,
+            .index_bytes = tree_bytes + locate_bytes + @sizeOf(Codex),
+            .tree_bytes = tree_bytes,
+            .locate_bytes = locate_bytes,
+        };
+        return self;
+    }
+};
+
+// ── wire helpers (little-endian ints, u64-slice payloads) ──
+// `putInt`/`Cursor` are package-internal: `shelf.zig` frames its doc table
+// with the same primitives so the two formats can't drift on conventions.
+
+pub fn putInt(gpa: std.mem.Allocator, out: *std.ArrayList(u8), comptime T: type, v: T) !void {
+    var buf: [@sizeOf(T)]u8 = undefined;
+    std.mem.writeInt(T, &buf, v, .little);
+    try out.appendSlice(gpa, &buf);
+}
+
+fn putWords(gpa: std.mem.Allocator, out: *std.ArrayList(u8), words: []const u64) !void {
+    try putInt(gpa, out, u64, @intCast(words.len));
+    for (words) |w| try putInt(gpa, out, u64, w);
+}
+
+fn putBits(gpa: std.mem.Allocator, out: *std.ArrayList(u8), bits: *const rrr.Bits) !void {
+    try out.append(gpa, @intFromEnum(std.meta.activeTag(bits.*)));
+    try putInt(gpa, out, u64, @intCast(bits.nbits()));
+    switch (bits.*) {
+        .plain => |*p| try putWords(gpa, out, p.words),
+        .rrr => |*r| {
+            try putWords(gpa, out, r.classes);
+            try putWords(gpa, out, r.offsets);
+        },
+    }
+}
+
+pub const Cursor = struct {
+    buf: []const u8,
+    pos: usize,
+
+    pub fn int(self: *Cursor, comptime T: type) !T {
+        if (self.pos + @sizeOf(T) > self.buf.len) return error.Corrupt;
+        defer self.pos += @sizeOf(T);
+        return std.mem.readInt(T, self.buf[self.pos..][0..@sizeOf(T)], .little);
+    }
+
+    pub fn bytes(self: *Cursor, len: usize) ![]const u8 {
+        if (self.pos + len > self.buf.len) return error.Corrupt;
+        defer self.pos += len;
+        return self.buf[self.pos..][0..len];
+    }
+
+    /// Owned u64 slice, length-prefixed, bounded by the remaining buffer.
+    fn words(self: *Cursor, gpa: std.mem.Allocator) ![]u64 {
+        const len = try self.int(u64);
+        if (len > (self.buf.len - self.pos) / 8) return error.Corrupt;
+        const out = try gpa.alloc(u64, @intCast(len));
+        errdefer gpa.free(out);
+        for (out) |*w| w.* = try self.int(u64);
+        return out;
+    }
+};
+
+fn takeBits(gpa: std.mem.Allocator, c: *Cursor) !rrr.Bits {
+    const tag = try c.int(u8);
+    const nbits: usize = @intCast(try c.int(u64));
+    switch (tag) {
+        @intFromEnum(@as(std.meta.Tag(rrr.Bits), .plain)) => {
+            const w = try c.words(gpa);
+            errdefer gpa.free(w);
+            return .{ .plain = try rrr.Plain.fromWords(gpa, w, nbits) };
+        },
+        @intFromEnum(@as(std.meta.Tag(rrr.Bits), .rrr)) => {
+            const classes = try c.words(gpa);
+            errdefer gpa.free(classes);
+            const offsets = try c.words(gpa);
+            errdefer gpa.free(offsets);
+            return .{ .rrr = try rrr.Rrr.fromParts(gpa, classes, offsets, nbits) };
+        },
+        else => return error.Corrupt,
+    }
+}
