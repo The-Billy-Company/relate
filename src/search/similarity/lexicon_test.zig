@@ -22,7 +22,7 @@
 const std = @import("std");
 const lexicon = @import("lexicon.zig");
 const zipper = @import("zipper.zig");
-const sketch = @import("../../primitives/sketch.zig");
+const sketch = @import("sketch.zig");
 
 const t = std.testing;
 
