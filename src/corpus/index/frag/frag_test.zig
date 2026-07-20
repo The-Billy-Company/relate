@@ -46,7 +46,9 @@ const Tree = struct {
     a: std.mem.Allocator,
 
     fn init(a: std.mem.Allocator, io: std.Io, tag: []const u8) !Tree {
-        const root = try std.fmt.allocPrint(a, "/tmp/relate_frag_{s}", .{tag});
+        // Process-unique so concurrent `zig build test` runs (CI + the ~10
+        // coworker agents) never share this mutable fixture dir.
+        const root = try std.fmt.allocPrint(a, "/tmp/relate_frag_{s}_{d}", .{ tag, std.c.getpid() });
         Dir.cwd().deleteTree(io, root) catch {};
         try Dir.cwd().createDirPath(io, root);
         return .{ .root = root, .io = io, .a = a };
