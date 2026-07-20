@@ -18,10 +18,11 @@
 
 const std = @import("std");
 const codexmod = @import("codex.zig");
+const frame = @import("../frame/frame.zig");
 
 const Codex = codexmod.Codex;
-const Cursor = codexmod.Cursor;
-const putInt = codexmod.putInt;
+const Cursor = frame.Cursor;
+const putInt = frame.putInt;
 
 const MAGIC = "SHLF";
 const VERSION: u32 = 1;
@@ -56,13 +57,10 @@ pub const Shelf = struct {
 
         var blob: std.ArrayList(u8) = .empty;
         errdefer blob.deinit(gpa);
-        for (paths) |p| {
-            try blob.appendSlice(gpa, p);
-            try blob.append(gpa, 0);
-        }
+        try frame.joinNul(gpa, &blob, paths);
         const path_blob = try blob.toOwnedSlice(gpa);
         errdefer gpa.free(path_blob);
-        const owned_paths = try splitPaths(gpa, path_blob, @intCast(docs.len));
+        const owned_paths = try frame.splitNulExact(gpa, path_blob, docs.len, false);
         errdefer gpa.free(owned_paths);
 
         var cx = try Codex.build(gpa, text, opts);
@@ -151,7 +149,7 @@ pub const Shelf = struct {
         const blob_len = try c.int(u64);
         const path_blob = try gpa.dupe(u8, try c.bytes(@intCast(blob_len)));
         errdefer gpa.free(path_blob);
-        const paths = try splitPaths(gpa, path_blob, ndocs);
+        const paths = try frame.splitNulExact(gpa, path_blob, ndocs, false);
         errdefer gpa.free(paths);
         const cx_len = try c.int(u64);
         const cx_bytes = try c.bytes(@intCast(cx_len));
@@ -162,17 +160,3 @@ pub const Shelf = struct {
         return .{ .cx = cx, .paths = paths, .offsets = offsets, .built_ns = built_ns, .path_blob = path_blob };
     }
 };
-
-/// Split a NUL-terminated path blob into exactly `n` borrowed slices.
-fn splitPaths(gpa: std.mem.Allocator, blob: []const u8, n: u32) ![]const []const u8 {
-    const paths = try gpa.alloc([]const u8, n);
-    errdefer gpa.free(paths);
-    var it = std.mem.splitScalar(u8, blob, 0);
-    for (paths) |*p| {
-        const piece = it.next() orelse return error.Corrupt;
-        p.* = piece;
-    }
-    // exactly n entries: the remainder must be the empty tail after the last NUL
-    if (it.next()) |tail| if (tail.len != 0 or it.next() != null) return error.Corrupt;
-    return paths;
-}

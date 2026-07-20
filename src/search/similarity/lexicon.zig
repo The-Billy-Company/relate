@@ -1,4 +1,4 @@
-//! hydra — the lexicon: a corpus-priced fingerprint index, hand-rolled.
+//! relate — the lexicon: a corpus-priced fingerprint index, hand-rolled.
 //!
 //! The recall half of compression-as-search. The question is Benedetto,
 //! Caglioti & Loreto's ("Language Trees and Zipping", 2001): which docs
@@ -35,6 +35,7 @@
 
 const std = @import("std");
 const zipper = @import("zipper.zig");
+const sketch = @import("sketch.zig");
 
 /// Fingerprint window: one hash per `gram` consecutive bytes. Eight bytes —
 /// past the trigram floor where style begins, short enough that a one-line
@@ -43,23 +44,22 @@ pub const gram = 8;
 
 /// Winnowing window: keep the minimum hash of every `window` consecutive
 /// gram-hashes. Density ≈ 2/(window+1) of positions; the shared-substring
-/// guarantee threshold is gram + window − 1 = 11 bytes.
+/// guarantee threshold is `guarantee` bytes (gram + window − 1).
 pub const window = 4;
 
 /// Minimum shared-substring length the index is guaranteed to see.
-pub const guarantee = gram + window - 1;
+const guarantee = gram + window - 1;
 
-const fnv_offset: u64 = 0xcbf29ce484222325;
-const fnv_prime: u64 = 0x100000001b3;
+comptime {
+    // Keep the doc-facing "11 bytes" claim honest if gram/window ever drift.
+    if (guarantee != 11) @compileError("lexicon.guarantee drifted from documented 11-byte floor");
+}
 
 /// splitmix64 finalizer — same spreader the sketch uses; gram-hash values
 /// must look uniform for min-selection to sample content-independently.
-inline fn finalize(x: u64) u64 {
-    var z = x +% 0x9e3779b97f4a7c15;
-    z = (z ^ (z >> 30)) *% 0xbf58476d1ce4e5b9;
-    z = (z ^ (z >> 27)) *% 0x94d049bb133111eb;
-    return z ^ (z >> 31);
-}
+const finalize = sketch.finalize;
+const fnv_offset = sketch.fnv_offset;
+const fnv_prime = sketch.fnv_prime;
 
 /// One ranked recall answer: `bits` of the query's description this doc
 /// already paid for (higher = closer).
@@ -116,9 +116,7 @@ pub fn fingerprints(gpa: std.mem.Allocator, bytes: []const u8) ![]u64 {
         slice[w] = v;
         w += 1;
     }
-    if (w == slice.len) return slice;
-    defer gpa.free(slice);
-    return gpa.dupe(u64, slice[0..w]);
+    return if (w == slice.len) slice else gpa.realloc(slice, w);
 }
 
 fn containsSorted(haystack: []const u64, needle: u64) bool {
@@ -156,8 +154,7 @@ pub const Lexicon = struct {
             built = i + 1;
             for (sets[i]) |fp| {
                 const gop = try df.getOrPut(gpa, fp);
-                if (!gop.found_existing) gop.value_ptr.* = 0;
-                gop.value_ptr.* += 1;
+                gop.value_ptr.* = if (gop.found_existing) gop.value_ptr.* + 1 else 1;
             }
         }
         return .{ .gpa = gpa, .docs = docs, .sets = sets, .df = df };
@@ -176,11 +173,19 @@ pub const Lexicon = struct {
     /// The information content of one fingerprint in this corpus:
     /// −log2(df/N) bits. Present in every doc ⇒ exactly 0; unique to one
     /// doc ⇒ log2 N; known to no doc ⇒ 0 (nothing was saved anywhere).
+    /// Shannon self-information of `fp` in this corpus: −log₂(df/N).
+    /// Ubiquitous fingerprints → 0 bits (cannot discriminate); unique → log₂ N.
     pub fn fingerprintBits(self: *const Lexicon, fp: u64) f64 {
         const n = self.docs.len;
         if (n == 0) return 0.0;
         const df = self.df.get(fp) orelse return 0.0;
         return -std.math.log2(@as(f64, @floatFromInt(df)) / @as(f64, @floatFromInt(n)));
+    }
+
+    /// Does this doc's winnowed set contain `fp`? O(log |set|). The
+    /// membership probe `relate pack`'s marginal-coverage sweep rides.
+    pub fn docHasFingerprint(self: *const Lexicon, doc: u32, fp: u64) bool {
+        return containsSorted(self.sets[doc], fp);
     }
 
     /// bitsSaved: Î(q; doc) over the winnowed index — Σ price of the query

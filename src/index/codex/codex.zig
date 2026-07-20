@@ -69,7 +69,9 @@ pub const Codex = struct {
         const sa = try sais.build(gpa, text);
         defer gpa.free(sa);
 
-        // BWT in symbol space: bwt[j] = sym at (sa[j] − 1 mod n)
+        // BWT (Burrows–Wheeler): permute so each symbol sits by its right
+        // context. Zeroth-order coding of the BWT ≤ nH_k of the original
+        // (Manzini JACM 2001) — why the wavelet+RRR below reaches k-th order.
         const bwt = try gpa.alloc(u16, n);
         defer gpa.free(bwt);
         for (sa, 0..) |p, j| {
@@ -97,9 +99,7 @@ pub const Codex = struct {
             var plain = try rrr.Plain.initEmpty(gpa, n);
             errdefer plain.deinit(gpa);
             var n_samples: usize = 0;
-            for (sa) |p| {
-                if (p % opts.sample_rate == 0) n_samples += 1;
-            }
+            for (sa) |p| n_samples += @intFromBool(p % opts.sample_rate == 0);
             samples = try gpa.alloc(u32, n_samples);
             var w: usize = 0;
             for (sa, 0..) |p, row| {
@@ -113,24 +113,16 @@ pub const Codex = struct {
             marks = try rrr.Bits.adopt(gpa, plain);
         }
 
-        var self = Codex{
-            .tree = tree,
-            .c_table = c_table,
-            .marks = marks,
-            .samples = samples,
-            .sample_rate = opts.sample_rate,
-            .n = n,
-            .stats = undefined,
-        };
-        const tree_bytes = tree.sizeBytes();
-        const locate_bytes = (if (marks) |*m| m.sizeBytes() else 0) + samples.len * 4;
-        self.stats = .{
-            .text_len = text.len,
-            .index_bytes = tree_bytes + locate_bytes + @sizeOf(Codex),
-            .tree_bytes = tree_bytes,
-            .locate_bytes = locate_bytes,
-        };
+        var self = Codex{ .tree = tree, .c_table = c_table, .marks = marks, .samples = samples, .sample_rate = opts.sample_rate, .n = n, .stats = undefined };
+        self.setStats();
         return self;
+    }
+
+    /// Derive `stats` from the resident structures (shared by build and load).
+    fn setStats(self: *Codex) void {
+        const tree_bytes = self.tree.sizeBytes();
+        const locate_bytes = (if (self.marks) |*m| m.sizeBytes() else 0) + self.samples.len * 4;
+        self.stats = .{ .text_len = self.n - 1, .index_bytes = tree_bytes + locate_bytes + @sizeOf(Codex), .tree_bytes = tree_bytes, .locate_bytes = locate_bytes };
     }
 
     pub fn deinit(self: *Codex, gpa: std.mem.Allocator) void {
@@ -160,18 +152,19 @@ pub const Codex = struct {
         return .{ .lo = 0, .hi = self.n };
     }
 
-    /// One backward-search step: the interval of `byte ++ P` given the
-    /// interval of `P`. Two occ descents — O(code length) rank operations,
-    /// independent of corpus size. An empty span stays empty.
+    /// One FM-index backward-search step (Ferragina–Manzini FOCS 2000):
+    /// interval of `byte ++ P` from the interval of `P`. Two occ ranks —
+    /// O(code length), independent of corpus size. Empty stays empty.
     pub fn extend(self: *const Codex, span: Span, byte: u8) Span {
         if (span.lo >= span.hi) return .{ .lo = 0, .hi = 0 };
         const sym: u16 = @as(u16, byte) + 1;
+        // LF / C[c] + occ(c, ·): map the BWT rows of `P` to those of `cP`.
         const lo = self.c_table[sym] + self.tree.occ(sym, span.lo);
         const hi = self.c_table[sym] + self.tree.occ(sym, span.hi);
         return if (lo >= hi) .{ .lo = 0, .hi = 0 } else .{ .lo = lo, .hi = hi };
     }
 
-    /// FM backward search: the suffix-array row range [lo, hi) of `pattern`.
+    /// Full FM backward search: SA row range [lo, hi) of `pattern` (right→left).
     fn range(self: *const Codex, pattern: []const u8) Span {
         var span = self.whole();
         var j = pattern.len;
@@ -186,12 +179,11 @@ pub const Codex = struct {
     /// Occurrences of `pattern` (overlapping counted). Empty pattern ⇒ 0 by
     /// definition (a search answer, not the vacuous n+1 of the mathematics).
     pub fn count(self: *const Codex, pattern: []const u8) usize {
-        if (pattern.len == 0) return 0;
-        const r = self.range(pattern);
-        return r.hi - r.lo;
+        return if (pattern.len == 0) 0 else self.range(pattern).width();
     }
 
-    /// One LF-mapping step: row of the text position one to the left.
+    /// LF-mapping (Ferragina–Manzini): SA-row of the text position one left.
+    /// Same C[c]+occ identity as `extend`; walks BWT without the text.
     fn lf(self: *const Codex, row: usize) usize {
         const a = self.tree.access(row);
         return self.c_table[a.sym] + a.occ;
@@ -333,41 +325,21 @@ pub const Codex = struct {
         for (samples) |*s| s.* = try c.int(u32);
         if (c.pos != body.len) return error.Corrupt;
 
-        var self = Codex{
-            .tree = tree,
-            .c_table = c_table,
-            .marks = marks,
-            .samples = samples,
-            .sample_rate = sample_rate,
-            .n = @intCast(n),
-            .stats = undefined,
-        };
-        const tree_bytes = self.tree.sizeBytes();
-        const locate_bytes = (if (self.marks) |*m| m.sizeBytes() else 0) + samples.len * 4;
-        self.stats = .{
-            .text_len = self.n - 1,
-            .index_bytes = tree_bytes + locate_bytes + @sizeOf(Codex),
-            .tree_bytes = tree_bytes,
-            .locate_bytes = locate_bytes,
-        };
+        var self = Codex{ .tree = tree, .c_table = c_table, .marks = marks, .samples = samples, .sample_rate = sample_rate, .n = @intCast(n), .stats = undefined };
+        self.setStats();
         return self;
     }
 };
 
 // ── wire helpers (little-endian ints, u64-slice payloads) ──
-// `putInt`/`Cursor` are package-internal: `shelf.zig` frames its doc table
-// with the same primitives so the two formats can't drift on conventions.
+// `putInt`/`Cursor` moved to the shared framing module (`../frame/frame.zig`):
+// `shelf.zig`, the atlas, and the trigram pair loader frame their catalogs
+// with the same primitives so the formats can't drift on conventions.
 
-pub fn putInt(gpa: std.mem.Allocator, out: *std.ArrayList(u8), comptime T: type, v: T) !void {
-    var buf: [@sizeOf(T)]u8 = undefined;
-    std.mem.writeInt(T, &buf, v, .little);
-    try out.appendSlice(gpa, &buf);
-}
-
-fn putWords(gpa: std.mem.Allocator, out: *std.ArrayList(u8), words: []const u64) !void {
-    try putInt(gpa, out, u64, @intCast(words.len));
-    for (words) |w| try putInt(gpa, out, u64, w);
-}
+const frame = @import("../frame/frame.zig");
+const putInt = frame.putInt;
+const putWords = frame.putWords;
+const Cursor = frame.Cursor;
 
 fn putBits(gpa: std.mem.Allocator, out: *std.ArrayList(u8), bits: *const rrr.Bits) !void {
     try out.append(gpa, @intFromEnum(std.meta.activeTag(bits.*)));
@@ -380,33 +352,6 @@ fn putBits(gpa: std.mem.Allocator, out: *std.ArrayList(u8), bits: *const rrr.Bit
         },
     }
 }
-
-pub const Cursor = struct {
-    buf: []const u8,
-    pos: usize,
-
-    pub fn int(self: *Cursor, comptime T: type) !T {
-        if (self.pos + @sizeOf(T) > self.buf.len) return error.Corrupt;
-        defer self.pos += @sizeOf(T);
-        return std.mem.readInt(T, self.buf[self.pos..][0..@sizeOf(T)], .little);
-    }
-
-    pub fn bytes(self: *Cursor, len: usize) ![]const u8 {
-        if (self.pos + len > self.buf.len) return error.Corrupt;
-        defer self.pos += len;
-        return self.buf[self.pos..][0..len];
-    }
-
-    /// Owned u64 slice, length-prefixed, bounded by the remaining buffer.
-    fn words(self: *Cursor, gpa: std.mem.Allocator) ![]u64 {
-        const len = try self.int(u64);
-        if (len > (self.buf.len - self.pos) / 8) return error.Corrupt;
-        const out = try gpa.alloc(u64, @intCast(len));
-        errdefer gpa.free(out);
-        for (out) |*w| w.* = try self.int(u64);
-        return out;
-    }
-};
 
 fn takeBits(gpa: std.mem.Allocator, c: *Cursor) !rrr.Bits {
     const tag = try c.int(u8);

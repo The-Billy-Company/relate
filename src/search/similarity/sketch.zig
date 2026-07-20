@@ -44,7 +44,7 @@ pub const k = 128;
 /// parse's phrase boundaries depend on them) but are NOT offered to the
 /// sketch. Every text over one character set shares the 1–2 byte phrase
 /// base, so admitting it spends sketch slots on a constant noise floor that
-/// washes out kinship (measured on this repo with min=1: `hydra similar` on a
+/// washes out kinship (measured on this repo with min=1: `relate similar` on a
 /// Zig kernel surfaced Rust, Markdown, and TSX within ±0.02 of each other).
 /// Three bytes is where style begins — the same floor the trigram index is
 /// built on. Length, not content — the parse itself stays classic LZ78.
@@ -66,12 +66,12 @@ pub const Sketch = struct {
     }
 };
 
-const fnv_offset: u64 = 0xcbf29ce484222325;
-const fnv_prime: u64 = 0x100000001b3;
+pub const fnv_offset: u64 = 0xcbf29ce484222325;
+pub const fnv_prime: u64 = 0x100000001b3;
 
 /// splitmix64 finalizer — spreads the FNV accumulator so bottom-k selection
 /// sees uniform keys (FNV alone clusters short phrases in the low bits).
-inline fn finalize(x: u64) u64 {
+pub inline fn finalize(x: u64) u64 {
     var z = x +% 0x9e3779b97f4a7c15;
     z = (z ^ (z >> 30)) *% 0xbf58476d1ce4e5b9;
     z = (z ^ (z >> 27)) *% 0x94d049bb133111eb;
@@ -87,8 +87,7 @@ const PhraseSet = struct {
     count: usize,
 
     fn init(gpa: std.mem.Allocator, cap_hint: usize) !PhraseSet {
-        var cap: usize = 64;
-        while (cap < cap_hint) cap *= 2; // hint is bounded by per-file caps far below overflow
+        const cap = std.math.ceilPowerOfTwoAssert(usize, @max(cap_hint, 64)); // hint is bounded by per-file caps far below overflow
         const slots = try gpa.alloc(u64, cap);
         @memset(slots, 0);
         return .{ .slots = slots, .count = 0 };
@@ -214,9 +213,9 @@ pub fn distance(a: *const Sketch, b: *const Sketch) f64 {
     if (as.len == 0 and bs.len == 0) return 0.0;
     if (as.len == 0 or bs.len == 0) return 1.0;
 
-    // Merge ascending, counting intersections among the first `budget`
-    // distinct union values, where budget = min(k, |A|, |B|) — the KMV rule:
-    // never judge past the sketch resolution either side actually has.
+    // KMV Jaccard (Beyer et al., SIGMOD 2007): merge ascending, count
+    // intersections among the first `budget = min(k,|A|,|B|)` distinct union
+    // values — never judge past the resolution either sketch actually has.
     const budget = @min(as.len, bs.len);
     var i: usize = 0;
     var j: usize = 0;

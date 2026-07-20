@@ -1,4 +1,4 @@
-//! hydra — the zipper: an exact cross-parse, hand-rolled.
+//! relate — the zipper: an exact cross-parse, hand-rolled.
 //!
 //! The precision half of compression-as-search. Benedetto, Caglioti & Loreto
 //! ("Language Trees and Zipping", 2001) measure how close b is to A by how
@@ -185,9 +185,8 @@ pub const Automaton = struct {
         return true;
     }
 
-    /// The Ziv–Merhav cross-parse: greedily factor `query` into longest
-    /// substrings of the doc; price factors as copy ops and unseen bytes as
-    /// literals. Deterministic, O(|q|) transitions.
+    /// Ziv–Merhav (1993) greedy cross-parse: longest doc-substrings of `query`,
+    /// priced as copy ops; unseen bytes as literals. Deterministic, O(|q|).
     pub fn crossParse(self: *const Automaton, query: []const u8) Cost {
         const pos_bits = std.math.log2(@as(f64, @floatFromInt(self.doc_len + 1)));
         var bits: f64 = 0.0;

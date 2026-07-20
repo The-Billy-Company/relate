@@ -7,7 +7,7 @@
 //! estimates the relative entropy rate between the query's and the corpus's
 //! sources — so the total price is a principled, corpus-global relatedness
 //! measure: the fewer bits it takes to quote Q out of C, the more C already
-//! knows Q. This is hydra's zipper (per-document ΔAb) lifted to the whole
+//! knows Q. This is relate's zipper (per-document ΔAb) lifted to the whole
 //! corpus in one pass, with no per-candidate automaton.
 //!
 //! Mechanics: FM backward search extends a phrase by PREPENDING a byte in
@@ -44,8 +44,9 @@ pub const Phrase = struct {
     width: u32,
     row: u32 = 0,
 
-    /// The phrase's price in bits under the quotation code over a corpus
-    /// with `n` suffix rows.
+    /// Quotation code cost over a corpus with `n` suffix rows.
+    /// Matched phrase: log₂(n/w) names the interval (Shannon: −log₂ of the
+    /// ℓ-th-order empirical mass w/n) + Elias-γ length header; unseen byte → 8 + header.
     pub fn bits(self: Phrase, n: usize) f64 {
         const header = 2.0 * @log2(@as(f64, @floatFromInt(self.len)) + 1.0) + 1.0;
         if (self.width == 0) return 8.0 + header;
