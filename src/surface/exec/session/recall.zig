@@ -29,14 +29,15 @@
 //! recomputes the overlay on every query — slower, never stale. A rebuilt index
 //! (`pair.gen` drift) re-maps under the lock; a map failure leaves the session
 //! intact and the query is declined (`null` → the client answers cold). Queries
-//! are serialized by `mutex`; the watcher only ever touches the atomic
-//! `dirty_seq`/`clean` pair + the `dirty_log`, so the barrier is a lock-free
+//! are serialized by `mutex`; the watcher only ever touches the shared
+//! `Seqlock` (`seqlock.zig`) + the `dirty_log`, so the barrier is a lock-free
 //! seqlock over a mutex-guarded overlay.
 
 const std = @import("std");
 const fresh = @import("../../../corpus/index/trigrams/fresh.zig");
 const persist = @import("../../../corpus/index/trigrams/persist.zig");
 const dirtylog = @import("dirty.zig");
+const Seqlock = @import("seqlock.zig").Seqlock;
 const retrieval = @import("../cold/engine/retrieval.zig");
 const Dir = std.Io.Dir;
 
@@ -73,10 +74,11 @@ pub const RetrievalSession = struct {
     index_gen: []u8,
 
     mutex: std.Io.Mutex = .init,
-    watcher_active: bool = false,
-    dirty_seq: std.atomic.Value(u64) = .init(0),
-    clean: std.atomic.Value(bool) = .init(false),
-    poisoned: std.atomic.Value(bool) = .init(false),
+    /// The freshness barrier shared with gist's `ResidentSession` — the
+    /// watcher-driven seqlock whose memory ordering lives once in `seqlock.zig`.
+    /// Without a live watcher it never proves clean, so every query recomputes
+    /// the overlay (correct, just not microsecond-fast).
+    seqlock: Seqlock = .{},
     /// The watcher's completeness hand-off. Relate's overlay is recomputed
     /// wholesale from the anchor, so the exact drained paths give no advantage
     /// over the clean/dirty bit — the log is drained (to consume it) and
@@ -126,17 +128,15 @@ pub const RetrievalSession = struct {
     // ── watcher hooks (called from the watch thread; lock-free) ──
 
     pub fn markDirty(self: *RetrievalSession) void {
-        _ = self.dirty_seq.fetchAdd(1, .monotonic);
-        self.clean.store(false, .release);
+        self.seqlock.markDirty();
     }
 
     pub fn markDoubtForever(self: *RetrievalSession) void {
-        self.poisoned.store(true, .release);
-        self.markDirty();
+        self.seqlock.markDoubtForever();
     }
 
     pub fn armWatcher(self: *RetrievalSession) void {
-        self.watcher_active = true;
+        self.seqlock.arm();
     }
 
     // ── freshness overlay ──
@@ -173,10 +173,9 @@ pub const RetrievalSession = struct {
     /// `relate search` verify the identical doc set.
     fn reconcile(self: *RetrievalSession) !void {
         try self.maybeReload();
-        const poisoned = self.poisoned.load(.acquire);
-        if (self.watcher_active and !poisoned and self.clean.load(.acquire)) return;
+        if (self.seqlock.skip()) return;
 
-        const seq0 = self.dirty_seq.load(.acquire);
+        const seq0 = self.seqlock.enter();
         var drained = self.dirty_log.drain(self.gpa); // consume; anchor recompute ignores the paths
         drained.deinit(self.gpa);
 
@@ -194,8 +193,7 @@ pub const RetrievalSession = struct {
             }
         }
 
-        if (self.watcher_active and !poisoned and self.dirty_seq.load(.acquire) == seq0)
-            self.clean.store(true, .release);
+        self.seqlock.commit(seq0);
     }
 
     /// The roots the freshness walk covers: the index's own build roots (the
@@ -229,16 +227,7 @@ pub const RetrievalSession = struct {
     }
 };
 
-/// The published `pair.gen` (gpa-owned; "" when absent). A rebuilt index changes
-/// this, triggering `maybeReload`.
-fn readGen(gpa: std.mem.Allocator, io: std.Io) ![]u8 {
-    const buf = Dir.cwd().readFileAlloc(io, persist.generationFile(), gpa, .limited(128)) catch
-        return gpa.alloc(u8, 0);
-    const trimmed = std.mem.trimEnd(u8, buf, "\r\n");
-    if (trimmed.len == buf.len) return buf;
-    defer gpa.free(buf);
-    return gpa.dupe(u8, trimmed);
-}
+const readGen = persist.readPublishedGeneration;
 
 test "resident session satisfies the shared freshness watcher contract" {
     // A compile-time proof that ONE generic watcher (`watch.zig`) drives both
