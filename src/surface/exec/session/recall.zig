@@ -215,7 +215,7 @@ pub const RetrievalSession = struct {
         self.mutex.lockUncancelable(self.io);
         defer self.mutex.unlock(self.io);
         self.reconcile() catch return null;
-        return retrieval.retrieveWith(gpa, self.io, query, roots, top, self.source());
+        return retrieval.retrieve(gpa, self.io, query, roots, top, self.source());
     }
 
     /// Answer `relate pack` over the warm index (see `search`).
@@ -223,7 +223,7 @@ pub const RetrievalSession = struct {
         self.mutex.lockUncancelable(self.io);
         defer self.mutex.unlock(self.io);
         self.reconcile() catch return null;
-        return retrieval.packWith(gpa, self.io, query, roots, top, self.source());
+        return retrieval.pack(gpa, self.io, query, roots, top, self.source());
     }
 };
 

@@ -334,21 +334,10 @@ const WarmQuery = struct {
 
 /// Return an index-backed answer, or `null` when the persisted index cannot
 /// soundly cover this query/root shape. The caller owns the returned result.
-/// One-shot: maps the index and walks the tree, discarding both when done.
+/// `src` picks the lane: `.load` maps the index and walks the tree fresh
+/// (one-shot CLI, discarded when done); `.resident` reuses the daemon's warm
+/// index + cached freshness so an eligible query pays neither cost.
 pub fn retrieve(
-    gpa: std.mem.Allocator,
-    io: std.Io,
-    query: []const u8,
-    roots: []const []const u8,
-    top: usize,
-) !?Result {
-    return retrieveWith(gpa, io, query, roots, top, .load);
-}
-
-/// `retrieve` over an explicit `Source` — the resident daemon passes `.resident`
-/// with its warm index + cached freshness so an eligible query pays neither the
-/// index map nor the stat walk.
-pub fn retrieveWith(
     gpa: std.mem.Allocator,
     io: std.Io,
     query: []const u8,
@@ -414,19 +403,8 @@ pub fn retrieveWith(
 
 /// Index-backed weighted max-coverage for `relate pack`. Query chunks are
 /// corpus-priced from posting frequency; a picked document pays only for
-/// chunks not covered by earlier picks.
+/// chunks not covered by earlier picks. `src` picks the lane (see `retrieve`).
 pub fn pack(
-    gpa: std.mem.Allocator,
-    io: std.Io,
-    query: []const u8,
-    roots: []const []const u8,
-    top: usize,
-) !?PackResult {
-    return packWith(gpa, io, query, roots, top, .load);
-}
-
-/// `pack` over an explicit `Source` (see `retrieveWith`).
-pub fn packWith(
     gpa: std.mem.Allocator,
     io: std.Io,
     query: []const u8,

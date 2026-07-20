@@ -95,14 +95,7 @@ pub fn pack(
 // ── tests ──────────────────────────────────────────────────────────────────
 
 const t = std.testing;
-const patterns_mod = @import("../batch/patterns.zig");
-
-fn compileSet(gpa: std.mem.Allocator, pats: []const []const u8) !patterns_mod.PatternSet {
-    const specs = try gpa.alloc(patterns_mod.Spec, pats.len);
-    defer gpa.free(specs);
-    for (pats, specs) |p, *s| s.* = .{ .pattern = p, .fixed = true, .ignore_case = false };
-    return patterns_mod.PatternSet.compile(gpa, specs);
-}
+const compileSet = candidates.compileSet;
 
 test "context: packs only inside the exact filter, never a non-matching file" {
     const gpa = t.allocator;

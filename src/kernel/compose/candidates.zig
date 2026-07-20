@@ -84,16 +84,18 @@ pub fn select(
     };
 }
 
-// ── tests ──────────────────────────────────────────────────────────────────
-
-const t = std.testing;
-
-fn compileSet(gpa: std.mem.Allocator, pats: []const []const u8) !patterns_mod.PatternSet {
+/// Compile a fixed, case-sensitive `PatternSet` from literal patterns — the
+/// one-liner every compose-kernel test shares (and the thin face can reuse).
+pub fn compileSet(gpa: std.mem.Allocator, pats: []const []const u8) !patterns_mod.PatternSet {
     const specs = try gpa.alloc(patterns_mod.Spec, pats.len);
     defer gpa.free(specs);
     for (pats, specs) |p, *s| s.* = .{ .pattern = p, .fixed = true, .ignore_case = false };
     return patterns_mod.PatternSet.compile(gpa, specs);
 }
+
+// ── tests ──────────────────────────────────────────────────────────────────
+
+const t = std.testing;
 
 test "select any: a doc admitted by either pattern surfaces with its exact mask" {
     const gpa = t.allocator;

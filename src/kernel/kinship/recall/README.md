@@ -6,10 +6,10 @@ assemble the non-redundant set that covers it (`pack`).
 
 ## Files
 
-| File | Job |
-| ---- | --- |
-| `lexicon.zig` | Live fallback oracle — corpus-priced winnowed fingerprints plus exact short-query recovery; nominates candidates |
-| `zipper.zig` | Exact decider — suffix-automaton Ziv–Merhav cross-parse charging real code lengths (paper's ΔAb; no compressor subprocess) |
+| File           | Job                                                                                                                                    |
+| -------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `lexicon.zig`  | Live fallback oracle — corpus-priced winnowed fingerprints plus exact short-query recovery; nominates candidates                       |
+| `zipper.zig`   | Exact decider — suffix-automaton Ziv–Merhav cross-parse charging real code lengths (paper's ΔAb; no compressor subprocess)             |
 | `coverage.zig` | Greedy submodular max-coverage (`greedyPack`) over corpus-priced fingerprints — the `pack` core, pricing each pick by marginal novelty |
 
 ## Pipeline

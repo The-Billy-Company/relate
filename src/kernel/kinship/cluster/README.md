@@ -6,11 +6,11 @@ families. `concepts` lifts the same idea to function granularity.
 
 ## Files
 
-| File | Job |
-| ---- | --- |
-| `pairs.zig` | Pair machinery — bottom-16 seed-hash candidate buckets nominate, exact pairwise verify decides; the shared kernel under `dups` / `clusters` / `echoes` |
-| `families.zig` | Union-find (`Forest`) over the verified dup graph — the transitive closure `clusters` reports as fork families |
-| `concepts.zig` | Function-level concept discovery — the same nominate→verify seam over per-function fragments rather than whole files |
+| File           | Job                                                                                                                                                    |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pairs.zig`    | Pair machinery — bottom-16 seed-hash candidate buckets nominate, exact pairwise verify decides; the shared kernel under `dups` / `clusters` / `echoes` |
+| `families.zig` | Union-find (`Forest`) over the verified dup graph — the transitive closure `clusters` reports as fork families                                         |
+| `concepts.zig` | Function-level concept discovery — the same nominate→verify seam over per-function fragments rather than whole files                                   |
 
 ## When to edit
 

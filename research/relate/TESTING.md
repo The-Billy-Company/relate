@@ -20,13 +20,13 @@ The properties that matter:
 
 ## 1. Kernel unit tests (ride `zig build test`)
 
-| module | pins |
-|---|---|
-| `sketch_test.zig` | LZJD build/distance, noise floor, Jaccard estimator sanity |
-| `silhouette_test.zig` | renamed-twin structure distance → ~0; keyword survival; winnow guarantee |
-| `lexicon_test.zig` | compression-as-search retrieves; LZ78-boundary failure that forced winnowing; IDF pricing (boilerplate → 0) |
-| `zipper` (via lexicon tests + knn) | ΔAb vs cold baseline; `min_factor` discrimination |
-| atlas / codex suites | round-trip, stale/missing fallback, restore/count oracles |
+| module                             | pins                                                                                                        |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `sketch_test.zig`                  | LZJD build/distance, noise floor, Jaccard estimator sanity                                                  |
+| `silhouette_test.zig`              | renamed-twin structure distance → ~0; keyword survival; winnow guarantee                                    |
+| `lexicon_test.zig`                 | compression-as-search retrieves; LZ78-boundary failure that forced winnowing; IDF pricing (boilerplate → 0) |
+| `zipper` (via lexicon tests + knn) | ΔAb vs cold baseline; `min_factor` discrimination                                                           |
+| atlas / codex suites               | round-trip, stale/missing fallback, restore/count oracles                                                   |
 
 ```bash
 cd libs/kernels/irregex && zig build test
@@ -67,11 +67,11 @@ positive, a descriptive query, a scoped query, and a multi-file pack.
 
 Runs the **real** engine as a k-NN classifier over a labeled manifest:
 
-| lane | machinery |
-|---|---|
+| lane     | machinery                                                       |
+| -------- | --------------------------------------------------------------- |
 | `zipper` | per-train-doc suffix automaton; test priced by exact Ziv–Merhav |
-| `sketch` | LZJD dictionary distance |
-| `pivot` | compression "embeddings" via FastMap/Lipschitz pivot costs |
+| `sketch` | LZJD dictionary distance                                        |
+| `pivot`  | compression "embeddings" via FastMap/Lipschitz pivot costs      |
 
 Head-to-head vs gzip-kNN and a static embedding model. Documented finding:
 embeddings win semantic retrieval; compression keeps model-free cold-start
@@ -93,7 +93,7 @@ The historical labeled lint-registry run found strong top-10 echo precision,
 but no checked-in labeled artifact currently ratchets that number; treat it as
 an observation, not a product guarantee. Structure has **no** clean absolute
 dup threshold across corpora (measured overlap of family-max vs cross-min at
-every winnow setting) — that is why `echoes` ranks a *gap*, while `dups`
+every winnow setting) — that is why `echoes` ranks a _gap_, while `dups`
 verifies byte-near candidates.
 
 ---
@@ -112,13 +112,13 @@ and separation. `quote` without a shelf fails loud (asks for `relate index
 
 ## 7. What a failure means
 
-| failure class | correct fix |
-|---|---|
-| `patterns` ≠ N solo runs | fix batch/loom — never weaken the equality gate |
-| warm ≠ `--no-index` | fix atlas fold-in / deletion gating |
-| zipper ranks noise on short queries | do not reintroduce LZ78 phrase boundaries in the lexicon |
-| "relate beats embeddings at semantics" | false — update prose; keep the knn harness |
-| `quote` hides shelf staleness | report on stderr like `gist codex` |
+| failure class                          | correct fix                                              |
+| -------------------------------------- | -------------------------------------------------------- |
+| `patterns` ≠ N solo runs               | fix batch/loom — never weaken the equality gate          |
+| warm ≠ `--no-index`                    | fix atlas fold-in / deletion gating                      |
+| zipper ranks noise on short queries    | do not reintroduce LZ78 phrase boundaries in the lexicon |
+| "relate beats embeddings at semantics" | false — update prose; keep the knn harness               |
+| `quote` hides shelf staleness          | report on stderr like `gist codex`                       |
 
 Authorities: `relate --schema`, this inventory, and the harness artifacts.
 Prose follows them.

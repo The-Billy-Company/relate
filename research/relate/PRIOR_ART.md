@@ -19,8 +19,8 @@ The precise claim and non-claims live in `CLAIM.md`.
 
 ### Language Trees and Zipping (the paper)
 
-[Benedetto, Caglioti & Loreto (2002)](#r-bcl2002) — *Language Trees and
-Zipping* (Phys. Rev. Lett. **88**, 048702). They recover language phylogeny
+[Benedetto, Caglioti & Loreto (2002)](#r-bcl2002) — _Language Trees and
+Zipping_ (Phys. Rev. Lett. **88**, 048702). They recover language phylogeny
 — and author identity — from compressor-defined relative entropy alone:
 append a snippet of B to A, compress, compare to compressing A alone. Texts
 whose "languages" match cross-compress; unrelated ones do not. No
@@ -39,16 +39,16 @@ Cited at the point of use in:
 
 ## 1. Kinship sketches (symmetric distance)
 
-| citation | role in relate | code |
-|---|---|---|
-| [Benedetto et al. 2002](#r-bcl2002) | relative-entropy distance signal | conceptual root |
-| [Raff & Nicholas 2017](#r-lzjd) (LZJD) | LZ78 phrase-dictionary Jaccard — NCD-class accuracy without a compressor run per pair | `sketch.zig` |
-| [Beyer et al. 2007](#r-kmv) (KMV) | unbiased Jaccard from the k smallest of the union; mergeable flat `[k]u64` | `sketch.zig`, `silhouette.zig` |
-| [Schleimer et al. 2003](#r-winnow) (MOSS) | local fingerprinting with shared-substring guarantee | `silhouette.zig` (token shingles); also `lexicon.zig` (byte grams) |
-| [Roy & Cordy 2007](#r-roy-cordy) | Type-2 = renamed twins — names the failure mode byte-LZJD misses | `silhouette.zig` header |
+| citation                                  | role in relate                                                                        | code                                                               |
+| ----------------------------------------- | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| [Benedetto et al. 2002](#r-bcl2002)       | relative-entropy distance signal                                                      | conceptual root                                                    |
+| [Raff & Nicholas 2017](#r-lzjd) (LZJD)    | LZ78 phrase-dictionary Jaccard — NCD-class accuracy without a compressor run per pair | `sketch.zig`                                                       |
+| [Beyer et al. 2007](#r-kmv) (KMV)         | unbiased Jaccard from the k smallest of the union; mergeable flat `[k]u64`            | `sketch.zig`, `silhouette.zig`                                     |
+| [Schleimer et al. 2003](#r-winnow) (MOSS) | local fingerprinting with shared-substring guarantee                                  | `silhouette.zig` (token shingles); also `lexicon.zig` (byte grams) |
+| [Roy & Cordy 2007](#r-roy-cordy)          | Type-2 = renamed twins — names the failure mode byte-LZJD misses                      | `silhouette.zig` header                                            |
 
 **Difference from running gzip.** Benedetto et al. literally compress; LZJD
-compares phrase *dictionaries* as sets and min-hashes them. Relate's
+compares phrase _dictionaries_ as sets and min-hashes them. Relate's
 `distance = 1 − Jaccard` over k=128 phrase hashes is that estimator
 (~1 KiB/file in the kinship atlas).
 
@@ -56,19 +56,19 @@ compares phrase *dictionaries* as sets and min-hashes them. Relate's
 comments/whitespace, keep a pan-language keyword union, then winnow token
 shingles into a k=256 KMV silhouette. Same estimator, different set — so a
 renamed twin reads ~0 on structure while bytes read far. Measured: normalize-
-then-LZ78 *hurt* twin@1; positional shingles helped (`silhouette.zig` header).
+then-LZ78 _hurt_ twin@1; positional shingles helped (`silhouette.zig` header).
 
 ---
 
 ## 2. Compression retrieval (asymmetric search / pack)
 
-| citation | role in relate | code |
-|---|---|---|
-| [Benedetto et al. 2002](#r-bcl2002) | "which docs would describe this query cheaply?" | `lexicon.zig`, `zipper.zig` |
-| [Schleimer et al. 2003](#r-winnow) | boundary-free fingerprints (LZ78 phrase boundaries lost short queries — measured) | `lexicon.zig` |
-| [Shannon 1948](#r-shannon) | −log₂(df/N) prices fingerprints at corpus information content; boilerplate → 0 bits | `lexicon.zig` |
-| [Blumer et al. 1985](#r-blumer) | minimal DFA of all substrings; ideal LZ77 match-finder | `zipper.zig` |
-| [Ziv & Merhav 1993](#r-zm1993) | greedy longest factors of q against a reference; factor count ≈ cross-entropy | `zipper.zig`, `cento.zig` |
+| citation                            | role in relate                                                                      | code                        |
+| ----------------------------------- | ----------------------------------------------------------------------------------- | --------------------------- |
+| [Benedetto et al. 2002](#r-bcl2002) | "which docs would describe this query cheaply?"                                     | `lexicon.zig`, `zipper.zig` |
+| [Schleimer et al. 2003](#r-winnow)  | boundary-free fingerprints (LZ78 phrase boundaries lost short queries — measured)   | `lexicon.zig`               |
+| [Shannon 1948](#r-shannon)          | −log₂(df/N) prices fingerprints at corpus information content; boilerplate → 0 bits | `lexicon.zig`               |
+| [Blumer et al. 1985](#r-blumer)     | minimal DFA of all substrings; ideal LZ77 match-finder                              | `zipper.zig`                |
+| [Ziv & Merhav 1993](#r-zm1993)      | greedy longest factors of q against a reference; factor count ≈ cross-entropy       | `zipper.zig`, `cento.zig`   |
 
 **Pipeline.** Lexicon nominates (cheap, no doc bytes); zipper decides with
 real code lengths (flag + position + length for copies; 9 bits/byte for
@@ -78,7 +78,7 @@ on 1–3 byte matches.
 
 **Pack.** Coverage over priced fingerprints is submodular → greedy
 ([Nemhauser–Wolsey–Fisher 1978](#r-nwf1978)) is (1−1/e)-optimal; lazy
-order per [Minoux 1978](#r-minoux). Each pick carries exact *marginal*
+order per [Minoux 1978](#r-minoux). Each pick carries exact _marginal_
 bits — the receipt independent top-K retrievers (embeddings included)
 cannot give.
 
@@ -86,13 +86,13 @@ cannot give.
 
 ## 3. Corpus quotation (codex shelf)
 
-| citation | role in relate | code |
-|---|---|---|
-| [Shannon 1948](#r-shannon) | space floor −log₂ p | `codex/` README |
-| [Burrows–Wheeler 1994](#r-bwt); [Manzini 2001](#r-manzini) | BWT as context-sorted permutation | `codex.zig` |
-| [Ferragina & Manzini 2000](#r-fm) (FM-index) | O(m) count/find independent of corpus size | `codex.zig` |
-| [Nong–Zhang–Chan 2009](#r-sais) (SA-IS) | O(n) suffix array | `sais.zig` |
-| [Grossi et al. 2003](#r-wavelet); [Raman et al. 2002](#r-rrr) | entropy-coded rank | `wavelet.zig`, `rrr.zig` |
+| citation                                                       | role in relate                                           | code                         |
+| -------------------------------------------------------------- | -------------------------------------------------------- | ---------------------------- |
+| [Shannon 1948](#r-shannon)                                     | space floor −log₂ p                                      | `codex/` README              |
+| [Burrows–Wheeler 1994](#r-bwt); [Manzini 2001](#r-manzini)     | BWT as context-sorted permutation                        | `codex.zig`                  |
+| [Ferragina & Manzini 2000](#r-fm) (FM-index)                   | O(m) count/find independent of corpus size               | `codex.zig`                  |
+| [Nong–Zhang–Chan 2009](#r-sais) (SA-IS)                        | O(n) suffix array                                        | `sais.zig`                   |
+| [Grossi et al. 2003](#r-wavelet); [Raman et al. 2002](#r-rrr)  | entropy-coded rank                                       | `wavelet.zig`, `rrr.zig`     |
 | [Ohlebusch et al. 2010](#r-ms); [Ziv & Merhav 1993](#r-zm1993) | phrase the query against the whole corpus, price in bits | `cento.zig` → `relate quote` |
 
 `quote` needs the persisted shelf (`relate index --shelf`); query cost is
@@ -106,7 +106,7 @@ O(|text|), corpus size never appears. Measured separation: known text
 
 Relate's `patterns` verb deliberately **does not** follow Hyperscan-style
 fused multi-pattern DFAs. Those win throughput by collapsing attribution.
-The agent loop needs *which* of N intents hit. Contract: one walk, N
+The agent loop needs _which_ of N intents hit. Contract: one walk, N
 patterns, answer ≡ N independent single-pattern runs (prefilter forced on
 and off). Engine: `src/search/batch/`. Race harness:
 `bench/races/multipattern.sh` (~6× vs sequential `gist -l` on a 10-pattern
@@ -137,7 +137,7 @@ budget.
 
 ### qgrep / fuzzy indexed search
 
-[qgrep](#r-qgrep) searches a compressed indexed *copy* of source. Relate
+[qgrep](#r-qgrep) searches a compressed indexed _copy_ of source. Relate
 keeps source authoritative for kinship walks; the codex shelf is an exact
 self-index for literal quotation/count, not fuzzy path search.
 
@@ -182,157 +182,136 @@ Annotated bibliography for every external source above. Anchor ids match the
 in-body citation links.
 
 <span id="r-bcl2002"></span>
+
 1. **Benedetto, Caglioti & Loreto (2002).**
-   [*Language Trees and Zipping*](https://doi.org/10.1103/PhysRevLett.88.048702)
+   [_Language Trees and Zipping_](https://doi.org/10.1103/PhysRevLett.88.048702)
    · [arXiv:cond-mat/0108530](https://arxiv.org/abs/cond-mat/0108530).
-   *Annotation:* Compressor-defined relative entropy recovers language
+   _Annotation:_ Compressor-defined relative entropy recovers language
    phylogeny and authorship with no linguistics table — the spark for
    relate's kinship / retrieval question.
 
-<span id="r-lzjd"></span>
-2. **Raff & Nicholas (2017).**
-   [*Lempel-Ziv Jaccard Distance*](https://doi.org/10.1145/3097983.3098155)
-   (KDD 2017).
-   *Annotation:* LZ78 phrase-dictionary Jaccard — NCD-class signal without
-   a gzip run per pair; backs `sketch.zig` (k=128 KMV).
+<span id="r-lzjd"></span> 2. **Raff & Nicholas (2017).**
+[_Lempel-Ziv Jaccard Distance_](https://doi.org/10.1145/3097983.3098155)
+(KDD 2017).
+_Annotation:_ LZ78 phrase-dictionary Jaccard — NCD-class signal without
+a gzip run per pair; backs `sketch.zig` (k=128 KMV).
 
-<span id="r-kmv"></span>
-3. **Beyer, Haas, Reinwald, Sismanis & Gemulla (2007).**
-   [*On synopses for distinct-value estimation under multiset operations*](https://doi.org/10.1145/1247480.1247504)
-   (SIGMOD 2007).
-   *Annotation:* KMV / bottom-k MinHash — unbiased Jaccard from the k
-   smallest hashes of the union; mergeable flat sketches for atlas warm
-   tier.
+<span id="r-kmv"></span> 3. **Beyer, Haas, Reinwald, Sismanis & Gemulla (2007).**
+[_On synopses for distinct-value estimation under multiset operations_](https://doi.org/10.1145/1247480.1247504)
+(SIGMOD 2007).
+_Annotation:_ KMV / bottom-k MinHash — unbiased Jaccard from the k
+smallest hashes of the union; mergeable flat sketches for atlas warm
+tier.
 
-<span id="r-winnow"></span>
-4. **Schleimer, Wilkerson & Aiken (2003).**
-   [*Winnowing: Local Algorithms for Document Fingerprinting*](https://doi.org/10.1145/872757.872770)
-   (SIGMOD 2003) — the MOSS sampler.
-   *Annotation:* Shared-substring fingerprint guarantee without parse-order
-   boundaries; used for structure silhouettes and the retrieval lexicon
-   (after LZ78 phrases failed short queries).
+<span id="r-winnow"></span> 4. **Schleimer, Wilkerson & Aiken (2003).**
+[_Winnowing: Local Algorithms for Document Fingerprinting_](https://doi.org/10.1145/872757.872770)
+(SIGMOD 2003) — the MOSS sampler.
+_Annotation:_ Shared-substring fingerprint guarantee without parse-order
+boundaries; used for structure silhouettes and the retrieval lexicon
+(after LZ78 phrases failed short queries).
 
-<span id="r-roy-cordy"></span>
-5. **Roy & Cordy (2007).**
-   [*A Survey on Software Clone Detection Research*](https://research.cs.queensu.ca/TechReports/Reports/2007-541.pdf)
-   (Queen's Tech Report 2007-541).
-   *Annotation:* Type-2 clone = renamed twin — names the failure mode
-   byte-LZJD misses and motivates the structure / `echoes` channel.
+<span id="r-roy-cordy"></span> 5. **Roy & Cordy (2007).**
+[_A Survey on Software Clone Detection Research_](https://research.cs.queensu.ca/TechReports/Reports/2007-541.pdf)
+(Queen's Tech Report 2007-541).
+_Annotation:_ Type-2 clone = renamed twin — names the failure mode
+byte-LZJD misses and motivates the structure / `echoes` channel.
 
-<span id="r-shannon"></span>
-6. **Shannon (1948).**
-   [*A Mathematical Theory of Communication*](https://doi.org/10.1002/j.1538-7305.1948.tb01338.x).
-   *Annotation:* −log₂ p information content — space floor for the codex
-   and IDF-shaped fingerprint pricing in the lexicon.
+<span id="r-shannon"></span> 6. **Shannon (1948).**
+[_A Mathematical Theory of Communication_](https://doi.org/10.1002/j.1538-7305.1948.tb01338.x).
+_Annotation:_ −log₂ p information content — space floor for the codex
+and IDF-shaped fingerprint pricing in the lexicon.
 
-<span id="r-blumer"></span>
-7. **Blumer, Blumer, Haussler, Ehrenfeucht, Chen & Seiferas (1985).**
-   [*The smallest automaton recognizing the subwords of a text*](https://doi.org/10.1016/0304-3975(85)90157-4).
-   *Annotation:* Suffix automaton — minimal DFA of all substrings; the
-   match-finder behind `zipper.zig`'s exact cross-parse.
+<span id="r-blumer"></span> 7. **Blumer, Blumer, Haussler, Ehrenfeucht, Chen & Seiferas (1985).**
+[_The smallest automaton recognizing the subwords of a text_](<https://doi.org/10.1016/0304-3975(85)90157-4>).
+_Annotation:_ Suffix automaton — minimal DFA of all substrings; the
+match-finder behind `zipper.zig`'s exact cross-parse.
 
-<span id="r-zm1993"></span>
-8. **Ziv & Merhav (1993).**
-   [*A measure of relative entropy between individual sequences with application to universal classification*](https://doi.org/10.1109/18.243444).
-   *Annotation:* Cross-parsing factors estimate cross-entropy; relate
-   prices real code lengths instead of shelling a compressor (`zipper`,
-   `cento`).
+<span id="r-zm1993"></span> 8. **Ziv & Merhav (1993).**
+[_A measure of relative entropy between individual sequences with application to universal classification_](https://doi.org/10.1109/18.243444).
+_Annotation:_ Cross-parsing factors estimate cross-entropy; relate
+prices real code lengths instead of shelling a compressor (`zipper`,
+`cento`).
 
-<span id="r-nwf1978"></span>
-9. **Nemhauser, Wolsey & Fisher (1978).**
-   [*An analysis of approximations for maximizing submodular set functions—I*](https://doi.org/10.1007/BF01588971).
-   *Annotation:* Greedy (1−1/e)-optimal for monotone submodular max —
-   optimality certificate for `relate pack`.
+<span id="r-nwf1978"></span> 9. **Nemhauser, Wolsey & Fisher (1978).**
+[_An analysis of approximations for maximizing submodular set functions—I_](https://doi.org/10.1007/BF01588971).
+_Annotation:_ Greedy (1−1/e)-optimal for monotone submodular max —
+optimality certificate for `relate pack`.
 
-<span id="r-minoux"></span>
-10. **Minoux (1978).**
-    [*Accelerated greedy algorithms for maximizing submodular set functions*](https://doi.org/10.1007/BFb0006528).
-    *Annotation:* Lazy greedy evaluation order — how pack avoids
-    recomputing every marginal each round.
+<span id="r-minoux"></span> 10. **Minoux (1978).**
+[_Accelerated greedy algorithms for maximizing submodular set functions_](https://doi.org/10.1007/BFb0006528).
+_Annotation:_ Lazy greedy evaluation order — how pack avoids
+recomputing every marginal each round.
 
-<span id="r-bwt"></span>
-11. **Burrows & Wheeler (1994).**
-    [*A block-sorting lossless data compression algorithm*](https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-124.pdf)
-    (SRC Research Report 124).
-    *Annotation:* BWT permutation — context-sorted transform the FM-index
-    / codex sits on.
+<span id="r-bwt"></span> 11. **Burrows & Wheeler (1994).**
+[_A block-sorting lossless data compression algorithm_](https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-124.pdf)
+(SRC Research Report 124).
+_Annotation:_ BWT permutation — context-sorted transform the FM-index
+/ codex sits on.
 
-<span id="r-manzini"></span>
-12. **Manzini (2001).**
-    [*An analysis of the Burrows–Wheeler transform*](https://doi.org/10.1145/375360.375366)
-    (JACM).
-    *Annotation:* Zeroth-order coding over the BWT bounded by *k*-th order
-    entropy of the original text.
+<span id="r-manzini"></span> 12. **Manzini (2001).**
+[_An analysis of the Burrows–Wheeler transform_](https://doi.org/10.1145/375360.375366)
+(JACM).
+_Annotation:_ Zeroth-order coding over the BWT bounded by _k_-th order
+entropy of the original text.
 
-<span id="r-fm"></span>
-13. **Ferragina & Manzini (2000).**
-    [*Opportunistic data structures with applications*](https://doi.org/10.1109/SFCS.2000.892127)
-    (FOCS) — the FM-index.
-    *Annotation:* O(m) count/find independent of corpus size; product
-    surface of `gist codex` / `relate quote`.
+<span id="r-fm"></span> 13. **Ferragina & Manzini (2000).**
+[_Opportunistic data structures with applications_](https://doi.org/10.1109/SFCS.2000.892127)
+(FOCS) — the FM-index.
+_Annotation:_ O(m) count/find independent of corpus size; product
+surface of `gist codex` / `relate quote`.
 
-<span id="r-sais"></span>
-14. **Nong, Zhang & Chan (2009).**
-    [*Linear Suffix Array Construction by Almost Pure Induced-Sorting*](https://doi.org/10.1109/DCC.2009.42)
-    (DCC) — SA-IS.
-    *Annotation:* O(n) suffix-array construction used at codex build time
-    (`sais.zig`).
+<span id="r-sais"></span> 14. **Nong, Zhang & Chan (2009).**
+[_Linear Suffix Array Construction by Almost Pure Induced-Sorting_](https://doi.org/10.1109/DCC.2009.42)
+(DCC) — SA-IS.
+_Annotation:_ O(n) suffix-array construction used at codex build time
+(`sais.zig`).
 
-<span id="r-wavelet"></span>
-15. **Grossi, Gupta & Vitter (2003).**
-    [*High-order entropy-compressed text indexes*](https://doi.org/10.1137/1.9781611972931.6)
-    (SODA) — Huffman-shaped wavelet trees.
-    *Annotation:* Rank oracle for the FM-index at entropy-bound space
-    (`wavelet.zig`).
+<span id="r-wavelet"></span> 15. **Grossi, Gupta & Vitter (2003).**
+[_High-order entropy-compressed text indexes_](https://doi.org/10.1137/1.9781611972931.6)
+(SODA) — Huffman-shaped wavelet trees.
+_Annotation:_ Rank oracle for the FM-index at entropy-bound space
+(`wavelet.zig`).
 
-<span id="r-rrr"></span>
-16. **Raman, Raman & Rao (2002).**
-    [*Succinct indexable dictionaries with applications to encoding k-ary trees, prefix sums and multisets*](https://doi.org/10.1137/1.9781611972924.17)
-    (SODA) — RRR bitvectors.
-    *Annotation:* O(1) rank at zeroth-order entropy per wavelet level
-    (`rrr.zig`).
+<span id="r-rrr"></span> 16. **Raman, Raman & Rao (2002).**
+[_Succinct indexable dictionaries with applications to encoding k-ary trees, prefix sums and multisets_](https://doi.org/10.1137/1.9781611972924.17)
+(SODA) — RRR bitvectors.
+_Annotation:_ O(1) rank at zeroth-order entropy per wavelet level
+(`rrr.zig`).
 
-<span id="r-ms"></span>
-17. **Ohlebusch, Gog & Kügel (2010).**
-    [*Computing Matching Statistics and Maximal Exact Matches on Compressed Full-Text Indexes*](https://doi.org/10.1007/978-3-642-16321-0_36)
-    (SPIRE).
-    *Annotation:* Matching statistics over an FM-index — the phrase layer
-    behind corpus-global `relate quote` (`cento.zig`).
+<span id="r-ms"></span> 17. **Ohlebusch, Gog & Kügel (2010).**
+[_Computing Matching Statistics and Maximal Exact Matches on Compressed Full-Text Indexes_](https://doi.org/10.1007/978-3-642-16321-0_36)
+(SPIRE).
+_Annotation:_ Matching statistics over an FM-index — the phrase layer
+behind corpus-global `relate quote` (`cento.zig`).
 
-<span id="r-ncd"></span>
-18. **Li, Chen, Li, Ma & Vitányi (2004).**
-    [*The similarity metric*](https://doi.org/10.1109/TIT.2004.838101)
-    (IEEE Trans. Inf. Theory) — Normalized Compression Distance.
-    *Annotation:* Classical NCD / gzip-distance lineage; relate substitutes
-    LZJD + exact cross-parse for agent-loop latency.
+<span id="r-ncd"></span> 18. **Li, Chen, Li, Ma & Vitányi (2004).**
+[_The similarity metric_](https://doi.org/10.1109/TIT.2004.838101)
+(IEEE Trans. Inf. Theory) — Normalized Compression Distance.
+_Annotation:_ Classical NCD / gzip-distance lineage; relate substitutes
+LZJD + exact cross-parse for agent-loop latency.
 
-<span id="r-lm-compress"></span>
-19. **Delétang et al. (2023).**
-    [*Language Modeling Is Compression*](https://arxiv.org/abs/2309.10668).
-    *Annotation:* LMs as general compressors — neighboring research, not a
-    relate dependency (model-free contract).
+<span id="r-lm-compress"></span> 19. **Delétang et al. (2023).**
+[_Language Modeling Is Compression_](https://arxiv.org/abs/2309.10668).
+_Annotation:_ LMs as general compressors — neighboring research, not a
+relate dependency (model-free contract).
 
-<span id="r-qgrep"></span>
-20. **zeux/qgrep.**
-    [github.com/zeux/qgrep](https://github.com/zeux/qgrep).
-    *Annotation:* Compressed indexed *copy* of source for fuzzy/content
-    search — different object from relate's authoritative-tree kinship +
-    exact codex shelf.
+<span id="r-qgrep"></span> 20. **zeux/qgrep.**
+[github.com/zeux/qgrep](https://github.com/zeux/qgrep).
+_Annotation:_ Compressed indexed _copy_ of source for fuzzy/content
+search — different object from relate's authoritative-tree kinship +
+exact codex shelf.
 
-<span id="r-semgrep"></span>
-21. **Semgrep.**
-    [semgrep.dev — philosophy](https://semgrep.dev/docs/contributing/semgrep-philosophy).
-    *Annotation:* Syntax-aware pattern matching; relate deliberately stays
-    byte/token-squint, not AST.
+<span id="r-semgrep"></span> 21. **Semgrep.**
+[semgrep.dev — philosophy](https://semgrep.dev/docs/contributing/semgrep-philosophy).
+_Annotation:_ Syntax-aware pattern matching; relate deliberately stays
+byte/token-squint, not AST.
 
-<span id="r-astgrep"></span>
-22. **ast-grep.**
-    [ast-grep.github.io](https://ast-grep.github.io/).
-    *Annotation:* tree-sitter structural search/rewrite — neighbor left for
-    transformational questions.
+<span id="r-astgrep"></span> 22. **ast-grep.**
+[ast-grep.github.io](https://ast-grep.github.io/).
+_Annotation:_ tree-sitter structural search/rewrite — neighbor left for
+transformational questions.
 
-<span id="r-3b1b"></span>
-23. **Sanderson, G. (3Blue1Brown) (2026).**
-    [*But what is cross-entropy? | Compression is Intelligence Part 2*](https://www.youtube.com/watch?v=GlYgs6v2YfU&t=672s).
-    *Annotation:* Public lecture on cross-entropy and compression;
-    reference material alongside the literature above.
+<span id="r-3b1b"></span> 23. **Sanderson, G. (3Blue1Brown) (2026).**
+[_But what is cross-entropy? | Compression is Intelligence Part 2_](https://www.youtube.com/watch?v=GlYgs6v2YfU&t=672s).
+_Annotation:_ Public lecture on cross-entropy and compression;
+reference material alongside the literature above.

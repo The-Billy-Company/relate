@@ -22,13 +22,13 @@ run **only over that subset** — so an exact intent narrows the statistical one
 instead of a caller unioning two independent queries by hand and paying
 whole-corpus noise.
 
-| File | Kernel | What it computes |
-| ---- | ------ | ---------------- |
-| `candidates.zig` | `CandidateSet` | the docs a `PatternSet` selects under `any`/`all`, each with its match mask (bit-identical to N single-pattern runs) |
-| `regions.zig` | `Region` | lifts exact matches into comparison-sized units (file / enclosing function / bounded match window) so kinship compares implementations, not whole files |
-| `context.zig` | `context` | coverage packing of a query over a lexicon built from ONLY the candidate docs; each pick carries its exact mask and its marginal bits |
-| `family.zig` | `family` | verified byte, structure, or echo families among exact-selected files or regions, plus nearest-neighbor receipts for genuinely distinct regions |
-| `provenance.zig` | `provenance` | re-verify a quoted phrase against an exemplar's CURRENT bytes; returns the live offset/line/window, or nothing if the file drifted |
+| File             | Kernel         | What it computes                                                                                                                                        |
+| ---------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `candidates.zig` | `CandidateSet` | the docs a `PatternSet` selects under `any`/`all`, each with its match mask (bit-identical to N single-pattern runs)                                    |
+| `regions.zig`    | `Region`       | lifts exact matches into comparison-sized units (file / enclosing function / bounded match window) so kinship compares implementations, not whole files |
+| `context.zig`    | `context`      | coverage packing of a query over a lexicon built from ONLY the candidate docs; each pick carries its exact mask and its marginal bits                   |
+| `family.zig`     | `family`       | verified byte, structure, or echo families among exact-selected files or regions, plus nearest-neighbor receipts for genuinely distinct regions         |
+| `provenance.zig` | `provenance`   | re-verify a quoted phrase against an exemplar's CURRENT bytes; returns the live offset/line/window, or nothing if the file drifted                      |
 
 ## Invariants
 
@@ -36,7 +36,7 @@ whole-corpus noise.
   face loads the corpus / codex shelf and renders; these compute.
 - **The mask is one `u64`.** `candidates` caps at 64 patterns — well past any
   composed workflow's ask; a caller with more intents is running a `relate
-  patterns` sweep, not this.
+patterns` sweep, not this.
 - **Scores stay separate.** `context` never fuses the exact mask and the
   compression bits into one relevance number.
 - **Comparison units are explicit.** Family analysis defaults to enclosing
