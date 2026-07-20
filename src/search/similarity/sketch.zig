@@ -203,19 +203,20 @@ pub fn build(gpa: std.mem.Allocator, bytes: []const u8) !Sketch {
     return out;
 }
 
-/// LZJD distance between two sketches: `1 − Ĵ(A,B)` with the Jaccard
-/// estimated on the k smallest of the union (the KMV estimator, Beyer et al.
-/// 2007). 0 = same dictionary, → 1 = nothing shared. Symmetric; O(k).
-/// Two EMPTY sketches (both inputs shorter than one phrase) are distance 0.
-pub fn distance(a: *const Sketch, b: *const Sketch) f64 {
-    const as = a.slots();
-    const bs = b.slots();
+/// KMV Jaccard distance between two ascending bottom-k hash slices (Beyer et
+/// al., SIGMOD 2007): `1 − Ĵ(A,B)`, estimating Jaccard on the k smallest of the
+/// union. 0 = identical set, → 1 = nothing shared. Symmetric; O(k). Two EMPTY
+/// slices are distance 0; one empty against a non-empty is 1. The one estimator
+/// both kinship channels share — bytes (`Sketch`) and structure (`Silhouette`).
+pub fn kmvDistance(as: []const u64, bs: []const u64) f64 {
     if (as.len == 0 and bs.len == 0) return 0.0;
     if (as.len == 0 or bs.len == 0) return 1.0;
 
-    // KMV Jaccard (Beyer et al., SIGMOD 2007): merge ascending, count
-    // intersections among the first `budget = min(k,|A|,|B|)` distinct union
-    // values — never judge past the resolution either sketch actually has.
+    // Merge ascending, counting intersections among the first
+    // `budget = min(|A|,|B|)` distinct union values — never judge past the
+    // resolution either bottom-k set actually has. Remaining values on one
+    // side still count toward the budget but can no longer intersect; they
+    // only dilute (correctly).
     const budget = @min(as.len, bs.len);
     var i: usize = 0;
     var j: usize = 0;
@@ -233,8 +234,11 @@ pub fn distance(a: *const Sketch, b: *const Sketch) f64 {
         }
         taken += 1;
     }
-    // Union values remaining on one side still count toward the budget but
-    // can no longer intersect; they only dilute (correctly).
-    const jaccard = @as(f64, @floatFromInt(shared)) / @as(f64, @floatFromInt(budget));
-    return 1.0 - jaccard;
+    return 1.0 - @as(f64, @floatFromInt(shared)) / @as(f64, @floatFromInt(budget));
+}
+
+/// LZJD distance between two sketches: the shared KMV estimator over their
+/// LZ78 phrase-hash bottom-k. 0 = same dictionary, → 1 = nothing shared.
+pub fn distance(a: *const Sketch, b: *const Sketch) f64 {
+    return kmvDistance(a.slots(), b.slots());
 }

@@ -11,48 +11,49 @@ doc_radar:
         - "Language Trees and Zipping"
         - "LZJD"
     - file: libs/kernels/irregex/src/cli/relate/main.zig
-      contains: "search | pack | quote | similar | dups | clusters | echoes | patterns | index | status"
+      contains: "search | pack | quote | similar | dups | clusters | echoes | concepts | patterns | index | status"
     - file: libs/kernels/irregex/contract/search_api.toml
       contains: "[irregex.verbs]"
 ---
 
-# Relate — compression-as-search
+# Relate — research map for compression-as-search
 
-A **systems/workload composition** that turns compressor-defined relative
-entropy into agent primitives over a live working tree: which files describe
-this text cheaply, which set covers it without redundancy, what is like this
-file, what forked from what, what repeats a skeleton under new names, and
-which of N patterns hit where — model-free, deterministic, exact-byte.
+Relate studies the questions before exact search has a name to match: **what
+shares information, which sources add distinct context, and where has this
+text appeared before?** It turns compression kinship into agent-shaped
+answers—ranked files, complementary packs, fork families, structural echoes,
+and attributed corpus quotations—without a model or per-language parser.
 
-The spark is Benedetto, Caglioti & Loreto's *Language Trees and Zipping*
+The spark is Benedetto, Caglioti & Loreto's _Language Trees and Zipping_
 (Phys. Rev. Lett. 2002): two texts are close when one compresses well against
 the other's dictionary. Relate graduates that compressor-defined relative
 entropy into exact cross-parses, sketches, and a priced fingerprint lexicon
 for coding agents.
 
-That composition is the claim. The underlying techniques are established
-prior art (survey in `PRIOR_ART.md`). The one place this kernel carries
-genuinely new math is on the gist side: the crest sieve
+The research claim is the resulting **systems/workload composition**, not
+ownership of compression mathematics. Product thesis, ancestry, and evidence
+remain separate so each can be challenged on its own terms. The kernel's
+stronger novel-math claim lives on the Gist side in the Crest sieve
 ([`../crest/`](../crest/PROOF.md)).
 
 ## This folder (research: writing + scope only)
 
-| file | role |
-|---|---|
-| `CLAIM.md` | precise novelty statement, verb map, explicit non-claims, warm-tier covenant |
-| `PRIOR_ART.md` | every citation we actually used (Language Trees → LZJD → winnowing → Ziv–Merhav → FM-index → submodular pack), plus neighboring families we deliberately left |
-| `TESTING.md` | exactness gates, kinship evals, knn-vs-embeddings race, warm atlas byte-identity, reproduction commands |
+| file                           | research role                                                                                                                                  |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`CLAIM.md`](CLAIM.md)         | the positive product thesis: compression as search, the answer objects agents receive, the engine behind them, and the composition claim       |
+| [`PRIOR_ART.md`](PRIOR_ART.md) | the lineage actually used—Language Trees, LZJD, winnowing, Ziv–Merhav, FM-indexes, and submodular selection—plus measured neighboring families |
+| [`TESTING.md`](TESTING.md)     | the falsification record: exactness gates, kinship evaluations, compression-vs-embeddings race, warm-atlas identity, and reproduction commands |
 
 ## The code (lives with the system, not here)
 
-| where | what |
-|---|---|
-| `src/cli/relate/` | product face (ten verbs + lifecycle + schema) |
+| where                    | what                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------ |
+| `src/cli/relate/`        | product face (nine query verbs + lifecycle + schema)                           |
 | `src/search/similarity/` | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
-| `src/search/batch/` | `patterns` / loom (N-pattern exact attribution) |
-| `src/index/atlas/` | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`) |
-| `src/index/codex/` | FM-index shelf behind `quote` (shared with `gist codex`) |
-| `bench/relate/` | compression-vs-embeddings knn harness (`zig build relate-knn`) |
+| `src/search/batch/`      | `patterns` / loom (N-pattern exact attribution)                                |
+| `src/index/atlas/`       | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
+| `src/index/codex/`       | FM-index shelf behind `quote` (shared with `gist codex`)                       |
+| `bench/relate/`          | compression-vs-embeddings knn harness (`zig build relate-knn`)                 |
 
 ## Run
 
@@ -69,7 +70,9 @@ zig build relate-knn                   # see TESTING.md
 
 ## Status
 
-**Shipped.** Dogfooded for similarity / dups / context packing / provenance
-(`irregex.mdc`). Prior-art lineage and non-claims: `PRIOR_ART.md`. Composition
-claim: `CLAIM.md`. Evidence: `TESTING.md`. Product face:
+**Shipped.** Dogfooded for similarity, duplication, context packing, and
+provenance (`irregex.mdc`). Start with the positive case in
+[`CLAIM.md`](CLAIM.md), audit its ancestry in
+[`PRIOR_ART.md`](PRIOR_ART.md), then test every assertion against
+[`TESTING.md`](TESTING.md). The operational product face lives in
 [`src/cli/relate/README.md`](../../src/cli/relate/README.md).
