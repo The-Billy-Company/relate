@@ -73,7 +73,7 @@ pub const Automaton = struct {
     link: []i32,
     /// head[state] → first edge index in `edges`, -1 = none
     head: []i32,
-    edges: std.ArrayListUnmanaged(Edge),
+    edges: std.ArrayList(Edge),
     n_states: u32,
     /// bytes of the source doc (for pointer cost: log2(doc len))
     doc_len: usize,
@@ -189,6 +189,10 @@ pub const Automaton = struct {
     /// priced as copy ops; unseen bytes as literals. Deterministic, O(|q|).
     pub fn crossParse(self: *const Automaton, query: []const u8) Cost {
         const pos_bits = std.math.log2(@as(f64, @floatFromInt(self.doc_len + 1)));
+        // A whole short query is evidence, not ambient 1–3 byte overlap.
+        // Longer queries retain `min_factor`, so incidental trigrams cannot
+        // make unrelated prose look compressible.
+        const factor_floor = @min(min_factor, query.len);
         var bits: f64 = 0.0;
         var factors: u32 = 0;
         var literals: u32 = 0;
@@ -201,7 +205,7 @@ pub const Automaton = struct {
                 s = self.transition(s, query[i + l]) orelse break;
                 l += 1;
             }
-            if (l < min_factor) {
+            if (l < factor_floor) {
                 bits += 1.0 + 8.0; // flag + literal byte
                 literals += 1;
                 i += 1;
@@ -239,4 +243,15 @@ test "cross-parse: familiar text is factors, alien text is literals" {
     try std.testing.expectEqual(@as(u32, 0), alien.factors);
     try std.testing.expectEqual(@as(u32, 4), alien.literals);
     try std.testing.expectEqual(coldBits("ZZZZ"), alien.bits);
+}
+
+test "cross-parse treats a whole short query as evidence" {
+    const gpa = std.testing.allocator;
+    var a = try Automaton.build(gpa, "the lazy dog sleeps");
+    defer a.deinit();
+
+    const exact = a.crossParse("dog");
+    try std.testing.expectEqual(@as(u32, 1), exact.factors);
+    try std.testing.expectEqual(@as(u32, 0), exact.literals);
+    try std.testing.expect(exact.bits < coldBits("dog"));
 }

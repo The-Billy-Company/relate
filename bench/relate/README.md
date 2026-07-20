@@ -11,18 +11,18 @@ doc_radar:
 
 # bench/relate — compression-as-embedding proof harness
 
-`knn.zig` (`zig build relate-knn`) runs the **real** hydra relate engine as a
+`knn.zig` (`zig build relate-knn`) runs the **real** relate engine as a
 k-NN text classifier over a labeled manifest, so "compression vs embeddings"
 is a measured race, not a claim. It re-uses production code only — the
-`zipper` cross-parse (`src/hydra/engine/zipper.zig`), the `sketch` LZJD
-distance (`src/primitives/sketch.zig`) — never a re-implementation.
+`zipper` cross-parse (`src/search/similarity/zipper.zig`), the `sketch` LZJD
+distance (`src/search/similarity/sketch.zig`) — never a re-implementation.
 
 ## Lanes (`--method`)
 
-| Lane     | Machinery                                                                 |
-| -------- | ------------------------------------------------------------------------- |
-| `zipper` | one suffix automaton per train doc; each test doc priced by exact Ziv–Merhav cross-parse (distance = conditional length / cold length) |
-| `sketch` | one LZJD dictionary sketch per doc; bottom-k Jaccard distance             |
+| Lane     | Machinery                                                                                                                                        |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `zipper` | one suffix automaton per train doc; each test doc priced by exact Ziv–Merhav cross-parse (distance = conditional length / cold length)           |
+| `sketch` | one LZJD dictionary sketch per doc; bottom-k Jaccard distance                                                                                    |
 | `pivot`  | **compression embeddings** — each doc → the P-vector of its cross-parse cost to P pivots (FastMap/Lipschitz), then Euclidean k-NN (`--pivots P`) |
 
 ## Input

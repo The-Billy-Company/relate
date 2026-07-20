@@ -35,7 +35,7 @@
 
 const std = @import("std");
 const zipper = @import("zipper.zig");
-const sketch = @import("sketch.zig");
+const sketch = @import("../metric/sketch.zig");
 
 /// Fingerprint window: one hash per `gram` consecutive bytes. Eight bytes —
 /// past the trigram floor where style begins, short enough that a one-line
@@ -81,7 +81,7 @@ pub fn fingerprints(gpa: std.mem.Allocator, bytes: []const u8) ![]u64 {
     if (bytes.len < gram) return gpa.alloc(u64, 0);
     const n_hashes = bytes.len - gram + 1;
 
-    var out: std.ArrayListUnmanaged(u64) = .empty;
+    var out: std.ArrayList(u64) = .empty;
     errdefer out.deinit(gpa);
 
     // Ring of the last `window` gram-hashes; emit each window's minimum.
@@ -170,6 +170,13 @@ pub const Lexicon = struct {
         return self.docs.len;
     }
 
+    /// Number of corpus documents containing `fp`. Zero means truly foreign;
+    /// `docCount()` means ubiquitous but known. Keep this distinction separate
+    /// from information content: both cases price at zero for different reasons.
+    pub fn fingerprintFrequency(self: *const Lexicon, fp: u64) usize {
+        return self.df.get(fp) orelse 0;
+    }
+
     /// The information content of one fingerprint in this corpus:
     /// −log2(df/N) bits. Present in every doc ⇒ exactly 0; unique to one
     /// doc ⇒ log2 N; known to no doc ⇒ 0 (nothing was saved anywhere).
@@ -178,7 +185,8 @@ pub const Lexicon = struct {
     pub fn fingerprintBits(self: *const Lexicon, fp: u64) f64 {
         const n = self.docs.len;
         if (n == 0) return 0.0;
-        const df = self.df.get(fp) orelse return 0.0;
+        const df = self.fingerprintFrequency(fp);
+        if (df == 0) return 0.0;
         return -std.math.log2(@as(f64, @floatFromInt(df)) / @as(f64, @floatFromInt(n)));
     }
 
@@ -206,7 +214,7 @@ pub const Lexicon = struct {
         const qfps = try fingerprints(gpa, query);
         defer gpa.free(qfps);
 
-        var hits: std.ArrayListUnmanaged(Hit) = .empty;
+        var hits: std.ArrayList(Hit) = .empty;
         errdefer hits.deinit(gpa);
         for (0..self.sets.len) |d| {
             const bits = self.bitsSaved(qfps, @intCast(d));
@@ -234,12 +242,29 @@ pub const Lexicon = struct {
         const pool = try self.rank(gpa, query, @max(top * 4, 8));
         defer gpa.free(pool);
 
-        var out: std.ArrayListUnmanaged(Ranked) = .empty;
+        var out: std.ArrayList(Ranked) = .empty;
         errdefer out.deinit(gpa);
-        try out.ensureTotalCapacityPrecise(gpa, pool.len);
-        for (pool) |h| {
-            const c = try self.crossCost(gpa, h.doc, query);
-            out.appendAssumeCapacity(.{ .doc = h.doc, .bits_saved = h.bits, .cost = c });
+        // A sub-gram query has no fingerprint by construction, but the exact
+        // cross-parser can still answer it. This is the cold/missing-index
+        // correctness rung; the CLI's persisted trigram path handles ≥3-byte
+        // queries without paying this corpus-wide scan.
+        if (pool.len == 0 and query.len > 0 and query.len < gram) {
+            try out.ensureTotalCapacityPrecise(gpa, self.docs.len);
+            for (self.docs, 0..) |bytes, doc| {
+                if (std.mem.find(u8, bytes, query) == null) continue;
+                const c = try self.crossCost(gpa, @intCast(doc), query);
+                out.appendAssumeCapacity(.{
+                    .doc = @intCast(doc),
+                    .bits_saved = zipper.coldBits(query),
+                    .cost = c,
+                });
+            }
+        } else {
+            try out.ensureTotalCapacityPrecise(gpa, pool.len);
+            for (pool) |h| {
+                const c = try self.crossCost(gpa, h.doc, query);
+                out.appendAssumeCapacity(.{ .doc = h.doc, .bits_saved = h.bits, .cost = c });
+            }
         }
         std.mem.sort(Ranked, out.items, {}, rankedBefore);
         if (out.items.len > top) out.shrinkRetainingCapacity(top);

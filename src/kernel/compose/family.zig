@@ -18,10 +18,10 @@
 //! candidate subset, builds the graph, and returns fork families (corpus ids).
 
 const std = @import("std");
-const sketch = @import("../similarity/sketch.zig");
-const silhouette_mod = @import("../similarity/silhouette.zig");
-const pairs = @import("../similarity/pairs.zig");
-const families_mod = @import("../similarity/families.zig");
+const sketch = @import("../kinship/metric/sketch.zig");
+const silhouette_mod = @import("../kinship/metric/silhouette.zig");
+const pairs = @import("../kinship/cluster/pairs.zig");
+const families_mod = @import("../kinship/cluster/families.zig");
 const signals = @import("../rank/signals.zig");
 const candidates = @import("candidates.zig");
 

@@ -1,16 +1,16 @@
 ---
 doc_radar:
   paths_exist:
-    - libs/kernels/irregex/src/cli/relate/main.zig
-    - libs/kernels/irregex/src/search/similarity/zipper.zig
-    - libs/kernels/irregex/src/search/similarity/lexicon.zig
+    - libs/kernels/irregex/src/surface/face/relate/main.zig
+    - libs/kernels/irregex/src/kernel/kinship/recall/zipper.zig
+    - libs/kernels/irregex/src/kernel/kinship/recall/lexicon.zig
     - libs/kernels/irregex/bench/relate/knn.zig
   sentinels:
-    - file: libs/kernels/irregex/src/search/similarity/sketch.zig
+    - file: libs/kernels/irregex/src/kernel/kinship/metric/sketch.zig
       contains:
         - "Language Trees and Zipping"
         - "LZJD"
-    - file: libs/kernels/irregex/src/cli/relate/main.zig
+    - file: libs/kernels/irregex/src/surface/face/relate/main.zig
       contains: "search | pack | quote | similar | dups | clusters | echoes | concepts | patterns | index | status"
     - file: libs/kernels/irregex/contract/search_api.toml
       contains: "[irregex.verbs]"

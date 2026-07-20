@@ -22,7 +22,7 @@
 const std = @import("std");
 const lexicon = @import("lexicon.zig");
 const zipper = @import("zipper.zig");
-const sketch = @import("sketch.zig");
+const sketch = @import("../metric/sketch.zig");
 
 const t = std.testing;
 
@@ -144,6 +144,23 @@ test "a short query retrieves its source doc top-1 (bitsSaved)" {
     // And decisively: the winner carries strictly more paid-for bits than
     // any other doc, including the same-dialect confusable (doc 0).
     for (hits[1..]) |h| try t.expect(hits[0].bits > h.bits);
+}
+
+test "a three-byte query does not disappear below the fingerprint floor" {
+    const gpa = t.allocator;
+    const docs = [_][]const u8{
+        "the quick brown fox jumps over the lazy dog",
+        "the quick brown fox jumps over the bright moon",
+    };
+    var lex = try lexicon.Lexicon.build(gpa, &docs);
+    defer lex.deinit();
+
+    const hits = try lex.retrieve(gpa, "dog", docs.len);
+    defer gpa.free(hits);
+
+    try t.expectEqual(@as(usize, 1), hits.len);
+    try t.expectEqual(@as(u32, 0), hits[0].doc);
+    try t.expect(hits[0].bits_saved > 0.0);
 }
 
 test "the symmetric sketch genuinely collapses on that same short query" {
@@ -269,6 +286,17 @@ test "a fingerprint every doc knows carries zero information" {
     };
     var lex = try lexicon.Lexicon.build(gpa, &docs);
     defer lex.deinit();
+
+    const boiler_fps = try lexicon.fingerprints(gpa, boiler);
+    defer gpa.free(boiler_fps);
+    var universal: ?u64 = null;
+    for (boiler_fps) |fp| if (lex.fingerprintFrequency(fp) == docs.len) {
+        universal = fp;
+        break;
+    };
+    try t.expect(universal != null);
+    try t.expectEqual(@as(f64, 0), lex.fingerprintBits(universal.?));
+    try t.expectEqual(@as(usize, 0), lex.fingerprintFrequency(0xdead_beef));
 
     const noise_ceiling = @as(f64, lexicon.window - 1) * std.math.log2(@as(f64, docs.len));
     const hits = try lex.rank(gpa, boiler, docs.len);

@@ -12,8 +12,8 @@
 
 const std = @import("std");
 const frag = @import("frag.zig");
-const silhouette_mod = @import("../../search/similarity/silhouette.zig");
-const corpus_mod = @import("../../corpus/tree/corpus.zig");
+const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
+const corpus_mod = @import("../../tree/corpus.zig");
 const Dir = std.Io.Dir;
 
 // Bodies with more than one function each, long enough to shed real silhouettes.

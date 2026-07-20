@@ -29,11 +29,11 @@
 //! set, and renders; this nominates, admits, groups, and ranks over arrays.
 
 const std = @import("std");
-const sketch = @import("sketch.zig");
-const silhouette_mod = @import("silhouette.zig");
+const sketch = @import("../metric/sketch.zig");
+const silhouette_mod = @import("../metric/silhouette.zig");
 const pairs = @import("pairs.zig");
 const families_mod = @import("families.zig");
-const signals = @import("../rank/signals.zig");
+const signals = @import("../../rank/signals.zig");
 
 const Sketch = sketch.Sketch;
 const Silhouette = silhouette_mod.Silhouette;

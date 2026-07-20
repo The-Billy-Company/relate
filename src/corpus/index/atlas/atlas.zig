@@ -40,9 +40,9 @@
 //! Loads fail closed on any framing, bounds, or checksum violation.
 
 const std = @import("std");
-const sketch = @import("../../search/similarity/sketch.zig");
-const silhouette_mod = @import("../../search/similarity/silhouette.zig");
-const corpus_mod = @import("../../corpus/tree/corpus.zig");
+const sketch = @import("../../../kernel/kinship/metric/sketch.zig");
+const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
+const corpus_mod = @import("../../tree/corpus.zig");
 const fresh = @import("../trigrams/fresh.zig");
 
 const Sketch = sketch.Sketch;

@@ -53,11 +53,13 @@ to that equality.
   bytes, gates deletions;
 - emitted answer must match a cold rebuild (documented in
   [`src/index/atlas/README.md`](../../src/index/atlas/README.md) and the
-  relate CLI README). Measured warm `similar` ~95 ms vs ~1.1 s live (~11×)
-  on the live corpus — accelerator, not authority.
+  relate CLI README). Warm speed depends on atlas size, freshness churn, and
+  scope; the atlas is an accelerator, never a latency guarantee or authority.
 
-`search` / `pack` intentionally stay live-built (lexicon fingerprint density
-does not persist economically).
+`search` / `pack` reuse Gist's persisted trigram codebook, fold changed files
+through the shared freshness overlay, and retain the live fingerprint lexicon
+as the missing-index fallback. Their CLI gate must include a three-byte
+positive, a descriptive query, a scoped query, and a multi-file pack.
 
 ---
 
@@ -87,11 +89,12 @@ zig-out/bin/relate-knn <dataset> --method zipper --k 3
 
 ## 5. Echo / structure graduation eval
 
-On the labeled lint-registry family set (54 rows, 19 family members): echo
-ranking P@10 = 100% vs 11.9% base rate (CLI README). Structure channel has
-**no** clean absolute dup threshold across corpora (measured overlap of
-family-max vs cross-min at every winnow setting) — that is why `echoes`
-ranks a *gap*, while `dups` owns absolute byte near-duplicates.
+The historical labeled lint-registry run found strong top-10 echo precision,
+but no checked-in labeled artifact currently ratchets that number; treat it as
+an observation, not a product guarantee. Structure has **no** clean absolute
+dup threshold across corpora (measured overlap of family-max vs cross-min at
+every winnow setting) — that is why `echoes` ranks a *gap*, while `dups`
+verifies byte-near candidates.
 
 ---
 
@@ -99,9 +102,11 @@ ranks a *gap*, while `dups` owns absolute byte near-duplicates.
 
 `zig build codex-scale` and the tables in
 [`src/index/codex/README.md`](../../src/index/codex/README.md): known vs
-foreign bits/byte separation (~0.15 vs ~15), O(|text|) query cost, restore
-byte-identity. `quote` without a shelf fails loud (asks for
-`relate index --shelf`).
+foreign bits/byte separation, O(|text|) cross-parse after the shelf is loaded,
+and restore byte-identity. End-to-end `quote` also pays shelf loading and
+filesystem freshness work; `codex-scale` records rather than ratchets latency
+and separation. `quote` without a shelf fails loud (asks for `relate index
+--shelf`).
 
 ---
 

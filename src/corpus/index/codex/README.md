@@ -1,29 +1,29 @@
 ---
 doc_radar:
   counts:
-    - path: "libs/kernels/irregex/src/codex"
+    - path: "libs/kernels/irregex/src/corpus/index/codex"
       glob: "*.zig"
       expect: 7
   sentinels:
     - file: "libs/kernels/irregex/src/root.zig"
       contains:
-        - "codex/sais.zig"
-        - "codex/cento.zig"
-        - "codex/shelf.zig"
-        - "codex/codex_test.zig"
+        - "index/codex/sais.zig"
+        - "index/codex/cento.zig"
+        - "index/codex/shelf.zig"
+        - "index/codex/codex_test.zig"
     - file: "libs/kernels/irregex/build.zig"
       contains:
         - "codex-scale"
-    - file: "libs/kernels/irregex/src/gist/faces/cli/main.zig"
+    - file: "libs/kernels/irregex/src/surface/face/gist/main.zig"
       contains:
         - '"codex"'
-    - file: "libs/kernels/irregex/src/hydra/cli/main.zig"
+    - file: "libs/kernels/irregex/src/surface/face/relate/main.zig"
       contains:
         - '"quote"'
-    - file: "libs/kernels/irregex/src/codex/sais.zig"
+    - file: "libs/kernels/irregex/src/corpus/index/codex/sais.zig"
       contains:
         - "induced sorting"
-    - file: "libs/kernels/irregex/src/codex/rrr.zig"
+    - file: "libs/kernels/irregex/src/corpus/index/codex/rrr.zig"
       contains:
         - "Raman–Raman–Rao"
 ---
@@ -66,22 +66,22 @@ adversarial oracle suite, and the at-scale proof below.
    bitvectors (Raman–Raman–Rao, SODA 2002) every level shrinks to its own
    zeroth-order entropy, and the whole tree lands at nH_k + o(n log σ) with
    no explicit context modeling — implicit compression boosting
-   (Mäkinen & Navarro, CPM 2007).
+   (Mäkinen & Navarro, SPIRE 2007).
 5. **Self-index.** LF-mapping walks the BWT backwards through the wavelet
    tree alone: `restore()` re-emits the original text. The structure is a
    decodable code in Shannon's exact sense — the index **is** a compression.
 
 ## The layers
 
-| file             | structure                                       | rôle                                                              |
-| ---------------- | ----------------------------------------------- | ----------------------------------------------------------------- |
-| `sais.zig`       | SA-IS suffix array (Nong–Zhang–Chan 2009)       | O(n) construction — build-time only, freed                        |
-| `rrr.zig`        | Plain + RRR bitvectors behind one `Bits` seam   | O(1) rank at entropy space; `adopt` keeps the smaller per vector  |
-| `wavelet.zig`    | canonical-Huffman wavelet tree, σ ≤ 4096        | occ/access in one descent — the rank oracle                       |
-| `codex.zig`      | the `Codex`: build → count/find/restore + save/load | the product surface; text/SA/BWT all freed after build       |
-| `cento.zig`      | Ziv–Merhav cross-parse + Shannon phrase pricing | corpus-global relatedness: quote a query out of the corpus, in bits |
-| `shelf.zig`      | multi-document corpus behind one codex          | doc catalog + offsets + freshness anchor; count/tally per file    |
-| `codex_test.zig` | differential + property suite                   | every layer vs a naive oracle; nothing self-referential           |
+| file             | structure                                           | rôle                                                                |
+| ---------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
+| `sais.zig`       | SA-IS suffix array (Nong–Zhang–Chan 2009)           | O(n) construction — build-time only, freed                          |
+| `rrr.zig`        | Plain + RRR bitvectors behind one `Bits` seam       | O(1) rank at entropy space; `adopt` keeps the smaller per vector    |
+| `wavelet.zig`    | canonical-Huffman wavelet tree, σ ≤ 4096            | occ/access in one descent — the rank oracle                         |
+| `codex.zig`      | the `Codex`: build → count/find/restore + save/load | the product surface; text/SA/BWT all freed after build              |
+| `cento.zig`      | Ziv–Merhav cross-parse + Shannon phrase pricing     | corpus-global relatedness: quote a query out of the corpus, in bits |
+| `shelf.zig`      | multi-document corpus behind one codex              | doc catalog + offsets + freshness anchor; count/tally per file      |
+| `codex_test.zig` | differential + property suite                       | every layer vs a naive oracle; nothing self-referential             |
 
 Bytes are lifted to u16 symbols c+1 under sentinel 0, so all 256 byte values
 — including NUL — are ordinary, searchable content.
@@ -118,7 +118,7 @@ anchor) and is what the product verbs persist (`codex.shelf`):
   absence** across the corpus, no file opened. On the live repo (20,952
   files, 209MB → one 76MB shelf): ~100ms cold including load, exit code
   0/1 = present/absent, per-file `tally` heaviest-first.
-- **`hydra quote <text>`** — the corpus-global relate tier (`cento.zig`):
+- **`relate quote <text>`** — the corpus-global relate tier (`cento.zig`):
   rewrite a query as maximal verbatim quotations from the _whole corpus_
   (Ziv–Merhav cross-parse via backward search, O(|text|) — corpus size never
   appears), price it in bits, and attribute each phrase to an exemplar file.
@@ -179,11 +179,11 @@ byte-exact at every size.
 Persistence — save/load of the full index, loaded answers re-verified
 against the naive oracle:
 
-| n     | blob     | save   | load       | load / build |
-| ----- | -------- | ------ | ---------- | ------------ |
-| 1MB   | 0.45MB   | 0.2ms  | 0.3ms      | 0.6%         |
-| 16MB  | 6.4MB    | 2.7ms  | 3.8ms      | 0.4%         |
-| 128MB | 46MB     | 18.5ms | **28.9ms** | **0.3%**     |
+| n     | blob   | save   | load       | load / build |
+| ----- | ------ | ------ | ---------- | ------------ |
+| 1MB   | 0.45MB | 0.2ms  | 0.3ms      | 0.6%         |
+| 16MB  | 6.4MB  | 2.7ms  | 3.8ms      | 0.4%         |
+| 128MB | 46MB   | 18.5ms | **28.9ms** | **0.3%**     |
 
 Cross-parse (`cento.zig`) — 256-byte queries, 64 rounds per size, native
 (verbatim corpus slices) vs foreign (uniform random bytes), price identical
@@ -202,12 +202,12 @@ larger tree, not an n-dependence.
 
 ## The tiers that landed (the irregex arc)
 
-The trigram index (`gist/kernel/index/`) is a lossy _filter_: it may name
+The trigram index (`index/trigrams/`) is a lossy _filter_: it may name
 false candidate files and needs the corpus resident to verify. The codex is
 the opposite pole: zero false positives, corpus deletable, count without I/O.
 Both graduation rungs shipped (see “Persistence & the two tiers” above):
 `gist codex` is the existence/count tier over the persisted shelf, and
-`hydra quote` is the corpus-global matching-statistics tier — zipper's
+`relate quote` is the corpus-global matching-statistics tier — zipper's
 Ziv–Merhav cross-parse priced against the _whole corpus at once_
 (Ohlebusch–Gog–Kügel, SPIRE 2010) instead of per-doc automata. One
 entropy-compressed structure under both engines.
@@ -216,6 +216,6 @@ entropy-compressed structure under both engines.
 
 Shannon 1948 · Burrows & Wheeler SRC-124 1994 · Ferragina & Manzini FOCS
 2000 · Manzini JACM 2001 · Raman, Raman & Rao SODA 2002 · Grossi, Gupta &
-Vitter SODA 2003 · Nong, Zhang & Chan DCC 2009 · Mäkinen & Navarro CPM 2007
+Vitter SODA 2003 · Nong, Zhang & Chan DCC 2009 · Mäkinen & Navarro SPIRE 2007
 · Navarro & Mäkinen, _Compressed Full-Text Indexes_, ACM Surveys 2007 ·
 Ohlebusch, Gog & Kügel SPIRE 2010.

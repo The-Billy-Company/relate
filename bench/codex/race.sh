@@ -18,13 +18,18 @@ mkdir -p "${OUT}"
 
 if [[ ! -f "${OUT}/corpus.bin" ]]; then
   echo "── snapshotting corpus (deterministic sorted-path concat) ──"
-  python3 - "${REPO}" "${OUT}/corpus.bin" <<'PY'
+  python3 - "${REPO}" "${OUT}/corpus.bin" << 'PY'
+import os
 import sys
 from pathlib import Path
 
 repo, out = Path(sys.argv[1]), Path(sys.argv[2])
 CAP = 192 << 20
-ROOTS = ["libs", "services", "scripts", "quality", "clients", "contracts", "docs", "infra"]
+# Corpus scope: $GIST_ROOTS override, else the historical published-corpus
+# roots that exist here, else the whole tree (mirrors corpus.resolveRoots).
+ROOTS = os.environ.get("GIST_ROOTS", "").replace(":", " ").replace(",", " ").split() or [
+    "libs", "services", "scripts", "quality", "clients", "contracts", "docs", "infra"]
+ROOTS = [r for r in ROOTS if (repo / r).is_dir()] or ["."]
 EXTS = {".zig", ".py", ".go", ".ts", ".tsx", ".rs", ".swift", ".sql", ".sh",
         ".md", ".toml", ".proto", ".ex", ".exs", ".css", ".yaml", ".yml", ".json"}
 SKIP = {".git", ".local", "node_modules", "target", "dist", "dist-types", "build",
@@ -72,7 +77,7 @@ for mb in "${MBS[@]}"; do
   zs=$(zstd -19 -q -c "${slice}" | wc -c | tr -d ' ')
   xz_b=$(xz -9 -c "${slice}" | wc -c | tr -d ' ')
   bz="null"
-  command -v bzip2 >/dev/null && bz=$(bzip2 -9 -c "${slice}" | wc -c | tr -d ' ')
+  command -v bzip2 > /dev/null && bz=$(bzip2 -9 -c "${slice}" | wc -c | tr -d ' ')
   echo "{\"raw_bytes\":${bytes},\"gzip9\":${gz},\"bzip2\":${bz},\"zstd19\":${zs},\"xz9\":${xz_b}}" \
     | tee -a "${OUT}/compressors.jsonl"
   rm -f "${slice}"

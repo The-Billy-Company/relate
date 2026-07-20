@@ -35,9 +35,9 @@
 //! Loads fail closed on any framing, bounds, or checksum violation.
 
 const std = @import("std");
-const silhouette_mod = @import("../../search/similarity/silhouette.zig");
-const regions = @import("../../search/compose/regions.zig");
-const corpus_mod = @import("../../corpus/tree/corpus.zig");
+const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
+const regions = @import("../../../kernel/compose/regions.zig");
+const corpus_mod = @import("../../tree/corpus.zig");
 const fresh = @import("../trigrams/fresh.zig");
 const frame = @import("../frame/frame.zig");
 
