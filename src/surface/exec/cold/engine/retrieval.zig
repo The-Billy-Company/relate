@@ -314,17 +314,12 @@ const WarmQuery = struct {
                 _ = self.matches.remove(doc);
                 continue;
             }
-            const body = Dir.cwd().readFileAlloc(
-                self.io,
-                self.persisted.paths.items[doc],
-                self.gpa,
-                .limited(corpus.per_file_cap),
-            ) catch {
+            const body = corpus.readMember(self.io, Dir.cwd(), self.persisted.paths.items[doc], self.gpa) orelse {
                 _ = self.matches.remove(doc);
                 continue;
             };
             defer self.gpa.free(body);
-            const match = if (body.len == 0 or corpus.isBinary(body)) Match{} else self.liveMatch(body);
+            const match = self.liveMatch(body);
             if (match.evidence_bits > 0.0 or match.mask != 0)
                 try self.matches.put(self.gpa, doc, match)
             else
@@ -383,9 +378,8 @@ pub fn retrieveWith(
     }
     for (ranked.items[0..pool]) |candidate| {
         const path = warm.persisted.paths.items[candidate.doc];
-        const body = Dir.cwd().readFileAlloc(io, path, gpa, .limited(corpus.per_file_cap)) catch continue;
+        const body = corpus.readMember(io, Dir.cwd(), path, gpa) orelse continue;
         defer gpa.free(body);
-        if (body.len == 0 or corpus.isBinary(body)) continue;
         const reference = try referenceFor(gpa, body, warm.activeTerms());
         defer gpa.free(reference);
         var automaton = try zipper.Automaton.build(gpa, reference);

@@ -53,12 +53,7 @@ pub fn fragFile() []const u8 {
 
 const MAGIC = "FRAG";
 const VERSION: u32 = 1;
-
-fn fnv64(bytes: []const u8) u64 {
-    var h: u64 = 0xcbf29ce484222325;
-    for (bytes) |b| h = (h ^ b) *% 0x100000001b3;
-    return h;
-}
+const fnv64 = frame.fnv64;
 
 /// A fragment's location: byte range in its file (for on-demand byte slicing)
 /// and 1-based line range (for display). Byte range fits u32 — files are capped
@@ -345,8 +340,7 @@ pub fn fold(gpa: std.mem.Allocator, io: std.Io, f: *const Frag, roots: []const [
     defer seen.deinit(gpa);
     for (changed.items) |path| {
         if ((try seen.getOrPut(gpa, path)).found_existing) continue;
-        const body = Dir.cwd().readFileAlloc(io, path, a, .limited(corpus_mod.per_file_cap)) catch continue;
-        if (body.len == 0 or corpus_mod.isBinary(body)) continue;
+        const body = corpus_mod.readMember(io, Dir.cwd(), path, a) orelse continue;
         var regs: std.ArrayList(regions.Region) = .empty;
         defer regs.deinit(gpa);
         try regions.extractAll(gpa, path, body, 0, &regs);

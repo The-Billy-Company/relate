@@ -60,16 +60,12 @@ const MAGIC = "ATLS";
 // build and suggests `relate index`; guessing sections an old blob never
 // recorded could unsoundly answer a query warm.
 const VERSION: u32 = 3;
-fn fnv64(bytes: []const u8) u64 {
-    var h: u64 = 0xcbf29ce484222325;
-    for (bytes) |b| h = (h ^ b) *% 0x100000001b3;
-    return h;
-}
 
 // Little-endian serializer + fail-closed cursor + NUL catalog codec shared by
 // every persisted irregex artifact.
 const frame = @import("../frame/frame.zig");
 const putInt = frame.putInt;
+const fnv64 = frame.fnv64;
 const Cursor = frame.Cursor;
 
 /// Serialize `paths` + their `sketches` and `silhouettes` (same order) under
@@ -256,15 +252,11 @@ pub fn fold(gpa: std.mem.Allocator, io: std.Io, atl: *const Atlas, roots: []cons
     for (changed.items) |path| {
         if ((try seen.getOrPut(gpa, path)).found_existing) continue;
         const existing = by_path.get(path);
-        const body = Dir.cwd().readFileAlloc(io, path, a, .limited(corpus_mod.per_file_cap)) catch {
+        // corpus.load skips non-members, so parity means dropping the entry.
+        const body = corpus_mod.readMember(io, Dir.cwd(), path, a) orelse {
             if (existing) |id| try dead.append(gpa, id);
             continue;
         };
-        if (body.len == 0 or corpus_mod.isBinary(body)) {
-            // corpus.load skips these, so parity means dropping the entry
-            if (existing) |id| try dead.append(gpa, id);
-            continue;
-        }
         // Both channels refresh together. A failure invalidates the warm view
         // so the caller can rebuild live; retaining stale bytes would violate
         // indexed/live identity, while refreshing one channel would corrupt
