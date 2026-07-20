@@ -1,8 +1,8 @@
-//! hydra — the compression-as-embedding proof harness (`zig build relate-knn`).
+//! relate — the compression-as-embedding proof harness (`zig build relate-knn`).
 //!
 //! The thesis (Griffin's idea): *embeddings answer "what is this LIKE?",
 //! but compression answers it faster and with no model.* This harness proves
-//! the cheapest rung — it runs the REAL hydra relate engine as a k-NN text
+//! the cheapest rung — it runs the REAL relate engine as a k-NN text
 //! classifier over a labeled corpus and reports accuracy + build/query cost,
 //! so a sibling Python driver can race it head-to-head against the gzip-kNN
 //! method (Jiang et al., ACL 2023) and a real static-embedding model.
@@ -13,8 +13,8 @@
 //!           "index"; each test doc is priced by an exact Ziv–Merhav cross-parse
 //!           (zipper.crossParse). Distance = conditional description length /
 //!           cold length ∈ (0,1]; lower = the train doc describes it more cheaply.
-//!   sketch  the LZJD dictionary sketch (primitives/sketch.zig) — the same
-//!           distance `hydra similar`/`dups` ride; cruder, but O(k) per pair.
+//!   sketch  the LZJD dictionary sketch (src/search/similarity/sketch.zig) — the same
+//!           distance `relate similar`/`dups` ride; cruder, but O(k) per pair.
 //!
 //! Input is a manifest the driver writes (deterministic order, so the harness
 //! never walks a coworker-mutated tree): `<dataset>/manifest.tsv`, one row
@@ -26,8 +26,8 @@
 const std = @import("std");
 const irregex = @import("irregex");
 
-const zipper = irregex.hydra.zipper;
-const sketch = irregex.irregex.sketch;
+const zipper = irregex.relate.zipper;
+const sketch = irregex.kinship.sketch;
 
 const Dir = std.Io.Dir;
 
@@ -301,7 +301,7 @@ pub fn main(init: std.process.Init) !void {
     const report_pivots: usize = if (method == .pivot) @min(n_pivots, ds.train.len) else 0;
     var buf: [1024]u8 = undefined;
     const json = std.fmt.bufPrint(&buf,
-        \\{{"lane":"hydra-{s}","k":{d},"pivots":{d},"n_train":{d},"n_test":{d},"n_labels":{d},"accuracy":{d:.4},"build_ms":{d:.1},"query_ms":{d:.1},"per_query_us":{d:.1},"train_bytes":{d},"test_bytes":{d}}}
+        \\{{"lane":"relate-{s}","k":{d},"pivots":{d},"n_train":{d},"n_test":{d},"n_labels":{d},"accuracy":{d:.4},"build_ms":{d:.1},"query_ms":{d:.1},"per_query_us":{d:.1},"train_bytes":{d},"test_bytes":{d}}}
     ++ "\n", .{
         @tagName(method), k,             report_pivots,  ds.train.len,   ds.tests.len,
         ds.n_labels,      acc,           ms(r.build_ns), ms(r.query_ns), per_us,
