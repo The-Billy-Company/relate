@@ -13,7 +13,7 @@
 //!           "index"; each test doc is priced by an exact Ziv–Merhav cross-parse
 //!           (zipper.crossParse). Distance = conditional description length /
 //!           cold length ∈ (0,1]; lower = the train doc describes it more cheaply.
-//!   sketch  the LZJD dictionary sketch (src/search/similarity/sketch.zig) — the same
+//!   sketch  the LZJD dictionary sketch (src/kernel/kinship/metric/sketch.zig) — the same
 //!           distance `relate similar`/`dups` ride; cruder, but O(k) per pair.
 //!
 //! Input is a manifest the driver writes (deterministic order, so the harness
@@ -27,7 +27,7 @@ const std = @import("std");
 const irregex = @import("irregex");
 
 const zipper = irregex.relate.zipper;
-const sketch = irregex.kinship.sketch;
+const sketch = irregex.api.relate.sketch;
 
 const Dir = std.Io.Dir;
 
