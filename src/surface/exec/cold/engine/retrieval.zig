@@ -220,7 +220,7 @@ const WarmQuery = struct {
         errdefer self.deinit();
 
         for (active, self.weights, 0..) |needle, *weight, bit| {
-            const ids = self.persisted.idx.queryLiteral(gpa, needle) catch return null;
+            const ids = self.persisted.queryLiteral(gpa, needle) catch return null;
             defer gpa.free(ids);
             if (mode == .pack and ids.len == 0) {
                 self.foreign += 1;
@@ -253,7 +253,7 @@ const WarmQuery = struct {
                 self.freshness = try fresh.candidates(
                     gpa,
                     io,
-                    &self.persisted.idx,
+                    self.persisted,
                     &self.persisted.paths,
                     filters,
                     if (roots.len > 0) roots else self.persisted.roots.items,
