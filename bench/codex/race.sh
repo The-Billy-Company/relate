@@ -69,7 +69,7 @@ echo "── compressor baselines on identical slices ──"
 IFS=',' read -ra MBS <<< "${SIZES}"
 for mb in "${MBS[@]}"; do
   bytes=$((mb * 1024 * 1024))
-  corpus_bytes=$(stat -f%z "${OUT}/corpus.bin")
+  corpus_bytes=$(stat -f%z "${OUT}/corpus.bin" 2> /dev/null || stat -c%s "${OUT}/corpus.bin" 2> /dev/null || echo 0)
   [[ "${corpus_bytes}" -ge "${bytes}" ]] || continue
   slice="${OUT}/.slice.bin"
   head -c "${bytes}" "${OUT}/corpus.bin" > "${slice}"
