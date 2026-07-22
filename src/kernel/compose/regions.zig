@@ -7,6 +7,7 @@
 
 const std = @import("std");
 const patterns = @import("../batch/patterns.zig");
+const lexspan = @import("lexspan.zig");
 
 pub const Unit = enum { file, function, match };
 
@@ -29,7 +30,7 @@ pub const Set = struct {
 };
 
 const Range = struct { start: usize, end: usize };
-const Lex = enum { code, single, double, backtick, line_comment, block_comment };
+const Lex = lexspan.Lex;
 
 /// Select every exact-hit region. `context` bounds `match`; function mode emits
 /// only a recognized enclosing function. Overlapping hits collapse to one unit.
@@ -83,12 +84,7 @@ pub fn select(
     return .{ .gpa = gpa, .items = try out.toOwnedSlice(gpa) };
 }
 
-fn commentOnly(line: []const u8) bool {
-    const trimmed = std.mem.trimStart(u8, line, " \t");
-    return std.mem.startsWith(u8, trimmed, "//") or std.mem.startsWith(u8, trimmed, "#") or
-        std.mem.startsWith(u8, trimmed, "/*") or std.mem.startsWith(u8, trimmed, "*") or
-        std.mem.startsWith(u8, trimmed, "\\\\");
-}
+const commentOnly = lexspan.commentOnly;
 
 /// Which extraction strategy `path`'s extension selects. Brace languages find
 /// header+`{…}` spans; Python finds `def`/`async def` blocks by indentation;
@@ -301,7 +297,11 @@ fn braceFunction(gpa: std.mem.Allocator, bytes: []const u8, hit: usize) ?Range {
 fn headerStart(bytes: []const u8, open: usize) usize {
     var start = lineStart(bytes, open);
     var lines: usize = 0;
-    while (start > 0 and lines < 5) : (lines += 1) {
+    // A wrapped signature (one parameter per line) can push the `fn`/`func`/
+    // `def` keyword well above the brace, so the climb spans more than a couple
+    // of lines. The statement/block terminators below still fence it — the cap
+    // only guards against an unterminated run — so it can be generous.
+    while (start > 0 and lines < 16) : (lines += 1) {
         const prev = lineStart(bytes, start - 1);
         const trimmed = std.mem.trim(u8, bytes[prev..start], " \t\r\n");
         // A previous line ending in `;`, `}`, or `{` closed a statement or
@@ -340,45 +340,7 @@ fn matchingBrace(bytes: []const u8, open: usize) ?usize {
     return null;
 }
 
-/// Advance lexical state; true means byte `i` is code punctuation.
-fn lexByte(bytes: []const u8, i: *usize, state: *Lex, escaped: *bool) bool {
-    const c = bytes[i.*];
-    switch (state.*) {
-        .code => {
-            if (c == '/' and i.* + 1 < bytes.len and bytes[i.* + 1] == '/') {
-                state.* = .line_comment;
-                i.* += 1;
-            } else if (c == '/' and i.* + 1 < bytes.len and bytes[i.* + 1] == '*') {
-                state.* = .block_comment;
-                i.* += 1;
-            } else if (c == '#') {
-                state.* = .line_comment;
-            } else if (c == '\'') {
-                state.* = .single;
-            } else if (c == '"') {
-                state.* = .double;
-            } else if (c == '`') {
-                state.* = .backtick;
-            } else return true;
-        },
-        .single, .double, .backtick => {
-            if (escaped.*) {
-                escaped.* = false;
-            } else if (c == '\\') {
-                escaped.* = true;
-            } else if ((state.* == .single and c == '\'') or (state.* == .double and c == '"') or
-                (state.* == .backtick and c == '`')) state.* = .code;
-        },
-        .line_comment => if (c == '\n') {
-            state.* = .code;
-        },
-        .block_comment => if (c == '*' and i.* + 1 < bytes.len and bytes[i.* + 1] == '/') {
-            state.* = .code;
-            i.* += 1;
-        },
-    }
-    return false;
-}
+const lexByte = lexspan.lexByte;
 
 test "function regions collapse repeated hits and separate same-file implementations" {
     const gpa = std.testing.allocator;
