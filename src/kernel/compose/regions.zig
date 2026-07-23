@@ -1,3 +1,4 @@
+// MONOLITHIC: exact-to-region lifting — exact match selection first, then region-sized comparison units for kinship; the selection and windowing state co-maintain one statistical unit
 //! Exact matches lifted into comparison-sized regions.
 //!
 //! File-level kinship hides a small implementation inside unrelated bytes.

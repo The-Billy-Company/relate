@@ -1,3 +1,4 @@
+// MONOLITHIC: live blast radius — the seed, dependents, dependencies, twins, ripple, and comment stages all derive from one on-demand corpus pass; readability depends on their co-location
 //! blast radius — a live symbol neighborhood computed from current bytes.
 //!
 //! Answers "if I change SYMBOL, what else moves?" without a precomputed graph:
