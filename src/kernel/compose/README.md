@@ -1,10 +1,10 @@
 ---
 doc_radar:
   counts:
-    - description: "the compose tier: candidate selection + span lexing + region lifting + four pure composition kernels"
+    - description: "the compose tier: candidate selection + span lexing + region lifting + syntactic span geometry + four pure composition kernels, plus the candidates unit test"
       glob: libs/kernels/irregex/src/kernel/compose/*.zig
       unit: files
-      equals: 7
+      equals: 9
   sentinels:
     - description: "candidates.zig caps the pattern mask at one u64 word"
       file: libs/kernels/irregex/src/kernel/compose/candidates.zig
@@ -27,6 +27,7 @@ whole-corpus noise.
 | `candidates.zig` | `CandidateSet` | the docs a `PatternSet` selects under `any`/`all`, each with its match mask (bit-identical to N single-pattern runs)                                    |
 | `lexspan.zig`    | `commentMask`  | a shared comment/code span lexer (line, block, and quote-aware) that both `gist --in-comments`/`--in-code` and `blast`'s comment section read           |
 | `regions.zig`    | `Region`       | lifts exact matches into comparison-sized units (file / enclosing function / bounded match window) so kinship compares implementations, not whole files |
+| `spans.zig`      | `region`       | the syntactic half of region lifting: language classification, enclosing-function detection, context windowing, and exhaustive function enumeration     |
 | `context.zig`    | `context`      | coverage packing of a query over a lexicon built from ONLY the candidate docs; each pick carries its exact mask and its marginal bits                   |
 | `family.zig`     | `family`       | verified byte, structure, or echo families among exact-selected files or regions, plus nearest-neighbor receipts for genuinely distinct regions         |
 | `provenance.zig` | `provenance`   | re-verify a quoted phrase against an exemplar's CURRENT bytes; returns the live offset/line/window, or nothing if the file drifted                      |
