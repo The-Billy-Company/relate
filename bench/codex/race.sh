@@ -7,12 +7,15 @@
 # 3. sizes identical slices with gzip/bzip2/zstd/xz for the space table.
 #
 # Usage: bench/codex/race.sh [sizes-mb-csv]   (default 1,4,16,64,128)
-# Results: .local/codex-bench/{scale.jsonl,compressors.jsonl}
+# Results: $CODEX_OUT/{scale.jsonl,compressors.jsonl}   (default .local/codex-bench)
+# Env:   CODEX_OUT=DIR    output dir (the certificate points this at its own dir)
+#        CODEX_BIN=PATH   run a prebuilt codex-scale instead of `zig build codex-scale`
+#                         (the certificate builds it once via `zig build lab`)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 KERNEL="$(cd "${HERE}/../.." && pwd)"
 REPO="$(cd "${KERNEL}/../../.." && pwd)"
-OUT="${REPO}/.local/codex-bench"
+OUT="${CODEX_OUT:-${REPO}/.local/codex-bench}"
 SIZES="${1:-1,4,16,64,128}"
 mkdir -p "${OUT}"
 
@@ -61,8 +64,12 @@ PY
 fi
 
 echo "── codex-scale (build/count/find/restore, oracle-verified) ──"
-(cd "${KERNEL}" && zig build codex-scale -- "${OUT}/corpus.bin" --sizes-mb "${SIZES}") \
-  > "${OUT}/scale.jsonl"
+if [[ -n "${CODEX_BIN:-}" && -x "${CODEX_BIN}" ]]; then
+  "${CODEX_BIN}" "${OUT}/corpus.bin" --sizes-mb "${SIZES}" > "${OUT}/scale.jsonl"
+else
+  (cd "${KERNEL}" && zig build codex-scale -- "${OUT}/corpus.bin" --sizes-mb "${SIZES}") \
+    > "${OUT}/scale.jsonl"
+fi
 
 echo "── compressor baselines on identical slices ──"
 : > "${OUT}/compressors.jsonl"
