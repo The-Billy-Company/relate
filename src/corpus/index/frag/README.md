@@ -21,9 +21,9 @@ doc_radar:
 
 The atlas makes file-level `relate` warm; **frag** makes function-level
 `relate concepts` warm. It persists one entry per authored function
-(`search/compose/regions.zig` extraction, brace + Python families): the
+(`kernel/compose/regions.zig` extraction, brace + Python families): the
 owning path index, the byte/line span, and a structure silhouette
-(`search/similarity/silhouette.zig` — winnowed normalized-token shingles). So
+(`kernel/kinship/metric/silhouette.zig` — winnowed normalized-token shingles). So
 concept discovery answers from tens of MiB of `concepts.frag` instead of
 re-walking and re-parsing the corpus into functions per invocation. Built by
 `relate index`, reported by `relate status`.

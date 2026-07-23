@@ -1,6 +1,6 @@
 //! codex-scale — the self-index proof harness (`zig build codex-scale`).
 //!
-//! Runs the REAL codex (src/index/codex/) over slices of an on-disk corpus and
+//! Runs the REAL codex (src/corpus/index/codex/) over slices of an on-disk corpus and
 //! emits the evidence for the Shannon claim at scale: index bits/char next to
 //! the corpus's measured H₀/H₂ (space at the entropy bound), count(P) latency
 //! across corpus sizes (flat in n — the Ω(m) time floor), locate cost at the

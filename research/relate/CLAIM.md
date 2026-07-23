@@ -20,8 +20,8 @@ doc_radar:
 # Relate — search by shared information
 
 **Status:** shipped product + measured evidence. CLI face:
-`src/cli/relate/`. Engines: `src/search/similarity/` + `src/search/batch/` +
-`src/index/{atlas,codex}/`. Public contract: `relate --schema` /
+`src/surface/face/relate/`. Engines: `src/kernel/kinship/` + `src/kernel/batch/` +
+`src/corpus/index/{atlas,codex}/`. Public contract: `relate --schema` /
 [`contract/search_api.toml`](../../contract/search_api.toml). Prior art:
 `PRIOR_ART.md`; evidence: `TESTING.md`.
 

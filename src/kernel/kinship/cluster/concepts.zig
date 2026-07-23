@@ -25,7 +25,7 @@
 //! the highest similarity number.
 //!
 //! Pure: no corpus, argv, stdout, or I/O. The driver resolves fragments (warm
-//! `index/frag` fold or a live build), computes byte sketches for the nominated
+//! `corpus/index/frag` fold or a live build), computes byte sketches for the nominated
 //! set, and renders; this nominates, admits, groups, and ranks over arrays.
 
 const std = @import("std");

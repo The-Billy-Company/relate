@@ -1,9 +1,9 @@
 //! atlas — the persisted kinship index (relate's warm tier).
 //!
 //! The trigram index makes `gist` warm; the atlas makes `relate` warm. It
-//! persists one LZJD `Sketch` (search/similarity/sketch.zig — bottom-k of the
+//! persists one LZJD `Sketch` (kernel/kinship/metric/sketch.zig — bottom-k of the
 //! LZ78 phrase-hash dictionary, k=128, ~1 KiB) and one `Silhouette`
-//! (search/similarity/silhouette.zig — winnowed normalized-token shingles,
+//! (kernel/kinship/metric/silhouette.zig — winnowed normalized-token shingles,
 //! k=256, ~2 KiB — the structure channel) per corpus file, so the kinship
 //! verbs (`similar` / `dups` / `clusters` / `echoes`) answer from ~3 KiB/file
 //! of index instead of re-reading and re-parsing every corpus byte per

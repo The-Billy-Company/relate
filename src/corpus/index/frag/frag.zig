@@ -2,7 +2,7 @@
 //!
 //! The atlas makes whole-FILE kinship warm; frag makes function-level CONCEPT
 //! discovery warm. It persists one structure `Silhouette`
-//! (search/similarity/silhouette.zig — winnowed normalized-token shingles) per
+//! (kernel/kinship/metric/silhouette.zig — winnowed normalized-token shingles) per
 //! extracted function fragment, plus each fragment's file + byte/line span, so
 //! `relate concepts` can group theoretically-similar functions across the whole
 //! corpus from a few hundred KiB of index instead of re-reading and

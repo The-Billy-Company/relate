@@ -14,8 +14,8 @@ doc_radar:
 `knn.zig` (`zig build relate-knn`) runs the **real** relate engine as a
 k-NN text classifier over a labeled manifest, so "compression vs embeddings"
 is a measured race, not a claim. It re-uses production code only — the
-`zipper` cross-parse (`src/search/similarity/zipper.zig`), the `sketch` LZJD
-distance (`src/search/similarity/sketch.zig`) — never a re-implementation.
+`zipper` cross-parse (`src/kernel/kinship/recall/zipper.zig`), the `sketch` LZJD
+distance (`src/kernel/kinship/metric/sketch.zig`) — never a re-implementation.
 
 ## Lanes (`--method`)
 

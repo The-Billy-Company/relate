@@ -48,11 +48,11 @@ stronger novel-math claim lives on the Gist side in the Crest sieve
 
 | where                    | what                                                                           |
 | ------------------------ | ------------------------------------------------------------------------------ |
-| `src/cli/relate/`        | product face (nine query verbs + lifecycle + schema)                           |
-| `src/search/similarity/` | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
-| `src/search/batch/`      | `patterns` / loom (N-pattern exact attribution)                                |
-| `src/index/atlas/`       | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
-| `src/index/codex/`       | FM-index shelf behind `quote` (shared with `gist codex`)                       |
+| `src/surface/face/relate/`        | product face (nine query verbs + lifecycle + schema)                           |
+| `src/kernel/kinship/` | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
+| `src/kernel/batch/`      | `patterns` / loom (N-pattern exact attribution)                                |
+| `src/corpus/index/atlas/`       | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
+| `src/corpus/index/codex/`       | FM-index shelf behind `quote` (shared with `gist codex`)                       |
 | `bench/relate/`          | compression-vs-embeddings knn harness (`zig build relate-knn`)                 |
 
 ## Run
@@ -75,4 +75,4 @@ provenance (`irregex.mdc`). Start with the positive case in
 [`CLAIM.md`](CLAIM.md), audit its ancestry in
 [`PRIOR_ART.md`](PRIOR_ART.md), then test every assertion against
 [`TESTING.md`](TESTING.md). The operational product face lives in
-[`src/cli/relate/README.md`](../../src/cli/relate/README.md).
+[`src/surface/face/relate/README.md`](../../src/surface/face/relate/README.md).

@@ -29,11 +29,11 @@ agents.
 
 Cited at the point of use in:
 
-- `src/search/similarity/sketch.zig` (LZJD as the fast successor to
+- `src/kernel/kinship/metric/sketch.zig` (LZJD as the fast successor to
   gzip-per-pair NCD)
-- `src/search/similarity/lexicon.zig` / `zipper.zig` (asymmetric "which docs
+- `src/kernel/kinship/recall/lexicon.zig` / `zipper.zig` (asymmetric "which docs
   describe this query cheaply?")
-- `src/cli/relate/README.md` § Prior art
+- `src/surface/face/relate/README.md` § Prior art
 
 ---
 
@@ -98,7 +98,7 @@ cannot give.
 `quote` needs the persisted shelf (`relate index --shelf`); query cost is
 O(|text|), corpus size never appears. Measured separation: known text
 ~0.15 bits/byte vs foreign ~15 (~90×) — tables in
-[`src/index/codex/README.md`](../../src/index/codex/README.md).
+[`src/corpus/index/codex/README.md`](../../src/corpus/index/codex/README.md).
 
 ---
 
@@ -108,7 +108,7 @@ Relate's `patterns` verb deliberately **does not** follow Hyperscan-style
 fused multi-pattern DFAs. Those win throughput by collapsing attribution.
 The agent loop needs _which_ of N intents hit. Contract: one walk, N
 patterns, answer ≡ N independent single-pattern runs (prefilter forced on
-and off). Engine: `src/search/batch/`. Race harness:
+and off). Engine: `src/kernel/batch/`. Race harness:
 `bench/races/multipattern.sh` (~6× vs sequential `gist -l` on a 10-pattern
 slate, with attribution preserved).
 

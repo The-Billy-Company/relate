@@ -52,7 +52,7 @@ to that equality.
 - warm path folds files changed since the anchor, re-sketches from live
   bytes, gates deletions;
 - emitted answer must match a cold rebuild (documented in
-  [`src/index/atlas/README.md`](../../src/index/atlas/README.md) and the
+  [`src/corpus/index/atlas/README.md`](../../src/corpus/index/atlas/README.md) and the
   relate CLI README). Warm speed depends on atlas size, freshness churn, and
   scope; the atlas is an accelerator, never a latency guarantee or authority.
 
@@ -101,7 +101,7 @@ verifies byte-near candidates.
 ## 6. Codex / quote scale
 
 `zig build codex-scale` and the tables in
-[`src/index/codex/README.md`](../../src/index/codex/README.md): known vs
+[`src/corpus/index/codex/README.md`](../../src/corpus/index/codex/README.md): known vs
 foreign bits/byte separation, O(|text|) cross-parse after the shelf is loaded,
 and restore byte-identity. End-to-end `quote` also pays shelf loading and
 filesystem freshness work; `codex-scale` records rather than ratchets latency

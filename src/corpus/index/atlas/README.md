@@ -21,9 +21,9 @@ doc_radar:
 
 The trigram index makes `gist` warm; the **atlas** makes `relate` warm. It
 persists two channels per corpus file: one LZJD sketch
-(`search/similarity/sketch.zig` — bottom-k of the LZ78 phrase-hash
+(`kernel/kinship/metric/sketch.zig` — bottom-k of the LZ78 phrase-hash
 dictionary, ~1 KiB) and one structure silhouette
-(`search/similarity/silhouette.zig` — winnowed normalized-token shingles,
+(`kernel/kinship/metric/silhouette.zig` — winnowed normalized-token shingles,
 ~2 KiB), so the kinship verbs (`similar` / `dups` / `clusters` / `echoes`)
 answer from tens of MiB of index instead of re-reading and re-parsing a
 couple hundred MiB of corpus per invocation. Built by `relate index`,

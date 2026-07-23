@@ -202,7 +202,7 @@ larger tree, not an n-dependence.
 
 ## The tiers that landed (the irregex arc)
 
-The trigram index (`index/trigrams/`) is a lossy _filter_: it may name
+The trigram index (`corpus/index/trigrams/`) is a lossy _filter_: it may name
 false candidate files and needs the corpus resident to verify. The codex is
 the opposite pole: zero false positives, corpus deletable, count without I/O.
 Both graduation rungs shipped (see “Persistence & the two tiers” above):

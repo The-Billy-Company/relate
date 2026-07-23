@@ -11,7 +11,7 @@ doc_radar:
       contains: "max_patterns = 64"
 ---
 
-# `src/search/compose/` — the exact-before-statistical tier
+# `src/kernel/compose/` — the exact-before-statistical tier
 
 The pure composition kernels the `irregex` binary drives
 ([ADR-367](../../../../../../docs/architecture/3-decisions/367-composed-irregex-cli.md)).
@@ -34,7 +34,7 @@ whole-corpus noise.
 
 ## Invariants
 
-- **Pure kernels.** No I/O, no argv, no stdout. The [`cli/irregex/`](../../cli/irregex/README.md)
+- **Pure kernels.** No I/O, no argv, no stdout. The [`surface/face/irregex/`](../../surface/face/irregex/README.md)
   face loads the corpus / codex shelf and renders; these compute.
 - **The mask is one `u64`.** `candidates` caps at 64 patterns — well past any
   composed workflow's ask; a caller with more intents is running a `relate
@@ -53,5 +53,5 @@ patterns` sweep, not this.
 
 These kernels reuse the existing floor directly — the `PatternSet` from
 [`../batch/`](../batch/README.md), the lexicon + coverage + kinship machinery
-from [`../similarity/`](../similarity/README.md) — and add no matcher of their
+from [`../kinship/`](../kinship/README.md) — and add no matcher of their
 own.
