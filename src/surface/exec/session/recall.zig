@@ -28,16 +28,19 @@
 //! doubt (queue overflow, an unwatchable new directory), the session simply
 //! recomputes the overlay on every query — slower, never stale. A rebuilt index
 //! (`pair.gen` drift) re-maps under the lock; a map failure leaves the session
-//! intact and the query is declined (`null` → the client answers cold). Queries
-//! are serialized by `mutex`; the watcher only ever touches the shared
-//! `Seqlock` (`seqlock.zig`) + the `dirty_log`, so the barrier is a lock-free
-//! seqlock over a mutex-guarded overlay.
+//! intact and the query is declined (`null` → the client answers cold).
+//! Concurrent queries overlap under a shared `Ward` lease
+//! (`kernel/primitives/ward.zig`) on the watcher-clean fast path while a
+//! recompute runs alone under the exclusive lease; the watcher only ever touches
+//! the shared `Seqlock` (`seqlock.zig`) + the `dirty_log`, so the barrier is a
+//! lock-free seqlock over a ward-guarded overlay.
 
 const std = @import("std");
 const fresh = @import("../../../corpus/index/trigrams/fresh.zig");
 const persist = @import("../../../corpus/index/trigrams/persist.zig");
 const dirtylog = @import("dirty.zig");
 const Seqlock = @import("seqlock.zig").Seqlock;
+const Ward = @import("../../../kernel/primitives/ward.zig").Ward;
 const retrieval = @import("../cold/engine/retrieval.zig");
 const Dir = std.Io.Dir;
 
@@ -73,7 +76,12 @@ pub const RetrievalSession = struct {
     /// change triggers a re-map.
     index_gen: []u8,
 
-    mutex: std.Io.Mutex = .init,
+    /// The reader/writer discipline shared with gist's `ResidentSession`
+    /// (`kernel/primitives/ward.zig`): concurrent `search`/`pack` overlap under a
+    /// shared lease on the watcher-clean fast path, while a recompute runs alone
+    /// under the exclusive lease. `Ward.readReconciled` owns the double-checked
+    /// upgrade dance — this session just supplies `seqlock.skip()` + `reconcile`.
+    ward: Ward = .{},
     /// The freshness barrier shared with gist's `ResidentSession` — the
     /// watcher-driven seqlock whose memory ordering lives once in `seqlock.zig`.
     /// Without a live watcher it never proves clean, so every query recomputes
@@ -212,18 +220,41 @@ pub const RetrievalSession = struct {
     /// (must be covered by the index); the caller owns the returned `Result`.
     /// `null` when the index cannot soundly cover the query (→ cold fallback).
     pub fn search(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !?Result {
-        self.mutex.lockUncancelable(self.io);
-        defer self.mutex.unlock(self.io);
-        self.reconcile() catch return null;
+        const lease = self.beginRead() catch return null;
+        defer lease.release();
         return retrieval.retrieve(gpa, self.io, query, roots, top, self.source());
     }
 
     /// Answer `relate pack` over the warm index (see `search`).
     pub fn pack(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !?PackResult {
-        self.mutex.lockUncancelable(self.io);
-        defer self.mutex.unlock(self.io);
-        self.reconcile() catch return null;
+        const lease = self.beginRead() catch return null;
+        defer lease.release();
         return retrieval.pack(gpa, self.io, query, roots, top, self.source());
+    }
+
+    /// Acquire the session for READING over a fresh overlay: the watcher-clean
+    /// fast path answers under a shared lease (concurrent queries overlap);
+    /// otherwise `Ward.readReconciled` drops to exclusive, recomputes the overlay
+    /// (`reconcile`, which re-checks `seqlock.skip()` — the double-checked
+    /// upgrade), and downgrades back to shared. The `retrieval` lane it guards is
+    /// read-only over `persisted`/`fresh_ids` (`queryLiteral` takes `*const`), so
+    /// overlapping readers are sound. A recompute failure surfaces as an error
+    /// the query maps to `null` (→ cold fallback).
+    fn beginRead(self: *RetrievalSession) !Ward.Read {
+        return self.ward.readReconciled(
+            self.io,
+            self,
+            struct {
+                fn fresh(s: *RetrievalSession) bool {
+                    return s.seqlock.skip();
+                }
+            }.fresh,
+            struct {
+                fn refresh(s: *RetrievalSession) anyerror!void {
+                    return s.reconcile();
+                }
+            }.refresh,
+        );
     }
 };
 
