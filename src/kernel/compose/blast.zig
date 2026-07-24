@@ -25,6 +25,7 @@
 const std = @import("std");
 const patterns = @import("../batch/patterns.zig");
 const regions = @import("regions.zig");
+const spans = @import("spans.zig");
 const lexspan = @import("lexspan.zig");
 const signals = @import("../rank/signals.zig");
 const sketch = @import("../kinship/metric/sketch.zig");
@@ -170,7 +171,7 @@ pub fn compute(
         while (nextWord(doc, symbol, pos)) |p| : (pos = p + symbol.len) {
             const ls = lineStart(doc, p);
             const le = lineEnd(doc, p);
-            const lineno = lineAt(doc, p);
+            const lineno = spans.lineAt(doc, p);
             if (mask[p]) {
                 if (lineno != seen_comment_line and comments.items.len < opts.max_comments) {
                     try comments.append(a, .{ .doc = @intCast(d), .line = lineno, .text = trimDup(a, doc[ls..le]) });
@@ -207,7 +208,7 @@ pub fn compute(
         const hit_line = docs[r.doc][lineStart(docs[r.doc], r.match_start)..lineEnd(docs[r.doc], r.match_start)];
         try dependents.append(a, .{
             .doc = r.doc,
-            .line = lineAt(docs[r.doc], r.match_start),
+            .line = spans.lineAt(docs[r.doc], r.match_start),
             .enclosing = funcName(headline(a, docs[r.doc], r) catch ""),
             .defines = signals.declarationConfidence(hit_line, symbol) > 0,
         });
@@ -572,11 +573,6 @@ fn headline(a: std.mem.Allocator, doc: []const u8, r: regions.Region) ![]const u
     return "";
 }
 
-fn lineAt(bytes: []const u8, at: usize) u32 {
-    var n: u32 = 1;
-    for (bytes[0..@min(at, bytes.len)]) |c| n += @intFromBool(c == '\n');
-    return n;
-}
 fn lineStart(bytes: []const u8, at: usize) usize {
     return if (std.mem.lastIndexOfScalar(u8, bytes[0..@min(at, bytes.len)], '\n')) |p| p + 1 else 0;
 }

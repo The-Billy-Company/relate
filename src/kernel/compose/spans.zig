@@ -126,7 +126,7 @@ pub fn region(doc: u32, bytes: []const u8, r: Range, match_start: usize) Region 
     };
 }
 
-fn lineAt(bytes: []const u8, at: usize) u32 {
+pub fn lineAt(bytes: []const u8, at: usize) u32 {
     var n: u32 = 1;
     for (bytes[0..@min(at, bytes.len)]) |c| n += @intFromBool(c == '\n');
     return n;
