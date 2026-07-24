@@ -46,14 +46,14 @@ stronger novel-math claim lives on the Gist side in the Crest sieve
 
 ## The code (lives with the system, not here)
 
-| where                    | what                                                                           |
-| ------------------------ | ------------------------------------------------------------------------------ |
-| `src/surface/face/relate/`        | product face (nine query verbs + lifecycle + schema)                           |
-| `src/kernel/kinship/` | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
-| `src/kernel/batch/`      | `patterns` / loom (N-pattern exact attribution)                                |
-| `src/corpus/index/atlas/`       | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
-| `src/corpus/index/codex/`       | FM-index shelf behind `quote` (shared with `gist codex`)                       |
-| `bench/relate/`          | compression-vs-embeddings knn harness (`zig build relate-knn`)                 |
+| where                      | what                                                                           |
+| -------------------------- | ------------------------------------------------------------------------------ |
+| `src/surface/face/relate/` | product face (nine query verbs + lifecycle + schema)                           |
+| `src/kernel/kinship/`      | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
+| `src/kernel/batch/`        | `patterns` / loom (N-pattern exact attribution)                                |
+| `src/corpus/index/atlas/`  | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
+| `src/corpus/index/codex/`  | FM-index shelf behind `quote` (shared with `gist codex`)                       |
+| `bench/relate/`            | compression-vs-embeddings knn harness (`zig build relate-knn`)                 |
 
 ## Run
 
