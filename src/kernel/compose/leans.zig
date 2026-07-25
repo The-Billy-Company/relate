@@ -288,19 +288,34 @@ fn nameEnd(out: []const u8, at: usize) usize {
 }
 
 /// Where the `<` at `at` closes as a TAG, rather than as a comparison or a
-/// generic: an identifier must follow it immediately (`< b` is arithmetic,
-/// `Vec<u8>` is preceded by an identifier), and the `>` must arrive before any
-/// `;` or further `<`.
+/// generic. An identifier must follow the `<` immediately (`< b` is arithmetic)
+/// and may not precede it (`Vec<u8>` is a generic). Between there and the `>`,
+/// only what an attribute list can hold may appear — names, `=`, `/`, `-`, `:`,
+/// `.`, and `{…}` containers — so one operator (`r.rank <keep && r.score >
+/// floor`) is enough to say this was arithmetic all along.
 fn tagEnd(out: []const u8, at: usize) ?usize {
     if (at > 0 and isIdentByte(out[at - 1])) return null;
     var i = at + 1;
     if (i < out.len and out[i] == '/') i += 1;
     if (i >= out.len or !isIdentStart(out[i])) return null;
-    while (i < out.len) : (i += 1) switch (out[i]) {
-        '>' => return i,
-        ';', '<' => return null,
-        else => {},
-    };
+    var depth: usize = 0;
+    while (i < out.len) : (i += 1) {
+        const c = out[i];
+        if (depth > 0) {
+            switch (c) {
+                '{' => depth += 1,
+                '}' => depth -= 1,
+                else => {},
+            }
+            continue;
+        }
+        switch (c) {
+            '>' => return i,
+            '{' => depth += 1,
+            '=', '/', '-', ':', '.', '"', '\'', ' ', '\t', '\r', '\n' => {},
+            else => if (!isIdentByte(c)) return null,
+        }
+    }
     return null;
 }
 

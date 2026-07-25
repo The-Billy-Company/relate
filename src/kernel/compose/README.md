@@ -32,7 +32,7 @@ whole-corpus noise.
 | `family.zig`     | `family`       | verified byte, structure, or echo families among exact-selected files or regions, plus nearest-neighbor receipts for genuinely distinct regions         |
 | `provenance.zig` | `provenance`   | re-verify a quoted phrase against an exemplar's CURRENT bytes; returns the live offset/line/window, or nothing if the file drifted                      |
 | `blast.zig`      | `blast`        | the live blast radius of a symbol from CURRENT bytes: seed def + kind, direct dependents/dependencies, tangential twins/ripple, and comment mentions    |
-| `leans.zig`      | `resolve`      | what a function borrows from outside itself: its own bindings subtracted, members reached only through the file their head names, homes never crossing the seed's package |
+| `leans.zig`      | `resolve`      | what a function borrows from outside itself: its own bindings subtracted, members reached only through the file their head names, homes never crossing the seed's package, and a name the package declares everywhere read as ambient rather than a dependency |
 
 ## Invariants
 
