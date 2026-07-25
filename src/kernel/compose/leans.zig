@@ -226,7 +226,7 @@ fn scrubInto(out: []u8, body: []const u8, woven: bool) []const u8 {
         // lexByte may have consumed a second byte (`//`, `/*`, `*/`).
         for (out[at .. i + 1], body[at .. i + 1]) |*o, b| o.* = if (b == '\n') '\n' else ' ';
     }
-    if (woven) blankContent(out[0..body.len]);
+    if (woven) blankContent(out[0..body.len], body);
     return out[0..body.len];
 }
 
@@ -239,9 +239,11 @@ const weavers = std.StaticStringMap(void).initComptime(.{
     .{"eex"},  .{"hbs"}, .{"ejs"}, .{"twig"},   .{"blade"},
 });
 
-/// Does this path name a file that weaves markup through its code?
+/// Does this path name a file that weaves markup through its code? The shared
+/// extension read carries the dot (`.tsx`), which the table above does not.
 fn weaves(path: []const u8) bool {
-    return weavers.has(spans.extensionOf(path));
+    const ext = spans.extensionOf(path);
+    return ext.len > 1 and weavers.has(ext[1..]);
 }
 
 /// Blank everything a markup file weaves around its code. A component's copy
@@ -251,23 +253,27 @@ fn weaves(path: []const u8) bool {
 /// tag content and attribute names are blanked the way a string literal is,
 /// while the tag's own name (a component the file really does depend on) and
 /// every `{…}` container (the code the markup carries) survive untouched.
-fn blankContent(out: []u8) void {
+///
+/// Structure is read from `raw`, not from the scrub: a `${…}` interpolation
+/// leaves its braces behind when the string around it is blanked, and a
+/// container that never closes would swallow the tag it belongs to.
+fn blankContent(out: []u8, raw: []const u8) void {
     var i: usize = 0;
     while (i < out.len) : (i += 1) {
         if (out[i] != '<') continue;
-        const tag = tagEnd(out, i) orelse continue;
-        _ = blankRegion(out, nameEnd(out, i), tag); // attribute names
-        i = blankRegion(out, tag + 1, out.len) - 1; // content, up to the next tag
+        const tag = tagEnd(raw, i) orelse continue;
+        _ = blankRegion(out, raw, nameEnd(raw, i), tag); // attribute names
+        i = blankRegion(out, raw, tag + 1, out.len) - 1; // content, to the next tag
     }
 }
 
 /// Blank `out[from..to]`, keeping newlines and the contents of `{…}` containers.
 /// Stops early at a `<` outside a container: that byte opens the next tag.
-fn blankRegion(out: []u8, from: usize, to: usize) usize {
+fn blankRegion(out: []u8, raw: []const u8, from: usize, to: usize) usize {
     var depth: usize = 0;
     var k = from;
     while (k < to) : (k += 1) {
-        const c = out[k];
+        const c = raw[k];
         if (c == '<' and depth == 0) break;
         if (c == '{') {
             depth += 1;
@@ -293,14 +299,18 @@ fn nameEnd(out: []const u8, at: usize) usize {
 /// only what an attribute list can hold may appear — names, `=`, `/`, `-`, `:`,
 /// `.`, and `{…}` containers — so one operator (`r.rank <keep && r.score >
 /// floor`) is enough to say this was arithmetic all along.
-fn tagEnd(out: []const u8, at: usize) ?usize {
-    if (at > 0 and isIdentByte(out[at - 1])) return null;
+fn tagEnd(raw: []const u8, at: usize) ?usize {
+    if (at > 0 and isIdentByte(raw[at - 1])) return null;
     var i = at + 1;
-    if (i < out.len and out[i] == '/') i += 1;
-    if (i >= out.len or !isIdentStart(out[i])) return null;
+    if (i < raw.len and raw[i] == '/') i += 1;
+    if (i >= raw.len or !isIdentStart(raw[i])) return null;
     var depth: usize = 0;
-    while (i < out.len) : (i += 1) {
-        const c = out[i];
+    while (i < raw.len) : (i += 1) {
+        const c = raw[i];
+        if (c == '"' or c == '\'' or c == '`') {
+            i = literalEnd(raw, i) orelse return null; // a value holds anything
+            continue;
+        }
         if (depth > 0) {
             switch (c) {
                 '{' => depth += 1,
@@ -312,9 +322,21 @@ fn tagEnd(out: []const u8, at: usize) ?usize {
         switch (c) {
             '>' => return i,
             '{' => depth += 1,
-            '=', '/', '-', ':', '.', '"', '\'', ' ', '\t', '\r', '\n' => {},
+            '=', '/', '-', ':', '.', ' ', '\t', '\r', '\n' => {},
             else => if (!isIdentByte(c)) return null,
         }
+    }
+    return null;
+}
+
+/// The closing quote of the literal opening at `at`, honoring backslash escapes.
+fn literalEnd(raw: []const u8, at: usize) ?usize {
+    const quote = raw[at];
+    var i = at + 1;
+    while (i < raw.len) : (i += 1) {
+        if (raw[i] == '\\') {
+            i += 1;
+        } else if (raw[i] == quote) return i;
     }
     return null;
 }
@@ -1225,6 +1247,35 @@ test "a markup scrub keeps components and containers, drops copy and attributes"
     try t.expect(std.mem.indexOf(u8, code, "picked") == null);
     try t.expect(std.mem.indexOf(u8, code, "column") == null);
     try t.expectEqual(std.mem.count(u8, src, "\n"), std.mem.count(u8, code, "\n"));
+}
+
+test "a markup scrub survives a template literal in an attribute" {
+    var arena = std.heap.ArenaAllocator.init(t.allocator);
+    defer arena.deinit();
+    const src =
+        \\  <button
+        \\    aria-label={title ? `About ${title}` : 'More info'}
+        \\    className={`inline-flex ${className ?? ''}`}
+        \\    type="button"
+        \\  >
+        \\    <Info strokeWidth={1.6} />
+    ;
+    const code = try scrub(arena.allocator(), src, true);
+    // Blanking the interpolated string must not unbalance the container and
+    // swallow the tag: the attribute names still go, the code still stays.
+    try t.expect(std.mem.indexOf(u8, code, "aria") == null);
+    try t.expect(std.mem.indexOf(u8, code, "className") == null);
+    try t.expect(std.mem.indexOf(u8, code, "strokeWidth") == null);
+    try t.expect(std.mem.indexOf(u8, code, "title ?") != null); // container code
+    try t.expect(std.mem.indexOf(u8, code, "Info") != null); // the component
+    try t.expect(std.mem.indexOf(u8, code, "1.6") != null);
+}
+
+test "only markup-weaving extensions open text regions" {
+    try t.expect(weaves("clients/web/surfaces/admin/src/components/HelpTip.tsx"));
+    try t.expect(weaves("a/b/page.vue"));
+    try t.expect(!weaves("clients/web/surfaces/atrium/src/lib/taskboard/store.ts"));
+    try t.expect(!weaves("libs/kernels/irregex/src/kernel/compose/leans.zig"));
 }
 
 test "a markup scrub leaves comparisons and generics alone" {
