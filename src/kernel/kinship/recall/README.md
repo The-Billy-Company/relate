@@ -15,7 +15,7 @@ assemble the non-redundant set that covers it (`pack`).
 ## Pipeline
 
 ```text
-relate search →  lexicon nominates → bounded zipper decides → rank by coding gain
+relate similar TEXT → lexicon nominates → bounded zipper decides → rank by coding gain
 relate pack   →  lexicon prices query chunks → coverage picks marginal-novel files
 ```
 

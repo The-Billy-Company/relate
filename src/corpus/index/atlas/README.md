@@ -46,9 +46,9 @@ authority**:
   full live build with identical answers; the parse fails closed on any
   framing, bounds, or checksum violation.
 
-Deliberately **not** duplicated here: a private `relate search` fingerprint
-lexicon. Relate reuses Gist's compact mmap-backed trigram codebook for
-`search`/`pack` nomination, then applies its own corpus-information pricing,
-bounded cross-parse, or marginal-coverage decision. The atlas remains the
-economic persisted shape for broad kinship queries; narrow explicit scopes
-skip its whole-artifact load and sketch live.
+Deliberately **not** duplicated here: a private retrieval fingerprint lexicon.
+Relate reuses Gist's compact mmap-backed trigram codebook to nominate for its
+retrieval questions (a `relate similar <text>` probe and `pack`), then applies
+its own corpus-information pricing, bounded cross-parse, or marginal-coverage
+decision. The atlas remains the economic persisted shape for broad kinship
+queries; narrow explicit scopes skip its whole-artifact load and sketch live.

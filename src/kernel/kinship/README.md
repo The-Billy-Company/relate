@@ -24,21 +24,26 @@ The floor splits by the **question** each group answers:
 | Group                  | Question                                          | Files                             |
 | ---------------------- | ------------------------------------------------- | --------------------------------- |
 | [`metric/`](metric/)   | _How far apart are two bodies?_                   | `sketch` · `silhouette`           |
-| [`cluster/`](cluster/) | _Which bodies (or functions) are the same thing?_ | `pairs` · `families` · `concepts` |
+| [`cluster/`](cluster/) | _Which bodies (or functions) are the same thing?_ | `pairs` · `families` · `echoes`   |
 | [`recall/`](recall/)   | _Which files best explain a query?_               | `lexicon` · `zipper` · `coverage` |
 
 ## Pipeline
 
+Two questions reach these kernels, and the probe's shape or the sweep's channel
+picks the path:
+
 ```text
-relate search  →  persisted codebook nominates → bounded zipper decides   (recall)
-relate pack    →  persisted codebook prices query chunks → marginal coverage (recall)
-relate similar →  sketch distances (silhouette or fused under --lens)      (metric)
-relate dups    →  sketch pairs below threshold → clusters                  (metric→cluster)
-relate echoes  →  silhouette buckets nominate → both channels verify       (metric→cluster)
+relate similar <text>  →  persisted codebook nominates → bounded zipper decides  (recall)
+relate pack            →  persisted codebook prices query chunks → marginal coverage (recall)
+relate similar <path>  →  sketch or silhouette distances, per --as               (metric)
+relate echoes          →  buckets nominate → the channel's records verify        (metric→cluster)
+                          --shape pairs | families (closure) | distinct (complement)
 ```
 
 Persisted sketches for the warm atlas live in
-[`../../corpus/index/atlas/`](../../corpus/index/atlas/). Search and pack share
+[`../../corpus/index/atlas/`](../../corpus/index/atlas/); per-function
+silhouettes for `--unit function` in
+[`../../corpus/index/frag/`](../../corpus/index/frag/). The retrieval path shares
 the compact trigram codebook under
 [`../../corpus/index/trigrams/`](../../corpus/index/trigrams/) rather than
 persisting a second dense fingerprint index.

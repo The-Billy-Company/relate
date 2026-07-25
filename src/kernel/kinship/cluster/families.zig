@@ -59,8 +59,9 @@ pub const Group = struct { members: []u32, edge: f64 };
 /// sort size-desc then exemplar-path-asc. Singletons and sub-`min_size`
 /// components are dropped. Caller frees each `members` slice and the list.
 ///
-/// The shared component pass behind `relate concepts` and the composed
-/// `irregex family` — one union-find + materialize, not two that can drift.
+/// The shared component pass behind `relate echoes --shape families`, at every
+/// unit and channel and with or without `--matching` — one union-find +
+/// materialize, not one per verb that used to own a corner of this space.
 pub fn components(
     gpa: std.mem.Allocator,
     labels: []const []const u8,

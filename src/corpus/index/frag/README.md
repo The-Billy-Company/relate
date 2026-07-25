@@ -19,19 +19,24 @@ doc_radar:
 
 # frag — the persisted fragment atlas
 
-The atlas makes file-level `relate` warm; **frag** makes function-level
-`relate concepts` warm. It persists one entry per authored function
+The atlas makes file-level `relate` warm; **frag** makes `--unit function` warm —
+both the `relate echoes --unit function` sweep and a `relate similar path#L120`
+fragment probe. It persists one entry per authored function
 (`kernel/compose/regions.zig` extraction, brace + Python families): the
 owning path index, the byte/line span, and a structure silhouette
 (`kernel/kinship/metric/silhouette.zig` — winnowed normalized-token shingles). So
-concept discovery answers from tens of MiB of `concepts.frag` instead of
+function-level kinship answers from tens of MiB of `concepts.frag` instead of
 re-walking and re-parsing the corpus into functions per invocation. Built by
-`relate index`, reported by `relate status`.
+`relate index`, reported by `relate status`. (The artifact keeps its original
+filename; the `concepts` _verb_ folded into `echoes --unit function`, but the
+bytes on disk are the same bytes and renaming them would invalidate every
+developer's atlas for nothing.)
 
-Only **silhouettes** are persisted — the structural channel every discovery
-nominates on. Byte sketches (for the `bytes` / `echo` lenses) are the
-expensive channel, so the driver computes them lazily from live bytes for
-just the fragments a query actually nominates, never for the whole corpus.
+Only **silhouettes** are persisted — the structural channel every function-level
+question nominates on, and the reason `--unit function` defaults to `--as
+shapes`. Byte sketches (the `copies` / `twins` channels) are the expensive
+record, so the driver fills them lazily from live bytes for just the fragments a
+query actually nominates, never for the whole corpus.
 
 Same covenant as every irregex index — **an accelerator, never an
 authority**:

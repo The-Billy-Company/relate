@@ -86,14 +86,21 @@ fn extractBrace(gpa: std.mem.Allocator, doc: []const u8, doc_id: u32, out: *std.
     var state: Lex = .code;
     var escaped = false;
     var i: usize = 0;
+    // Where the last emitted region ended. The header climb stops on a line that
+    // closed a statement or opened a block, which a `},` element terminator does
+    // NOT do — so without this floor a later brace can climb back over a span
+    // already emitted and two regions claim the same start, which surfaces as a
+    // "family" of one unit repeated N times.
+    var claimed: usize = 0;
     while (i < doc.len) : (i += 1) {
         if (!lexByte(doc, &i, &state, &escaped)) continue;
         if (doc[i] != '{') continue;
         const open = i;
-        const start = headerStart(doc, open);
+        const start = @max(headerStart(doc, open), claimed);
         if (!functionHeader(doc[start..open])) continue; // descend into non-function braces
         const close = matchingBrace(doc, open) orelse continue;
         try out.append(gpa, region(doc_id, doc, .{ .start = start, .end = lineEnd(doc, close) }, start));
+        claimed = close;
         i = close; // the loop's `+= 1` resumes just past the closing brace
         state = .code;
         escaped = false;
@@ -262,8 +269,22 @@ fn functionHeader(raw: []const u8) bool {
     if (std.mem.indexOf(u8, h, " fn ") != null or std.mem.startsWith(u8, h, "fn ") or
         std.mem.indexOf(u8, h, "func ") != null or std.mem.indexOf(u8, h, "function ") != null or
         std.mem.indexOf(u8, h, "=>") != null) return true;
+    // Keyword-free languages (C, TS methods, Java) only offer the shape
+    // `name(params) …{`, so a paren pair is the fallback signal. On its own it
+    // is far too loose: the header climb legitimately spans a wrapped signature,
+    // which means it also spans the neighboring elements of a multi-line data
+    // literal, and any prose paren inside one — a `.note = "… (rg parity)"` row
+    // in a flag catalogue — then reads as a parameter list. What separates the
+    // two is what sits BETWEEN the parameter list and the body: a real signature
+    // has only a return type and qualifiers there, never an assignment, a
+    // separator, or a statement end. Requiring that tail to be clean rejects the
+    // literal (`… ) …", .action = .{`) while keeping `) -> Int {`,
+    // `) callconv(.C) void {`, and `) (int, error) {`.
     const lparen = std.mem.indexOfScalar(u8, h, '(') orelse return false;
-    return lparen > 0 and std.mem.indexOfScalarPos(u8, h, lparen + 1, ')') != null;
+    if (lparen == 0) return false;
+    const rparen = std.mem.lastIndexOfScalar(u8, h, ')') orelse return false;
+    if (rparen < lparen) return false;
+    return std.mem.indexOfAny(u8, h[rparen + 1 ..], "=,;") == null;
 }
 
 fn matchingBrace(bytes: []const u8, open: usize) ?usize {

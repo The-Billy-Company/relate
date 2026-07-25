@@ -1,4 +1,5 @@
-//! Persisted candidate retrieval for `relate search`.
+//! Persisted candidate retrieval — the engine under a text probe (`relate
+//! similar <text>`) and `relate pack`.
 //!
 //! The exact Ziv–Merhav decider is intentionally per-document; rebuilding its
 //! recall lexicon over every corpus byte before each query is not. This module
@@ -137,7 +138,7 @@ const Match = struct {
 /// session holds the mmap'd index warm across queries and hands a freshness
 /// overlay it recomputes only when its watcher reports the tree dirty — so an
 /// eligible query skips both the per-call index map AND the O(tree) stat walk,
-/// the two costs that dominate a cold `relate search`. The injected `fresh_ids`
+/// the two costs that dominate a cold retrieval. The injected `fresh_ids`
 /// index the session's own path table (base ∪ its overlay), which the caller
 /// guarantees outlives the query; the query never mutates it.
 pub const Source = union(enum) {

@@ -7,11 +7,15 @@ doc_radar:
       contains: ["pub fn coldBits", "pub const Automaton"]
     - file: libs/kernels/irregex/src/kernel/kinship/recall/coverage.zig
       contains: ["pub fn greedyPack", "marginal_bits"]
-    - file: libs/kernels/irregex/src/surface/face/relate/echoes.zig
-      contains: ["const echo = db - ds"]
+    - file: libs/kernels/irregex/src/kernel/kinship/metric/channel.zig
+      contains: [".twins => bytes - structure", ".any => @min(bytes, structure)"]
+      description: each channel composes the two measured distances in exactly one place
+    - file: libs/kernels/irregex/src/kernel/kinship/cluster/echoes.zig
+      contains: ["pub fn survey", "pub fn massFloor"]
+      description: one repetition survey over unit × channel × shape, with the channel's own mass floor
     - file: libs/kernels/irregex/contract/search_api.toml
       contains:
-        - "search = { argv ="
+        - "similar = { argv ="
         - "pack = { argv ="
         - "quote = { argv ="
         - "echoes = { argv ="

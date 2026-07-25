@@ -21,12 +21,12 @@
 //! stats, never O(corpus). `--no-index` (or a missing/corrupt atlas) falls
 //! back to the full live build with identical answers.
 //!
-//! Deliberately NOT duplicated here: a private `relate search` fingerprint
-//! lexicon. Search/pack reuse Gist's compact mmap-backed trigram codebook for
-//! nomination, then apply their own information-pricing and exact/coverage
-//! decisions. The atlas remains the economic persisted shape for broad
-//! kinship queries; narrow explicit scopes sketch live when that costs less
-//! than loading this whole artifact.
+//! Deliberately NOT duplicated here: a private retrieval fingerprint lexicon.
+//! The retrieval questions (a `relate similar <text>` probe and `pack`) reuse
+//! Gist's compact mmap-backed trigram codebook for nomination, then apply their
+//! own information-pricing and exact/coverage decisions. The atlas remains the
+//! economic persisted shape for broad kinship queries; narrow explicit scopes
+//! sketch live when that costs less than loading this whole artifact.
 //!
 //! Format (`kinship.atlas`, little-endian):
 //!   "ATLS" · u32 version · i64 built_ns · u32 ndocs

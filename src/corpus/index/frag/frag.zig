@@ -1,18 +1,19 @@
-//! frag — the persisted FUNCTION-fragment index (the concept tier's warm state).
+//! frag — the persisted FUNCTION-fragment index (the `--unit function` warm state).
 //!
-//! The atlas makes whole-FILE kinship warm; frag makes function-level CONCEPT
-//! discovery warm. It persists one structure `Silhouette`
+//! The atlas makes whole-FILE kinship warm; frag makes function-level kinship
+//! warm — both the `relate echoes --unit function` sweep and a `relate similar
+//! path#L120` fragment probe. It persists one structure `Silhouette`
 //! (kernel/kinship/metric/silhouette.zig — winnowed normalized-token shingles) per
 //! extracted function fragment, plus each fragment's file + byte/line span, so
-//! `relate concepts` can group theoretically-similar functions across the whole
-//! corpus from a few hundred KiB of index instead of re-reading and
-//! re-extracting every source byte per query.
+//! function-level kinship answers over the whole corpus from a few hundred KiB
+//! of index instead of re-reading and re-extracting every source byte per query.
 //!
 //! ONE channel on disk, by design: the byte (LZJD) sketch is NOT persisted
 //! per-fragment. Structure is what "same concept, maybe renamed" means, and it
-//! is the only channel used to nominate and group; the byte channel — needed
-//! only for the opt-in `--lens bytes|echo` — is re-derived on demand by slicing
-//! the few nominated fragments' live bytes. That keeps the artifact lean (a
+//! is the only channel used to nominate and group — which is why `--unit
+//! function` defaults to `--as shapes`. The byte channel, needed only for the
+//! opt-in `copies`/`twins` channels, is re-derived on demand by slicing the few
+//! nominated fragments' live bytes. That keeps the artifact lean (a
 //! variable-length silhouette per fragment, not a fixed dual-channel row).
 //!
 //! Same contract as every irregex index: an accelerator, never an authority.

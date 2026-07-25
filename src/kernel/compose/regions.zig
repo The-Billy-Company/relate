@@ -249,6 +249,53 @@ test "extractAll: python methods and top-level defs, decorators included" {
     try std.testing.expectEqual(@as(u32, 10), out.items[2].line_start); // top_level
 }
 
+test "extractAll: a multi-line data literal is not a function, however many parens its prose carries" {
+    const gpa = std.testing.allocator;
+    // Shaped exactly like the flag catalogue that exposed this: each element
+    // ends in `},` — which the header climb does not treat as a terminator — so
+    // a later element's brace used to climb back onto the FIRST element's line,
+    // and any prose paren in between read as its parameter list. Thirteen
+    // elements then became thirteen "functions" all claiming line 2.
+    const doc =
+        \\pub const catalog = [_]Spec{
+        \\    .{ .short = 'i', .action = .{ .case = .icase }, .note = "folding by default (full orbits); ASCII otherwise" },
+        \\    .{ .short = 'S', .action = .{ .case = .smart }, .note = "uppercase detection (codepoint-aware)" },
+        \\    .{ .short = 'w', .action = .{ .set = .word }, .note = "\\b uses Unicode (rg parity); (?-u) selects ASCII" },
+        \\};
+        \\fn real(a: u8) void {
+        \\    work(a);
+        \\}
+    ;
+    var out: std.ArrayList(Region) = .empty;
+    defer out.deinit(gpa);
+    try extractAll(gpa, "catalog.zig", doc, 0, &out);
+    try std.testing.expectEqual(@as(usize, 1), out.items.len);
+    try std.testing.expectEqual(@as(u32, 6), out.items[0].line_start); // real
+}
+
+test "extractAll: a keyword-free signature still surfaces, return type and all" {
+    const gpa = std.testing.allocator;
+    // The paren fallback is what carries C, Java, and TS methods. Rejecting the
+    // data literal above must not cost them: each tail below (` `, `: void `,
+    // ` -> Int `, ` (int, error) `) is a return type, not an assignment.
+    const doc =
+        \\int add(int a, int b) {
+        \\    return a + b;
+        \\}
+        \\class S {
+        \\    render(props: Props): void {
+        \\        draw(props);
+        \\    }
+        \\}
+    ;
+    var out: std.ArrayList(Region) = .empty;
+    defer out.deinit(gpa);
+    try extractAll(gpa, "widget.ts", doc, 0, &out);
+    try std.testing.expectEqual(@as(usize, 2), out.items.len);
+    try std.testing.expectEqual(@as(u32, 1), out.items[0].line_start); // add
+    try std.testing.expectEqual(@as(u32, 5), out.items[1].line_start); // render
+}
+
 test "extractAll: unrecognized extension yields no fragments" {
     const gpa = std.testing.allocator;
     var out: std.ArrayList(Region) = .empty;

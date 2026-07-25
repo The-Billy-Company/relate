@@ -1,18 +1,19 @@
 //! irregex compose — `family`: fork families inside the exact filter.
 //!
 //! The composed answer to "of the files that match this symbol, which are forks
-//! or structural twins of each other?" `relate clusters`/`echoes` answer over
-//! the whole corpus; running the exact `PatternSet` first (`candidates.select`)
-//! and building the kinship graph over ONLY the matching docs turns a
-//! whole-tree dedup sweep into a scoped one — the fixture farm behind one
-//! handler, the mirrored implementations of one trait.
+//! or structural twins of each other?" — reached from the surface as `relate
+//! echoes --matching PAT`. A bare `relate echoes` answers over the whole corpus;
+//! running the exact `PatternSet` first (`candidates.select`) and building the
+//! kinship graph over ONLY the matching docs turns a whole-tree dedup sweep into
+//! a scoped one — the fixture farm behind one handler, the mirrored
+//! implementations of one trait.
 //!
 //! Two edge sources, one component pass (`families.zig` union-find):
 //!   • `.dup{T}`  — the verified near-duplicate graph (byte kinship ≤ T), the
-//!     same machinery `relate dups`/`clusters` ride (`pairs.zig`).
+//!     same machinery the `copies` channel rides (`pairs.zig`).
 //!   • `.echo{E}` — the structural-echo graph: pairs far in bytes but close in
 //!     structure (byte−structure gap ≥ E), the renamed-twin signal, with the
-//!     same codegen + sub-mass noise drops `relate echoes` applies.
+//!     same codegen + sub-mass noise drops the `twins` channel applies.
 //!
 //! Pure kernel: the driver loads the corpus and renders; this sketches the
 //! candidate subset, builds the graph, and returns fork families (corpus ids).
