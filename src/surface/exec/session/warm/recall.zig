@@ -2,9 +2,9 @@
 //! (ADR-352 rung 2.5).
 //!
 //! A `RetrievalSession` holds one repository's mmap'd trigram index + doc→path
-//! table warm across many `relate search`/`pack` queries, so an eligible
-//! request pays neither the per-process index map nor the O(tree) freshness
-//! stat walk — the two costs that dominate a cold `relate search`. It answers
+//! table warm across many retrieval queries — a `relate similar <text>` probe or
+//! a `pack` — so an eligible request pays neither the per-process index map nor
+//! the O(tree) freshness stat walk, the two costs that dominate a cold one. It answers
 //! through the SAME `retrieval.WarmQuery` kernel the one-shot CLI uses, handed
 //! a `.resident` `Source`, so warm and cold answers cannot drift: the only
 //! difference is who owns the index and whether the freshness walk runs.
@@ -20,7 +20,7 @@
 //! verbatim while the watcher proves the roots quiescent. The changed paths are
 //! folded into an extension of the borrowed path table (session-owned strings)
 //! exactly as the one-shot `fresh.widen` folds them, so `fresh_ids` name the
-//! same docs a cold `relate search` would live-verify — warm==cold parity.
+//! same docs a cold retrieval would live-verify — warm==cold parity.
 //!
 //! ## Fail-closed, like every rung of this ladder
 //!
@@ -28,7 +28,8 @@
 //! doubt (queue overflow, an unwatchable new directory), the session simply
 //! recomputes the overlay on every query — slower, never stale. A rebuilt index
 //! (`pair.gen` drift) re-maps under the lock; a map failure leaves the session
-//! intact and the query is declined (`null` → the client answers cold).
+//! intact and the query is declined (`freshness_unprovable` → the client
+//! answers cold).
 //! Concurrent queries overlap under a shared `Ward` lease
 //! (`kernel/primitives/ward.zig`) on the watcher-clean fast path while a
 //! recompute runs alone under the exclusive lease; the watcher only ever touches
@@ -36,13 +37,14 @@
 //! lock-free seqlock over a ward-guarded overlay.
 
 const std = @import("std");
-const assay = @import("../../../assay/assay.zig");
-const fresh = @import("../../../corpus/index/trigrams/fresh.zig");
-const persist = @import("../../../corpus/index/trigrams/persist.zig");
-const dirtylog = @import("dirty.zig");
-const Seqlock = @import("seqlock.zig").Seqlock;
-const Ward = @import("../../../kernel/primitives/ward.zig").Ward;
-const retrieval = @import("../cold/engine/retrieval.zig");
+const assay = @import("../../../../assay/assay.zig");
+const fault = @import("../../../../fault.zig");
+const fresh = @import("../../../../corpus/index/trigrams/fresh.zig");
+const persist = @import("../../../../corpus/index/trigrams/persist.zig");
+const dirtylog = @import("../freshness/dirty.zig");
+const Seqlock = @import("../freshness/seqlock.zig").Seqlock;
+const Ward = @import("../../../../kernel/primitives/ward.zig").Ward;
+const retrieval = @import("../../cold/engine/retrieval.zig");
 const Dir = std.Io.Dir;
 
 pub const Result = retrieval.Result;
@@ -161,14 +163,14 @@ pub const RetrievalSession = struct {
 
     /// Re-map the index when its on-disk generation advanced (someone ran `gist
     /// index`). Rare; holds the caller's lock. On failure the session keeps its
-    /// old mapping and the query is declined (`null` → cold), so a rebuild never
-    /// corrupts a live session.
+    /// old mapping and the query is declined, so a rebuild never corrupts a live
+    /// session.
     fn maybeReload(self: *RetrievalSession) !void {
-        const cur = readGen(self.gpa, self.io) catch return error.Stale;
+        const cur = readGen(self.gpa, self.io) catch return error.Unprovable;
         defer self.gpa.free(cur);
         if (std.mem.eql(u8, cur, self.index_gen)) return;
 
-        const np = (persist.loadQuiet(self.gpa, self.io) catch return error.Stale) orelse return error.Stale;
+        const np = (persist.loadQuiet(self.gpa, self.io) catch return error.Unprovable) orelse return error.Unprovable;
         // The old mapping's overlay aliases go first (they index the old table).
         self.persisted.paths.shrinkRetainingCapacity(self.base_len);
         _ = self.overlay_arena.reset(.free_all);
@@ -179,7 +181,7 @@ pub const RetrievalSession = struct {
         self.persisted = np;
         self.base_len = np.paths.items.len;
         self.anchor_ns = fresh.readAnchor(self.gpa, self.io);
-        self.index_gen = self.gpa.dupe(u8, cur) catch return error.Stale;
+        self.index_gen = self.gpa.dupe(u8, cur) catch return error.Unprovable;
         self.markDirty();
     }
 
@@ -188,7 +190,7 @@ pub const RetrievalSession = struct {
     /// doc). Otherwise recompute: truncate the path table back to its mmap base,
     /// walk the anchor-relative changed set, and fold it back in exactly as the
     /// one-shot `fresh.candidates` does — so a resident answer and a cold
-    /// `relate search` verify the identical doc set.
+    /// retrieval verify the identical doc set.
     fn reconcile(self: *RetrievalSession) !void {
         try self.maybeReload();
         if (self.seqlock.skip()) return;
@@ -226,20 +228,26 @@ pub const RetrievalSession = struct {
 
     // ── the queries ──
 
-    /// Answer `relate search` over the warm index. `roots` scopes the query
-    /// (must be covered by the index); the caller owns the returned `Result`.
-    /// `null` when the index cannot soundly cover the query (→ cold fallback).
-    pub fn search(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !?Result {
-        const lease = self.beginRead() catch return null;
+    /// Answer a text-probe retrieval over the warm index — the warm→cold seam for
+    /// relate (ADR-373 law 1). `roots` scopes the query (must be covered by the
+    /// index); the caller owns the returned `Result`.
+    ///
+    /// The two negatives are DIFFERENT facts and the type says so: a `declined`
+    /// answer means this session could not prove its overlay current, so the
+    /// client must re-ask cold; a `got` of `null` is the shared retrieval
+    /// kernel's own "nothing to report" (a sub-trigram query, roots outside the
+    /// index) — the same answer a cold run would give, so re-asking is waste.
+    pub fn search(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !fault.Answer(?Result) {
+        const lease = self.beginRead() catch return .{ .declined = .freshness_unprovable };
         defer lease.release();
-        return retrieval.retrieve(gpa, self.io, query, roots, top, self.source());
+        return .{ .got = try retrieval.retrieve(gpa, self.io, query, roots, top, self.source()) };
     }
 
     /// Answer `relate pack` over the warm index (see `search`).
-    pub fn pack(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !?PackResult {
-        const lease = self.beginRead() catch return null;
+    pub fn pack(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !fault.Answer(?PackResult) {
+        const lease = self.beginRead() catch return .{ .declined = .freshness_unprovable };
         defer lease.release();
-        return retrieval.pack(gpa, self.io, query, roots, top, self.source());
+        return .{ .got = try retrieval.pack(gpa, self.io, query, roots, top, self.source()) };
     }
 
     /// Acquire the session for READING over a fresh overlay: the watcher-clean
@@ -248,8 +256,9 @@ pub const RetrievalSession = struct {
     /// (`reconcile`, which re-checks `seqlock.skip()` — the double-checked
     /// upgrade), and downgrades back to shared. The `retrieval` lane it guards is
     /// read-only over `persisted`/`fresh_ids` (`queryLiteral` takes `*const`), so
-    /// overlapping readers are sound. A recompute failure surfaces as an error
-    /// the query maps to `null` (→ cold fallback).
+    /// overlapping readers are sound. A recompute failure is `error.Unprovable`
+    /// — PRIVATE to this module (the shadow rewriter's `Bail` discipline), and
+    /// `search`/`pack` are the boundary that turn it into the seam's declinature.
     fn beginRead(self: *RetrievalSession) !Ward.Read {
         return self.ward.readReconciled(
             self.io,
@@ -277,6 +286,6 @@ test "resident session satisfies the shared freshness watcher contract" {
     // change-tracking surface (`roots`, `armWatcher`, `disarmWatcher`,
     // `markDirty`, `markDoubtForever`, `dirty_log.{armExact,disarmExact,note,
     // noteDoubt}`). Missing or mis-typed any of them and this would not compile.
-    const watch = @import("watch.zig");
+    const watch = @import("../watch/watch.zig");
     std.testing.refAllDecls(watch.Watcher(RetrievalSession));
 }
