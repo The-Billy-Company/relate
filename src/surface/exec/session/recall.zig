@@ -148,6 +148,15 @@ pub const RetrievalSession = struct {
         self.seqlock.arm();
     }
 
+    /// The watcher released its coverage on purpose (`watch.zig::shed`): the
+    /// cached overlay stops being trustable without a reconcile, and the
+    /// exactness promise lapses with the backend that made it. Reversible —
+    /// `armWatcher` reopens the path after a fresh covering pass.
+    pub fn disarmWatcher(self: *RetrievalSession) void {
+        self.seqlock.disarm();
+        self.dirty_log.disarmExact();
+    }
+
     // ── freshness overlay ──
 
     /// Re-map the index when its on-disk generation advanced (someone ran `gist
@@ -265,9 +274,9 @@ test "resident session satisfies the shared freshness watcher contract" {
     // A compile-time proof that ONE generic watcher (`watch.zig`) drives both
     // gist's `ResidentSession` and this retrieval session: `refAllDecls` forces
     // the instantiation's method bodies to be analyzed against this session's
-    // change-tracking surface (`roots`, `armWatcher`, `markDirty`,
-    // `markDoubtForever`, `dirty_log.{armExact,note,noteDoubt}`). Missing or
-    // mis-typed any of them and this test would fail to compile.
+    // change-tracking surface (`roots`, `armWatcher`, `disarmWatcher`,
+    // `markDirty`, `markDoubtForever`, `dirty_log.{armExact,disarmExact,note,
+    // noteDoubt}`). Missing or mis-typed any of them and this would not compile.
     const watch = @import("watch.zig");
     std.testing.refAllDecls(watch.Watcher(RetrievalSession));
 }
