@@ -36,6 +36,7 @@
 //! lock-free seqlock over a ward-guarded overlay.
 
 const std = @import("std");
+const assay = @import("../../../assay/assay.zig");
 const fresh = @import("../../../corpus/index/trigrams/fresh.zig");
 const persist = @import("../../../corpus/index/trigrams/persist.zig");
 const dirtylog = @import("dirty.zig");
@@ -71,7 +72,7 @@ pub const RetrievalSession = struct {
     /// The index build instant; null when no trustworthy anchor exists (then no
     /// doc is provably fresh and the query trusts the index, exactly as the
     /// one-shot `fresh.candidates` no-anchor branch does).
-    anchor_ns: ?i128,
+    anchor_ns: ?assay.Anchor,
     /// The published `pair.gen` this session bound to ("" = legacy/none); a
     /// change triggers a re-map.
     index_gen: []u8,
@@ -193,7 +194,7 @@ pub const RetrievalSession = struct {
         if (self.anchor_ns) |anchor| {
             const a = self.overlay_arena.allocator();
             var changed: std.ArrayList([]const u8) = .empty;
-            try fresh.changedSince(self.gpa, self.io, self.queryRoots(), anchor, a, &changed);
+            try fresh.changedSince(self.gpa, self.io, self.queryRoots(), anchor.ns(), a, &changed);
             if (changed.items.len > 0) {
                 var scratch_ids: std.ArrayList(u32) = .empty;
                 defer scratch_ids.deinit(self.gpa);

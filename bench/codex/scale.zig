@@ -27,14 +27,11 @@ const irregex = @import("irregex");
 
 const codex = irregex.codex.index;
 const cento = irregex.codex.cento;
+const Span = irregex.assay.Span; // package instrumentation floor: monotonic Span
 
 fn die(comptime msg: []const u8, args: anytype) noreturn {
     std.debug.print(msg, args);
     std.process.exit(2);
-}
-
-fn nowNs(io: std.Io) i128 {
-    return std.Io.Clock.now(.awake, io).nanoseconds;
 }
 
 fn ms(ns: i128) f64 {
@@ -112,15 +109,15 @@ const QUERY_LENGTHS = [_]usize{ 4, 8, 16, 32, 64 };
 fn runSlice(gpa: std.mem.Allocator, io: std.Io, text: []const u8, n_queries: usize, sample_rate: u32) !void {
     const mbf = @as(f64, @floatFromInt(text.len)) / (1 << 20);
 
-    const t_build = nowNs(io);
+    const build_sp = Span.open(io);
     var idx = try codex.Codex.build(gpa, text, .{ .sample_rate = sample_rate });
     defer idx.deinit(gpa);
-    const build_ns = nowNs(io) - t_build;
+    const build_ns = build_sp.read(io).ns();
 
     // decodability: the whole slice back out of the index alone
-    const t_restore = nowNs(io);
+    const restore_sp = Span.open(io);
     const rebuilt = try idx.restore(gpa);
-    const restore_ns = nowNs(io) - t_restore;
+    const restore_ns = restore_sp.read(io).ns();
     const restore_ok = std.mem.eql(u8, text, rebuilt);
     gpa.free(rebuilt);
     if (!restore_ok) die("restore mismatch at {d:.0}MB — self-index broken\n", .{mbf});
@@ -148,13 +145,13 @@ fn runSlice(gpa: std.mem.Allocator, io: std.Io, text: []const u8, n_queries: usi
 
     // persistence: save → load → the loaded index must answer like the built
     // one (spot-checked below against the same oracle queries)
-    const t_save = nowNs(io);
+    const save_sp = Span.open(io);
     const blob = try idx.save(gpa);
-    const save_ns = nowNs(io) - t_save;
+    const save_ns = save_sp.read(io).ns();
     const blob_len = blob.len;
-    const t_load = nowNs(io);
+    const load_sp = Span.open(io);
     var loaded = try codex.Codex.load(gpa, blob);
-    const load_ns = nowNs(io) - t_load;
+    const load_ns = load_sp.read(io).ns();
     gpa.free(blob);
     defer loaded.deinit(gpa);
     emit(std.fmt.bufPrint(&buf,
@@ -190,9 +187,9 @@ fn runSlice(gpa: std.mem.Allocator, io: std.Io, text: []const u8, n_queries: usi
 
         var best_ns: i128 = std.math.maxInt(i128);
         for (0..3) |_| {
-            const t0 = nowNs(io);
+            const sp = Span.open(io);
             for (pats) |p| sink +%= idx.count(p);
-            best_ns = @min(best_ns, nowNs(io) - t0);
+            best_ns = @min(best_ns, sp.read(io).ns());
         }
         const count_ns_q = @divTrunc(best_ns, @as(i128, @intCast(pats.len)));
 
@@ -204,9 +201,9 @@ fn runSlice(gpa: std.mem.Allocator, io: std.Io, text: []const u8, n_queries: usi
             var total_ns: i128 = 0;
             for (pats) |p| {
                 if (idx.count(p) > 100) continue;
-                const t0 = nowNs(io);
+                const sp = Span.open(io);
                 const hits = try idx.find(gpa, p);
-                total_ns += nowNs(io) - t0;
+                total_ns += sp.read(io).ns();
                 gpa.free(hits);
                 timed += 1;
                 if (timed == 50) break;
@@ -218,9 +215,9 @@ fn runSlice(gpa: std.mem.Allocator, io: std.Io, text: []const u8, n_queries: usi
         var naive_ns_q: i128 = -1;
         if (m == 16) {
             const nb = @min(pats.len, 50);
-            const t0 = nowNs(io);
+            const sp = Span.open(io);
             for (pats[0..nb]) |p| sink +%= naiveCount(text, p);
-            naive_ns_q = @divTrunc(nowNs(io) - t0, @as(i128, @intCast(nb)));
+            naive_ns_q = @divTrunc(sp.read(io).ns(), @as(i128, @intCast(nb)));
         }
 
         emit(std.fmt.bufPrint(&buf,
@@ -243,10 +240,10 @@ fn runSlice(gpa: std.mem.Allocator, io: std.Io, text: []const u8, n_queries: usi
             const pos = rand.intRangeLessThan(usize, 0, text.len - qlen);
             const nq = text[pos .. pos + qlen];
             rand.bytes(&fq);
-            const t0 = nowNs(io);
+            const sp = Span.open(io);
             native_bits += cento.price(&idx, nq);
             foreign_bits += cento.price(&idx, &fq);
-            parse_ns += nowNs(io) - t0;
+            parse_ns += sp.read(io).ns();
         }
         // the parse must survive persistence bit-for-bit
         const probe = text[0..qlen];

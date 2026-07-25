@@ -28,20 +28,14 @@ const irregex = @import("irregex");
 
 const zipper = irregex.relate.zipper;
 const sketch = irregex.api.relate.sketch;
+const Span = irregex.assay.Span; // package instrumentation floor: monotonic Span
+const Duration = irregex.assay.Duration;
 
 const Dir = std.Io.Dir;
 
 fn die(comptime msg: []const u8, args: anytype) noreturn {
     std.debug.print(msg, args);
     std.process.exit(2);
-}
-
-fn nowNs(io: std.Io) i128 {
-    return std.Io.Clock.now(.awake, io).nanoseconds;
-}
-
-fn ms(ns: i128) f64 {
-    return @as(f64, @floatFromInt(ns)) / 1e6;
 }
 
 /// One labeled document, bytes arena-owned.
@@ -136,21 +130,21 @@ fn vote(scratch: []const Cand, k: usize, counts: []u32) u32 {
 /// The zipper lane: build one automaton per train doc (the index), then price
 /// each test doc against every train automaton by exact cross-parse.
 fn runZipper(gpa: std.mem.Allocator, io: std.Io, ds: *const Dataset, k: usize) !Result {
-    const build_t0 = nowNs(io);
+    const build_sp = Span.open(io);
     const autos = try gpa.alloc(zipper.Automaton, ds.train.len);
     defer {
         for (autos) |*x| x.deinit();
         gpa.free(autos);
     }
     for (ds.train, autos) |doc, *au| au.* = try zipper.Automaton.build(gpa, doc.bytes);
-    const build_ns = nowNs(io) - build_t0;
+    const build = build_sp.read(io);
 
     const scratch = try gpa.alloc(Cand, ds.train.len);
     defer gpa.free(scratch);
     const counts = try gpa.alloc(u32, ds.n_labels);
     defer gpa.free(counts);
 
-    const q_t0 = nowNs(io);
+    const q_sp = Span.open(io);
     var correct: usize = 0;
     for (ds.tests) |q| {
         const cold = zipper.coldBits(q.bytes);
@@ -161,25 +155,24 @@ fn runZipper(gpa: std.mem.Allocator, io: std.Io, ds: *const Dataset, k: usize) !
         std.mem.sort(Cand, scratch, {}, Cand.before);
         if (vote(scratch, k, counts) == q.label) correct += 1;
     }
-    const query_ns = nowNs(io) - q_t0;
-    return .{ .correct = correct, .build_ns = build_ns, .query_ns = query_ns };
+    return .{ .correct = correct, .build = build, .query = q_sp.read(io) };
 }
 
 /// The sketch lane: one LZJD sketch per train doc, then bottom-k Jaccard
 /// distance per test doc.
 fn runSketch(gpa: std.mem.Allocator, io: std.Io, ds: *const Dataset, k: usize) !Result {
-    const build_t0 = nowNs(io);
+    const build_sp = Span.open(io);
     const sks = try gpa.alloc(sketch.Sketch, ds.train.len);
     defer gpa.free(sks);
     for (ds.train, sks) |doc, *sk| sk.* = try sketch.build(gpa, doc.bytes);
-    const build_ns = nowNs(io) - build_t0;
+    const build = build_sp.read(io);
 
     const scratch = try gpa.alloc(Cand, ds.train.len);
     defer gpa.free(scratch);
     const counts = try gpa.alloc(u32, ds.n_labels);
     defer gpa.free(counts);
 
-    const q_t0 = nowNs(io);
+    const q_sp = Span.open(io);
     var correct: usize = 0;
     for (ds.tests) |q| {
         var qsk = try sketch.build(gpa, q.bytes);
@@ -188,8 +181,7 @@ fn runSketch(gpa: std.mem.Allocator, io: std.Io, ds: *const Dataset, k: usize) !
         std.mem.sort(Cand, scratch, {}, Cand.before);
         if (vote(scratch, k, counts) == q.label) correct += 1;
     }
-    const query_ns = nowNs(io) - q_t0;
-    return .{ .correct = correct, .build_ns = build_ns, .query_ns = query_ns };
+    return .{ .correct = correct, .build = build, .query = q_sp.read(io) };
 }
 
 /// The pivot lane — compression embeddings (FastMap/Lipschitz, Faloutsos & Lin
@@ -217,7 +209,7 @@ fn euclid(a: []const f64, b: []const f64) f64 {
 
 fn runPivot(gpa: std.mem.Allocator, io: std.Io, ds: *const Dataset, k: usize, n_pivots: usize) !Result {
     const p = @min(n_pivots, ds.train.len);
-    const build_t0 = nowNs(io);
+    const build_sp = Span.open(io);
     // Evenly-spaced pivots across the (shuffled) train order — a cheap spread
     // over the label mix without peeking at labels.
     const pivots = try gpa.alloc(zipper.Automaton, p);
@@ -236,14 +228,14 @@ fn runPivot(gpa: std.mem.Allocator, io: std.Io, ds: *const Dataset, k: usize, n_
         defer gpa.free(v);
         @memcpy(train_vecs[i * p ..][0..p], v);
     }
-    const build_ns = nowNs(io) - build_t0;
+    const build = build_sp.read(io);
 
     const scratch = try gpa.alloc(Cand, ds.train.len);
     defer gpa.free(scratch);
     const counts = try gpa.alloc(u32, ds.n_labels);
     defer gpa.free(counts);
 
-    const q_t0 = nowNs(io);
+    const q_sp = Span.open(io);
     var correct: usize = 0;
     for (ds.tests) |q| {
         const qv = try embedByPivots(gpa, pivots, q.bytes); // the online cost: P cross-parses
@@ -253,11 +245,10 @@ fn runPivot(gpa: std.mem.Allocator, io: std.Io, ds: *const Dataset, k: usize, n_
         std.mem.sort(Cand, scratch, {}, Cand.before);
         if (vote(scratch, k, counts) == q.label) correct += 1;
     }
-    const query_ns = nowNs(io) - q_t0;
-    return .{ .correct = correct, .build_ns = build_ns, .query_ns = query_ns };
+    return .{ .correct = correct, .build = build, .query = q_sp.read(io) };
 }
 
-const Result = struct { correct: usize, build_ns: i128, query_ns: i128 };
+const Result = struct { correct: usize, build: Duration, query: Duration };
 
 pub fn main(init: std.process.Init) !void {
     const gpa = init.gpa;
@@ -297,14 +288,14 @@ pub fn main(init: std.process.Init) !void {
     };
 
     const acc = @as(f64, @floatFromInt(r.correct)) / @as(f64, @floatFromInt(ds.tests.len));
-    const per_us = ms(r.query_ns) * 1000.0 / @as(f64, @floatFromInt(ds.tests.len));
+    const per_us = r.query.ms() * 1000.0 / @as(f64, @floatFromInt(ds.tests.len));
     const report_pivots: usize = if (method == .pivot) @min(n_pivots, ds.train.len) else 0;
     var buf: [1024]u8 = undefined;
     const json = std.fmt.bufPrint(&buf,
         \\{{"lane":"relate-{s}","k":{d},"pivots":{d},"n_train":{d},"n_test":{d},"n_labels":{d},"accuracy":{d:.4},"build_ms":{d:.1},"query_ms":{d:.1},"per_query_us":{d:.1},"train_bytes":{d},"test_bytes":{d}}}
     ++ "\n", .{
-        @tagName(method), k,             report_pivots,  ds.train.len,   ds.tests.len,
-        ds.n_labels,      acc,           ms(r.build_ns), ms(r.query_ns), per_us,
+        @tagName(method), k,             report_pivots, ds.train.len, ds.tests.len,
+        ds.n_labels,      acc,           r.build.ms(),  r.query.ms(), per_us,
         ds.train_bytes,   ds.test_bytes,
     }) catch die("format overflow\n", .{});
 
@@ -315,6 +306,6 @@ pub fn main(init: std.process.Init) !void {
         off += @intCast(n);
     }
     std.debug.print("relate-knn {s} k={d}: acc {d:.4} · build {d:.0}ms · query {d:.0}ms ({d:.1}µs/doc) · {d} train / {d} test\n", .{
-        @tagName(method), k, acc, ms(r.build_ns), ms(r.query_ns), per_us, ds.train.len, ds.tests.len,
+        @tagName(method), k, acc, r.build.ms(), r.query.ms(), per_us, ds.train.len, ds.tests.len,
     });
 }
