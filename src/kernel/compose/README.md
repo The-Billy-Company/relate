@@ -22,17 +22,17 @@ run **only over that subset** — so an exact intent narrows the statistical one
 instead of a caller unioning two independent queries by hand and paying
 whole-corpus noise.
 
-| File             | Kernel         | What it computes                                                                                                                                        |
-| ---------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `candidates.zig` | `CandidateSet` | the docs a `PatternSet` selects under `any`/`all`, each with its match mask (bit-identical to N single-pattern runs)                                    |
-| `lexspan.zig`    | `commentMask`  | a shared comment/code span lexer (line, block, and quote-aware) that both `gist --in-comments`/`--in-code` and `blast`'s comment section read           |
-| `regions.zig`    | `Region`       | lifts exact matches into comparison-sized units (file / enclosing function / bounded match window) so kinship compares implementations, not whole files |
-| `spans.zig`      | `region`       | the syntactic half of region lifting: language classification, enclosing-function detection, context windowing, and exhaustive function enumeration     |
-| `context.zig`    | `context`      | coverage packing of a query over a lexicon built from ONLY the candidate docs; each pick carries its exact mask and its marginal bits                   |
-| `family.zig`     | `family`       | verified byte, structure, or echo families among exact-selected files or regions, plus nearest-neighbor receipts for genuinely distinct regions         |
-| `provenance.zig` | `provenance`   | re-verify a quoted phrase against an exemplar's CURRENT bytes; returns the live offset/line/window, or nothing if the file drifted                      |
-| `blast.zig`      | `blast`        | the live blast radius of a symbol from CURRENT bytes: seed def + kind, direct dependents/dependencies, tangential twins/ripple, and comment mentions    |
-| `leans.zig`      | `resolve`      | what a function borrows from outside itself: its own bindings subtracted, members reached only through the file their head names, homes never crossing the seed's package, and a name the package declares everywhere read as ambient rather than a dependency |
+| File             | Kernel         | What it computes                                                                                                                                                                                                                                                |
+| ---------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `candidates.zig` | `CandidateSet` | the docs a `PatternSet` selects under `any`/`all`, each with its match mask (bit-identical to N single-pattern runs)                                                                                                                                            |
+| `lexspan.zig`    | `commentMask`  | a shared comment/code span lexer (line, block, and quote-aware) that both `gist --in-comments`/`--in-code` and `blast`'s comment section read                                                                                                                   |
+| `regions.zig`    | `Region`       | lifts exact matches into comparison-sized units (file / enclosing function / bounded match window) so kinship compares implementations, not whole files                                                                                                         |
+| `spans.zig`      | `region`       | the syntactic half of region lifting: language classification, enclosing-function detection, context windowing, and exhaustive function enumeration                                                                                                             |
+| `context.zig`    | `context`      | coverage packing of a query over a lexicon built from ONLY the candidate docs; each pick carries its exact mask and its marginal bits                                                                                                                           |
+| `family.zig`     | `family`       | verified byte, structure, or echo families among exact-selected files or regions, plus nearest-neighbor receipts for genuinely distinct regions                                                                                                                 |
+| `provenance.zig` | `provenance`   | re-verify a quoted phrase against an exemplar's CURRENT bytes; returns the live offset/line/window, or nothing if the file drifted                                                                                                                              |
+| `blast.zig`      | `blast`        | the live blast radius of a symbol from CURRENT bytes: seed def + kind (declared only by source files, and the body read from the strongest declaration rather than the earliest), direct dependents/dependencies, tangential twins/ripple, and comment mentions |
+| `leans.zig`      | `resolve`      | what a function borrows from outside itself: its own bindings subtracted, members reached only through the file their head names, homes never crossing the seed's package, and a name the package declares everywhere read as ambient rather than a dependency  |
 
 ## Invariants
 

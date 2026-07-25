@@ -30,7 +30,7 @@ const lexspan = @import("lexspan.zig");
 const leans = @import("leans.zig");
 const signals = @import("../rank/signals.zig");
 const sketch = @import("../kinship/metric/sketch.zig");
-const query = @import("../match/query.zig");
+const query = @import("../match/query/query.zig");
 
 /// Output caps — the report is bounded by construction so an agent's context is
 /// never flooded. The driver may trim further with a token `--budget`.
@@ -151,9 +151,13 @@ pub fn compute(
     // Pass A — one gated line scan: definition sites, comment mentions, and the
     // total code-reference count, all classified by the parser-free confidence
     // signal and the comment mask (so a mention in a string is neither).
-    for (docs, 0..) |doc, d| {
+    for (docs, paths, 0..) |doc, path, d| {
         if (std.mem.indexOf(u8, doc, symbol) == null) continue; // cheap literal gate
         stats.files_with_symbol += 1;
+        // Only a source file can declare anything: prose and data files are read
+        // for mentions alone, so a changelog sentence or a spec table cannot pose
+        // as the symbol's home the way a `name type` pair otherwise would.
+        const declarable = isSourcePath(path);
         const mask = try lexspan.commentMask(a, doc);
         var seen_comment_line: u32 = 0;
         var seen_def_line: u32 = 0;
@@ -168,7 +172,9 @@ pub fn compute(
                 }
                 seen_comment_line = lineno;
                 stats.comments_total += 1;
-            } else if (lineno != seen_def_line and signals.declarationConfidence(defWindow(doc, ls, le), symbol) > 0) {
+            } else if (declarable and lineno != seen_def_line and
+                signals.declarationConfidence(defWindow(doc, ls, le), symbol) > 0)
+            {
                 // One def row per line: repeated hits on a signature (a return
                 // type AND a parameter of the same name) are one definition.
                 try def.append(a, .{ .doc = @intCast(d), .line = lineno });
@@ -211,7 +217,7 @@ pub fn compute(
     // and `dependencies_total` can never disagree). The `source` view is passed
     // rather than raw docs so a non-source file is never a resolution target.
     const dependencies: []const Dependency = if (kind == .function) deps: {
-        const seed = seedRegion(picked.items, def.items) orelse break :deps &.{};
+        const seed = seedRegion(docs, symbol, picked.items, def.items) orelse break :deps &.{};
         const found = try leans.resolve(a, source, paths, seed.doc, docs[seed.doc][seed.start..seed.end], symbol, opts.max_dependencies);
         stats.dependencies_total = found.total;
         break :deps found.items;
@@ -375,15 +381,33 @@ fn sourceView(a: std.mem.Allocator, docs: []const []const u8, paths: []const []c
     return out;
 }
 
-/// The seed's enclosing function region: the picked region whose line range
-/// contains a definition site. Null when the seed defines no function body.
-fn seedRegion(picked: []const regions.Region, def_sites: []const Site) ?regions.Region {
+/// The seed's enclosing function region: the picked region holding the
+/// STRONGEST definition site, for the same reason `strongestKind` reads every
+/// line. Corpus order is alphabetical, so first-wins hands the body to whatever
+/// weak declaration shape sorts earliest — a component's `pgvector recall
+/// tester` reads as a bare `name type` pair and would outrank the real
+/// `def recall(…)` further down the tree. Ties keep corpus order.
+fn seedRegion(
+    docs: []const []const u8,
+    symbol: []const u8,
+    picked: []const regions.Region,
+    def_sites: []const Site,
+) ?regions.Region {
+    var best: ?regions.Region = null;
+    var strength: u8 = 0;
     for (def_sites) |s| {
         for (picked) |r| {
-            if (r.doc == s.doc and s.line >= r.line_start and s.line <= r.line_end) return r;
+            if (r.doc != s.doc or s.line < r.line_start or s.line > r.line_end) continue;
+            const confidence = signals.declarationConfidence(defWindowAt(docs, s), symbol);
+            if (best == null or confidence > strength) {
+                best = r;
+                strength = confidence;
+            }
+            break;
         }
+        if (strength == 3) break; // nothing outranks a body-bearing declaration
     }
-    return null;
+    return best;
 }
 
 /// The name a function header introduces: the identifier after an fn/func/def/
@@ -497,12 +521,25 @@ fn defWindow(doc: []const u8, ls: usize, le: usize) []const u8 {
 
 fn lineTextAt(docs: []const []const u8, s: Site) []const u8 {
     const doc = docs[s.doc];
-    var line: u32 = 1;
-    var start: usize = 0;
-    while (line < s.line) : (line += 1) {
-        start = (std.mem.indexOfScalarPos(u8, doc, start, '\n') orelse return "") + 1;
-    }
+    const start = lineStartOf(doc, s.line) orelse return "";
     return doc[start..lineEnd(doc, start)];
+}
+
+/// The window Pass A classified when it recorded this site, so re-reading a
+/// site's strength can never disagree with the read that admitted it.
+fn defWindowAt(docs: []const []const u8, s: Site) []const u8 {
+    const doc = docs[s.doc];
+    const start = lineStartOf(doc, s.line) orelse return "";
+    return defWindow(doc, start, lineEnd(doc, start));
+}
+
+fn lineStartOf(doc: []const u8, line: u32) ?usize {
+    var at: usize = 0;
+    var n: u32 = 1;
+    while (n < line) : (n += 1) {
+        at = (std.mem.indexOfScalarPos(u8, doc, at, '\n') orelse return null) + 1;
+    }
+    return at;
 }
 
 fn trimDup(a: std.mem.Allocator, line: []const u8) []const u8 {
@@ -629,6 +666,59 @@ test "a wrapped multi-line signature is still recognized as a definition" {
     try std.testing.expectEqual(Kind.function, report.kind);
     try std.testing.expect(report.def.len >= 1);
     try std.testing.expectEqual(@as(u32, 1), report.def[0].line);
+}
+
+test "the body comes from the strongest definition, not the first in corpus order" {
+    const gpa = std.testing.allocator;
+    // A component's copy reads as a bare `name type` pair — the weakest shape
+    // that still declares in some syntax families — and sorts first. The real
+    // function further down must own the body, or the dependencies reported are
+    // the neighboring words of a sentence.
+    const docs = [_][]const u8{
+        \\export function Panel() {
+        \\  return (
+        \\    <div>
+        \\      pgvector recall tester
+        \\    </div>
+        \\  )
+        \\}
+        ,
+        \\def recall(query, limit):
+        \\    return ranker(query, limit)
+        ,
+        \\def ranker(query, limit):
+        \\    return []
+    };
+    const paths = [_][]const u8{ "a/ui/Panel.tsx", "z/engine.py", "z/ranker.py" };
+    var report = try compute(gpa, &docs, &paths, "recall", .{});
+    defer report.deinit();
+
+    var saw_words = false;
+    var saw_ranker = false;
+    for (report.dependencies) |dep| {
+        if (std.mem.eql(u8, dep.symbol, "tester") or std.mem.eql(u8, dep.symbol, "pgvector")) saw_words = true;
+        if (std.mem.eql(u8, dep.symbol, "ranker")) saw_ranker = true;
+    }
+    try std.testing.expect(!saw_words);
+    try std.testing.expect(saw_ranker);
+}
+
+test "prose and data files are mentioned, never definitions" {
+    const gpa = std.testing.allocator;
+    // A definition list in prose and a key in a spec both wear shapes the
+    // confidence signal reads as declarations — `name:` and `name =` — and both
+    // sort before the code that actually declares the symbol.
+    const docs = [_][]const u8{
+        "ledger: the append-only wallet log\n",
+        "ledger = \"charges\"\n",
+        "fn ledger() u32 {\n    return 1;\n}",
+    };
+    const paths = [_][]const u8{ "docs/wallet.md", "spec/wallet.socket", "z/wallet.zig" };
+    var report = try compute(gpa, &docs, &paths, "ledger", .{});
+    defer report.deinit();
+
+    try std.testing.expect(report.def.len >= 1);
+    for (report.def) |site| try std.testing.expectEqual(@as(u32, 2), site.doc);
 }
 
 test "a type seed reports no dependencies, and stats never disagree with the slice" {

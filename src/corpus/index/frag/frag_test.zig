@@ -3,7 +3,7 @@
 //! Same three properties as the atlas, at the FUNCTION granularity: (1) a
 //! save/parse round-trip is lossless (path table, per-fragment path index,
 //! spans, structure silhouettes, roots, anchor); (2) a torn or tampered blob
-//! NEVER parses — the loader fails closed and `concepts` answers live; and
+//! NEVER parses — the loader fails closed and `--unit function` answers live; and
 //! (3) the freshness fold over a REAL tree re-derives exactly the fragment set a
 //! live extract + build would, so a folded answer differs from a live one only
 //! by a deletion the `onDisk` gate closes. Expected values derive from the
@@ -14,6 +14,7 @@ const std = @import("std");
 const frag = @import("frag.zig");
 const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
 const corpus_mod = @import("../../tree/corpus.zig");
+const fault = @import("../../../fault.zig");
 const Dir = std.Io.Dir;
 
 // Bodies with more than one function each, long enough to shed real silhouettes.
@@ -49,12 +50,12 @@ const Tree = struct {
         // Process-unique so concurrent `zig build test` runs (CI + the ~10
         // coworker agents) never share this mutable fixture dir.
         const root = try std.fmt.allocPrint(a, "/tmp/relate_frag_{s}_{d}", .{ tag, std.c.getpid() });
-        Dir.cwd().deleteTree(io, root) catch {};
+        fault.spare("clear leftover fixture", Dir.cwd().deleteTree(io, root));
         try Dir.cwd().createDirPath(io, root);
         return .{ .root = root, .io = io, .a = a };
     }
     fn deinit(self: *Tree) void {
-        Dir.cwd().deleteTree(self.io, self.root) catch {};
+        fault.spare("remove fixture", Dir.cwd().deleteTree(self.io, self.root));
     }
     fn write(self: *Tree, rel: []const u8, data: []const u8) !void {
         const p = try std.fmt.allocPrint(self.a, "{s}/{s}", .{ self.root, rel });

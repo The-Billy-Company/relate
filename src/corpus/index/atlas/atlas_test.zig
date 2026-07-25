@@ -15,6 +15,7 @@ const atlas = @import("atlas.zig");
 const sketch = @import("../../../kernel/kinship/metric/sketch.zig");
 const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
 const corpus_mod = @import("../../tree/corpus.zig");
+const fault = @import("../../../fault.zig");
 const Dir = std.Io.Dir;
 
 /// A throwaway on-disk tree (absolute root — no cwd dependence).
@@ -28,13 +29,13 @@ const Tree = struct {
         // runs (CI + the ~10 coworker agents) never share this mutable fixture
         // dir; init clears any stale run's leftovers.
         const root = try std.fmt.allocPrint(a, "/tmp/relate_atlas_{s}_{d}", .{ tag, std.c.getpid() });
-        Dir.cwd().deleteTree(io, root) catch {};
+        fault.spare("clear leftover fixture", Dir.cwd().deleteTree(io, root));
         try Dir.cwd().createDirPath(io, root);
         return .{ .root = root, .io = io, .a = a };
     }
 
     fn deinit(self: *Tree) void {
-        Dir.cwd().deleteTree(self.io, self.root) catch {};
+        fault.spare("remove fixture", Dir.cwd().deleteTree(self.io, self.root));
     }
 
     fn write(self: *Tree, rel: []const u8, data: []const u8) !void {

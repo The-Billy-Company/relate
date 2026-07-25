@@ -243,13 +243,13 @@ _Annotation:_ Lazy greedy evaluation order — how pack avoids
 recomputing every marginal each round.
 
 <span id="r-bwt"></span> 11. **Burrows & Wheeler (1994).**
-[_A block-sorting lossless data compression algorithm_](https://www.hpl.hp.com/techreports/Compaq-DEC/SRC-RR-124.pdf)
+[_A block-sorting lossless data compression algorithm_](https://mirrors.meulie.net/bitsavers.org/pdf/dec/tech_reports/SRC-RR-124.pdf)
 (SRC Research Report 124).
 _Annotation:_ BWT permutation — context-sorted transform the FM-index
 / codex sits on.
 
 <span id="r-manzini"></span> 12. **Manzini (2001).**
-[_An analysis of the Burrows–Wheeler transform_](https://doi.org/10.1145/375360.375366)
+[_An analysis of the Burrows–Wheeler transform_](https://doi.org/10.1145/382780.382782)
 (JACM).
 _Annotation:_ Zeroth-order coding over the BWT bounded by _k_-th order
 entropy of the original text.
@@ -273,7 +273,7 @@ _Annotation:_ Rank oracle for the FM-index at entropy-bound space
 (`wavelet.zig`).
 
 <span id="r-rrr"></span> 16. **Raman, Raman & Rao (2002).**
-[_Succinct indexable dictionaries with applications to encoding k-ary trees, prefix sums and multisets_](https://doi.org/10.1137/1.9781611972924.17)
+[_Succinct indexable dictionaries with applications to encoding k-ary trees, prefix sums and multisets_](https://doi.org/10.1145/1290672.1290680)
 (SODA) — RRR bitvectors.
 _Annotation:_ O(1) rank at zeroth-order entropy per wavelet level
 (`rrr.zig`).

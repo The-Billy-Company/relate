@@ -184,7 +184,7 @@ test "build() is exactly the bottom-k of the true LZ78 phrase-hash set" {
 }
 
 test "three independent signals rank kinship identically (LZJD ≈ set-Jaccard ≈ NCD)" {
-    // A base corpus and three neighbours at increasing true distance: a light
+    // A base corpus and three neighbors at increasing true distance: a light
     // edit, a heavy edit, and an unrelated text over a disjoint alphabet. The
     // sketch estimate, the EXACT set Jaccard, and a real deflate NCD must agree
     // on the ordering — and where both sketches saturate, the estimate must sit
@@ -203,10 +203,10 @@ test "three independent signals rank kinship identically (LZJD ≈ set-Jaccard �
     var base_sk = try sketch.build(gpa, base);
 
     const Row = struct { d_sketch: f64, d_jac: f64, d_ncd: f64, saturated: bool };
-    const neighbours = [_][]const u8{ near, mid, far };
-    var rows: [neighbours.len]Row = undefined;
+    const neighbors = [_][]const u8{ near, mid, far };
+    var rows: [neighbors.len]Row = undefined;
 
-    for (neighbours, 0..) |txt, i| {
+    for (neighbors, 0..) |txt, i| {
         var nset = try exactSet(gpa, txt);
         defer nset.deinit();
         var nsk = try sketch.build(gpa, txt);

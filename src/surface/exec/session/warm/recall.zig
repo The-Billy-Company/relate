@@ -49,6 +49,12 @@ const Dir = std.Io.Dir;
 
 pub const Result = retrieval.Result;
 pub const PackResult = retrieval.PackResult;
+const QueryError = error{OutOfMemory};
+
+fn freshnessFailure(comptime T: type, err: anyerror) QueryError!fault.Answer(T) {
+    if (err == error.OutOfMemory) return error.OutOfMemory;
+    return .{ .declined = .freshness_unprovable };
+}
 
 pub const RetrievalSession = struct {
     gpa: std.mem.Allocator,
@@ -165,12 +171,15 @@ pub const RetrievalSession = struct {
     /// index`). Rare; holds the caller's lock. On failure the session keeps its
     /// old mapping and the query is declined, so a rebuild never corrupts a live
     /// session.
-    fn maybeReload(self: *RetrievalSession) !void {
-        const cur = readGen(self.gpa, self.io) catch return error.Unprovable;
+    fn maybeReload(self: *RetrievalSession) QueryError!fault.Answer(void) {
+        const cur = readGen(self.gpa, self.io) catch |err| return freshnessFailure(void, err);
         defer self.gpa.free(cur);
-        if (std.mem.eql(u8, cur, self.index_gen)) return;
+        if (std.mem.eql(u8, cur, self.index_gen)) return .{ .got = {} };
 
-        const np = (persist.loadQuiet(self.gpa, self.io) catch return error.Unprovable) orelse return error.Unprovable;
+        var np = (persist.loadQuiet(self.gpa, self.io) catch |err| return freshnessFailure(void, err)) orelse
+            return .{ .declined = .freshness_unprovable };
+        errdefer np.deinit();
+        const next_gen = self.gpa.dupe(u8, cur) catch return error.OutOfMemory;
         // The old mapping's overlay aliases go first (they index the old table).
         self.persisted.paths.shrinkRetainingCapacity(self.base_len);
         _ = self.overlay_arena.reset(.free_all);
@@ -181,8 +190,9 @@ pub const RetrievalSession = struct {
         self.persisted = np;
         self.base_len = np.paths.items.len;
         self.anchor_ns = fresh.readAnchor(self.gpa, self.io);
-        self.index_gen = self.gpa.dupe(u8, cur) catch return error.Unprovable;
+        self.index_gen = next_gen;
         self.markDirty();
+        return .{ .got = {} };
     }
 
     /// Bring the freshness overlay current. No-op on the watcher-clean fast path
@@ -191,9 +201,12 @@ pub const RetrievalSession = struct {
     /// walk the anchor-relative changed set, and fold it back in exactly as the
     /// one-shot `fresh.candidates` does — so a resident answer and a cold
     /// retrieval verify the identical doc set.
-    fn reconcile(self: *RetrievalSession) !void {
-        try self.maybeReload();
-        if (self.seqlock.skip()) return;
+    fn reconcile(self: *RetrievalSession) QueryError!fault.Answer(void) {
+        switch (try self.maybeReload()) {
+            .declined => |why| return .{ .declined = why },
+            .got => {},
+        }
+        if (self.seqlock.skip()) return .{ .got = {} };
 
         const seq0 = self.seqlock.enter();
         var drained = self.dirty_log.drain(self.gpa); // consume; anchor recompute ignores the paths
@@ -205,15 +218,18 @@ pub const RetrievalSession = struct {
         if (self.anchor_ns) |anchor| {
             const a = self.overlay_arena.allocator();
             var changed: std.ArrayList([]const u8) = .empty;
-            try fresh.changedSince(self.gpa, self.io, self.queryRoots(), anchor.ns(), a, &changed);
+            fresh.changedSince(self.gpa, self.io, self.queryRoots(), anchor.ns(), a, &changed) catch |err|
+                return freshnessFailure(void, err);
             if (changed.items.len > 0) {
                 var scratch_ids: std.ArrayList(u32) = .empty;
                 defer scratch_ids.deinit(self.gpa);
-                try fresh.widen(self.gpa, &self.persisted.paths, &scratch_ids, &self.fresh_ids, changed.items);
+                fresh.widen(self.gpa, &self.persisted.paths, &scratch_ids, &self.fresh_ids, changed.items) catch |err|
+                    return freshnessFailure(void, err);
             }
         }
 
         self.seqlock.commit(seq0);
+        return .{ .got = {} };
     }
 
     /// The roots the freshness walk covers: the index's own build roots (the
@@ -238,14 +254,20 @@ pub const RetrievalSession = struct {
     /// kernel's own "nothing to report" (a sub-trigram query, roots outside the
     /// index) — the same answer a cold run would give, so re-asking is waste.
     pub fn search(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !fault.Answer(?Result) {
-        const lease = self.beginRead() catch return .{ .declined = .freshness_unprovable };
+        const lease = switch (try self.beginRead()) {
+            .declined => |why| return .{ .declined = why },
+            .got => |lease| lease,
+        };
         defer lease.release();
         return .{ .got = try retrieval.retrieve(gpa, self.io, query, roots, top, self.source()) };
     }
 
     /// Answer `relate pack` over the warm index (see `search`).
     pub fn pack(self: *RetrievalSession, gpa: std.mem.Allocator, query: []const u8, roots: []const []const u8, top: usize) !fault.Answer(?PackResult) {
-        const lease = self.beginRead() catch return .{ .declined = .freshness_unprovable };
+        const lease = switch (try self.beginRead()) {
+            .declined => |why| return .{ .declined = why },
+            .got => |lease| lease,
+        };
         defer lease.release();
         return .{ .got = try retrieval.pack(gpa, self.io, query, roots, top, self.source()) };
     }
@@ -256,24 +278,22 @@ pub const RetrievalSession = struct {
     /// (`reconcile`, which re-checks `seqlock.skip()` — the double-checked
     /// upgrade), and downgrades back to shared. The `retrieval` lane it guards is
     /// read-only over `persisted`/`fresh_ids` (`queryLiteral` takes `*const`), so
-    /// overlapping readers are sound. A recompute failure is `error.Unprovable`
-    /// — PRIVATE to this module (the shadow rewriter's `Bail` discipline), and
-    /// `search`/`pack` are the boundary that turn it into the seam's declinature.
-    fn beginRead(self: *RetrievalSession) !Ward.Read {
-        return self.ward.readReconciled(
-            self.io,
-            self,
-            struct {
-                fn fresh(s: *RetrievalSession) bool {
-                    return s.seqlock.skip();
-                }
-            }.fresh,
-            struct {
-                fn refresh(s: *RetrievalSession) anyerror!void {
-                    return s.reconcile();
-                }
-            }.refresh,
-        );
+    /// overlapping readers are sound. Freshness inability stays a typed decline
+    /// through this boundary; allocation exhaustion remains `error.OutOfMemory`.
+    fn beginRead(self: *RetrievalSession) QueryError!fault.Answer(Ward.Read) {
+        const lease = self.ward.read(self.io);
+        if (self.seqlock.skip()) return .{ .got = lease };
+        lease.release();
+
+        const held = self.ward.write(self.io);
+        errdefer held.release();
+        switch (try self.reconcile()) {
+            .declined => |why| {
+                held.release();
+                return .{ .declined = why };
+            },
+            .got => return .{ .got = held.downgrade() },
+        }
     }
 };
 
