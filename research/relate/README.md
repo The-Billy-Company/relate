@@ -10,8 +10,8 @@ doc_radar:
       contains:
         - "Language Trees and Zipping"
         - "LZJD"
-    - file: libs/kernels/irregex/src/surface/face/relate/main.zig
-      contains: "search | pack | quote | similar | dups | clusters | echoes | concepts | patterns | index | status"
+    - file: libs/kernels/irregex/src/surface/face/relate/repertoire.zig
+      contains: ["\"search\"", "\"pack\"", "\"quote\"", "\"similar\"", "\"dups\"", "\"clusters\"", "\"echoes\"", "\"concepts\"", "\"patterns\""]
     - file: libs/kernels/irregex/contract/search_api.toml
       contains: "[irregex.verbs]"
 ---

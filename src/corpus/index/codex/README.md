@@ -17,7 +17,7 @@ doc_radar:
     - file: "libs/kernels/irregex/src/surface/face/gist/main.zig"
       contains:
         - '"codex"'
-    - file: "libs/kernels/irregex/src/surface/face/relate/main.zig"
+    - file: "libs/kernels/irregex/src/surface/face/relate/repertoire.zig"
       contains:
         - '"quote"'
     - file: "libs/kernels/irregex/src/corpus/index/codex/sais.zig"

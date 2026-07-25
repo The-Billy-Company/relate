@@ -1,10 +1,10 @@
 ---
 doc_radar:
   counts:
-    - description: "the compose tier: candidate selection + span lexing + region lifting + syntactic span geometry + four pure composition kernels, plus the candidates unit test"
+    - description: "the compose tier: candidate selection + span lexing + region lifting + syntactic span geometry + lean resolution + four pure composition kernels, plus the candidates unit test"
       glob: libs/kernels/irregex/src/kernel/compose/*.zig
       unit: files
-      equals: 9
+      equals: 10
   sentinels:
     - description: "candidates.zig caps the pattern mask at one u64 word"
       file: libs/kernels/irregex/src/kernel/compose/candidates.zig
@@ -32,6 +32,7 @@ whole-corpus noise.
 | `family.zig`     | `family`       | verified byte, structure, or echo families among exact-selected files or regions, plus nearest-neighbor receipts for genuinely distinct regions         |
 | `provenance.zig` | `provenance`   | re-verify a quoted phrase against an exemplar's CURRENT bytes; returns the live offset/line/window, or nothing if the file drifted                      |
 | `blast.zig`      | `blast`        | the live blast radius of a symbol from CURRENT bytes: seed def + kind, direct dependents/dependencies, tangential twins/ripple, and comment mentions    |
+| `leans.zig`      | `resolve`      | what a function borrows from outside itself: its own bindings subtracted, members reached only through the file their head names, homes never crossing the seed's package |
 
 ## Invariants
 

@@ -43,6 +43,13 @@ const python_exts = std.StaticStringMap(void).initComptime(.{
     .{"py"}, .{"pyx"}, .{"pyi"},
 });
 
+/// A path's extension including the dot (`.zig`), or "" when the basename
+/// carries none — the language tag a same-language gate compares on.
+pub fn extensionOf(path: []const u8) []const u8 {
+    const base = if (std.mem.lastIndexOfScalar(u8, path, '/')) |s| path[s + 1 ..] else path;
+    return if (std.mem.lastIndexOfScalar(u8, base, '.')) |d| base[d..] else "";
+}
+
 pub fn languageOf(path: []const u8) Lang {
     const dot = std.mem.lastIndexOfScalar(u8, path, '.') orelse return .none;
     const ext = path[dot + 1 ..];

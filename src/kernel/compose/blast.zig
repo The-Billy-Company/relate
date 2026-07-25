@@ -27,6 +27,7 @@ const patterns = @import("../batch/patterns.zig");
 const regions = @import("regions.zig");
 const spans = @import("spans.zig");
 const lexspan = @import("lexspan.zig");
+const leans = @import("leans.zig");
 const signals = @import("../rank/signals.zig");
 const sketch = @import("../kinship/metric/sketch.zig");
 const query = @import("../match/query.zig");
@@ -59,8 +60,11 @@ pub const Site = struct { doc: u32, line: u32 };
 /// itself a (re)definition of the seed rather than a use.
 pub const Dependent = struct { doc: u32, line: u32, enclosing: []const u8, defines: bool };
 
-/// An identifier the seed's body uses, resolved to its own definition site.
-pub const Dependency = struct { symbol: []const u8, doc: u32, line: u32 };
+/// An identifier the seed's body leans on, resolved to its own definition site
+/// — extracted and homed by `leans.zig`, which owns the precision discipline
+/// (own bindings excluded, package boundary respected, members resolved inside
+/// the module their qualifier names).
+pub const Dependency = leans.Dependency;
 
 /// A corpus file structurally kin to the seed's file (parallel-edit risk).
 pub const Twin = struct { doc: u32, distance: f64 };
@@ -123,20 +127,6 @@ const generic_methods = std.StaticStringMap(void).initComptime(.{
     .{"items"},  .{"slice"},  .{"update"},  .{"insert"}, .{"remove"}, .{"resolve"},
 });
 
-/// Identifiers that are never a dependency worth resolving — control-flow and
-/// type keywords across the languages the corpus spans. A stoplist, not a
-/// grammar: a false drop only omits a tangential edge, never a match.
-const keywords = std.StaticStringMap(void).initComptime(.{
-    .{"if"},    .{"else"},     .{"for"},    .{"while"}, .{"return"},   .{"const"},
-    .{"var"},   .{"let"},      .{"fn"},     .{"func"},  .{"function"}, .{"def"},
-    .{"class"}, .{"struct"},   .{"enum"},   .{"union"}, .{"switch"},   .{"case"},
-    .{"break"}, .{"continue"}, .{"import"}, .{"from"},  .{"pub"},      .{"try"},
-    .{"catch"}, .{"defer"},    .{"async"},  .{"await"}, .{"and"},      .{"or"},
-    .{"not"},   .{"true"},     .{"false"},  .{"null"},  .{"nil"},      .{"None"},
-    .{"self"},  .{"this"},     .{"type"},   .{"void"},  .{"int"},      .{"bool"},
-    .{"in"},    .{"is"},       .{"as"},     .{"with"},  .{"match"},    .{"where"},
-});
-
 /// Compute the blast radius of `symbol` over the loaded corpus (`docs`/`paths`,
 /// parallel slices; `paths` selects language for region extraction). Pure — the
 /// result owns its own arena.
@@ -196,7 +186,7 @@ pub fn compute(
     // drives `regions.select`, so each row is a whole function that references
     // the seed (repeated hits in one function collapse to one row); its hit
     // line is classified def-vs-use by the same confidence signal.
-    var wset = try wordSet(a, &.{symbol});
+    var wset = try patterns.wordSet(a, &.{symbol});
     const source = try sourceView(a, docs, paths);
     var picked = try regions.select(a, source, &wset, .function, 0);
     defer picked.deinit();
@@ -218,12 +208,14 @@ pub fn compute(
     // resolved to their own definition sites. Only meaningful when the seed is
     // itself a function; a type/value has no body to lean on anything, so the
     // pass is skipped entirely (never counted into stats, so the emitted rows
-    // and `dependencies_total` can never disagree).
-    const seed_ext_deps = if (def.items.len > 0) extOf(paths[def.items[0].doc]) else "";
-    const dependencies = if (kind == .function)
-        try computeDependencies(a, docs, paths, seed_ext_deps, picked.items, def.items, symbol, opts, &stats)
-    else
-        &[_]Dependency{};
+    // and `dependencies_total` can never disagree). The `source` view is passed
+    // rather than raw docs so a non-source file is never a resolution target.
+    const dependencies: []const Dependency = if (kind == .function) deps: {
+        const seed = seedRegion(picked.items, def.items) orelse break :deps &.{};
+        const found = try leans.resolve(a, source, paths, seed.doc, docs[seed.doc][seed.start..seed.end], symbol, opts.max_dependencies);
+        stats.dependencies_total = found.total;
+        break :deps found.items;
+    } else &.{};
 
     // Tangential twins — corpus-wide compression kin of the seed's file.
     const twins = if (def.items.len == 0) &[_]Twin{} else try computeTwins(a, gpa, docs, def.items[0].doc, dependents.items, opts, &stats);
@@ -231,7 +223,7 @@ pub fn compute(
     // Tangential ripple — second-hop callers of the seed's dependents, confined
     // to the seed's own language (a Zig `compile` is not called from a .py doc).
     const seed_path = if (def.items.len > 0) paths[def.items[0].doc] else if (dependents.items.len > 0) paths[dependents.items[0].doc] else "";
-    const ripple = try computeRipple(a, docs, paths, extOf(seed_path), dependents.items, symbol, opts, &stats);
+    const ripple = try computeRipple(a, docs, paths, spans.extensionOf(seed_path), dependents.items, symbol, opts, &stats);
 
     stats.omitted = (stats.dependents_total -| dependents.items.len) +
         (stats.dependencies_total -| dependencies.len) +
@@ -253,72 +245,6 @@ pub fn compute(
         .stats = stats,
         .notes = try notes.toOwnedSlice(a),
     };
-}
-
-/// Identifiers inside the seed's function body → their definition sites. One
-/// batched PatternSet scan over the corpus: `lineHits` names the candidates on
-/// a line, the confidence signal confirms which are definitions.
-fn computeDependencies(
-    a: std.mem.Allocator,
-    docs: []const []const u8,
-    paths: []const []const u8,
-    seed_ext: []const u8,
-    picked: []const regions.Region,
-    def_sites: []const Site,
-    symbol: []const u8,
-    opts: Options,
-    stats: *Stats,
-) ![]Dependency {
-    const seed = seedRegion(picked, def_sites) orelse return &[_]Dependency{};
-    var names = try collectIdents(a, docs[seed.doc][seed.start..seed.end], symbol);
-    if (names.len == 0) return &[_]Dependency{};
-    if (names.len > 64) names = names[0..64]; // PatternSet gate cap
-
-    var wset = try wordSet(a, names);
-    defer wset.deinit(a);
-    var scratch = try wset.scratch(a);
-    defer scratch.deinit(a);
-
-    const resolved = try a.alloc(?Dependency, names.len);
-    @memset(resolved, null);
-    var remaining = names.len;
-    var hits: std.ArrayList(u32) = .empty;
-
-    // Resolve each identifier only against source files of the seed's own
-    // language: a Zig local's definition is never in a .py / .sh / .md file, so
-    // the same-language gate keeps a parameter name from resolving to unrelated
-    // corpus noise (the identical discipline the ripple pass applies).
-    scan: for (docs, paths, 0..) |doc, path, d| {
-        if (seed_ext.len > 0 and !std.mem.endsWith(u8, path, seed_ext)) continue;
-        if (!isSourcePath(path)) continue;
-        if (!wset.anyMatch(doc, &scratch)) continue;
-        var pos: usize = 0;
-        var lineno: u32 = 1;
-        while (pos < doc.len) {
-            const nl = std.mem.indexOfScalarPos(u8, doc, pos, '\n') orelse doc.len;
-            const line = doc[pos..nl];
-            hits.clearRetainingCapacity();
-            try wset.lineHits(line, &scratch, a, &hits);
-            for (hits.items) |hi| {
-                if (resolved[hi] != null) continue;
-                if (signals.declarationConfidence(line, names[hi]) > 0) {
-                    resolved[hi] = .{ .symbol = names[hi], .doc = @intCast(d), .line = lineno };
-                    remaining -= 1;
-                    if (remaining == 0) break :scan;
-                }
-            }
-            if (nl >= doc.len) break;
-            pos = nl + 1;
-            lineno += 1;
-        }
-    }
-
-    var out: std.ArrayList(Dependency) = .empty;
-    for (resolved) |maybe| if (maybe) |dep| {
-        stats.dependencies_total += 1;
-        if (out.items.len < opts.max_dependencies) try out.append(a, dep);
-    };
-    return out.toOwnedSlice(a);
 }
 
 /// Corpus-wide compression kin of the seed file, closest first, excluding files
@@ -410,18 +336,6 @@ fn isShort(symbol: []const u8) bool {
     return symbol.len < 3 or common_names.has(symbol);
 }
 
-/// A word-bounded PatternSet over `names`: each becomes `\bNAME\b`, so a scan
-/// never matches `run` inside `runner`. Names are regex-escaped, so an operator
-/// or punctuation-bearing token stays literal.
-fn wordSet(a: std.mem.Allocator, names: []const []const u8) !patterns.PatternSet {
-    const specs = try a.alloc(patterns.Spec, names.len);
-    for (names, specs) |nm, *s| {
-        const esc = try query.escapeLiteral(a, nm);
-        s.* = .{ .pattern = try std.fmt.allocPrint(a, "\\b{s}\\b", .{esc}), .fixed = false };
-    }
-    return patterns.PatternSet.compile(a, specs);
-}
-
 /// A call-shaped PatternSet over `names`: each becomes `\bNAME\s*\(`, matching a
 /// CALL site (`name(` / `name (`) rather than any mention — so the ripple pass
 /// counts genuine second-hop callers, not a prose word that happens to be a
@@ -470,31 +384,6 @@ fn seedRegion(picked: []const regions.Region, def_sites: []const Site) ?regions.
         }
     }
     return null;
-}
-
-/// Maximal code identifiers in `bytes` (comment/string bytes skipped via the
-/// span lexer), deduped, minus the seed itself, keywords, and sub-3-char names.
-fn collectIdents(a: std.mem.Allocator, bytes: []const u8, symbol: []const u8) ![][]const u8 {
-    var out: std.ArrayList([]const u8) = .empty;
-    var state: lexspan.Lex = .code;
-    var escaped = false;
-    var i: usize = 0;
-    while (i < bytes.len) {
-        if (!lexspan.lexByte(bytes, &i, &state, &escaped)) {
-            i += 1;
-            continue;
-        }
-        if (!isIdentStart(bytes[i])) {
-            i += 1;
-            continue;
-        }
-        const start = i;
-        while (i < bytes.len and isIdentByte(bytes[i])) i += 1;
-        const word = bytes[start..i];
-        if (word.len < 3 or std.mem.eql(u8, word, symbol) or keywords.has(word)) continue;
-        try appendUniqueStr(a, &out, word);
-    }
-    return out.toOwnedSlice(a);
 }
 
 /// The name a function header introduces: the identifier after an fn/func/def/
@@ -638,13 +527,6 @@ fn appendUniqueStr(a: std.mem.Allocator, list: *std.ArrayList([]const u8), s: []
 fn firstSet(mask: []const u64, n: usize) ?usize {
     for (0..n) |i| if (patterns.maskHas(mask, i)) return i;
     return null;
-}
-
-/// The file extension including the dot (`.zig`), or "" — the seed's language
-/// tag the ripple pass confines itself to.
-fn extOf(path: []const u8) []const u8 {
-    const base = if (std.mem.lastIndexOfScalar(u8, path, '/')) |s| path[s + 1 ..] else path;
-    return if (std.mem.lastIndexOfScalar(u8, base, '.')) |d| base[d..] else "";
 }
 
 fn isSourcePath(path: []const u8) bool {
