@@ -42,7 +42,9 @@
 const std = @import("std");
 const sketch = @import("../../../kernel/kinship/metric/sketch.zig");
 const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
+const fingerprint = @import("../../../kernel/kinship/metric/fingerprint.zig");
 const corpus_mod = @import("../../tree/corpus.zig");
+const fault = @import("../../../fault.zig");
 const fresh = @import("../trigrams/fresh.zig");
 
 const Sketch = sketch.Sketch;
@@ -249,6 +251,20 @@ pub fn fold(gpa: std.mem.Allocator, io: std.Io, atl: *const Atlas, roots: []cons
     var seen: std.StringHashMapUnmanaged(void) = .empty;
     defer seen.deinit(gpa);
 
+    // Read first, fingerprint second, place third. The read is I/O against one
+    // arena and the placement mutates shared arrays, so both stay serial; the
+    // fingerprinting between them is the only expensive part and is now shared
+    // with the live rung's byte-balanced fan-out. On a tree many agents edit,
+    // this loop refreshes thousands of files on every kinship query, and doing
+    // it one file at a time was the single largest cost in `relate`.
+    var bodies: std.ArrayList([]const u8) = .empty;
+    defer bodies.deinit(gpa);
+    var live: std.ArrayList([]const u8) = .empty;
+    defer live.deinit(gpa);
+    // Where each refreshed row lands: an existing doc id, or null to append.
+    var slots: std.ArrayList(?u32) = .empty;
+    defer slots.deinit(gpa);
+
     for (changed.items) |path| {
         if ((try seen.getOrPut(gpa, path)).found_existing) continue;
         const existing = by_path.get(path);
@@ -257,18 +273,37 @@ pub fn fold(gpa: std.mem.Allocator, io: std.Io, atl: *const Atlas, roots: []cons
             if (existing) |id| try dead.append(gpa, id);
             continue;
         };
-        // Both channels refresh together. A failure invalidates the warm view
-        // so the caller can rebuild live; retaining stale bytes would violate
-        // indexed/live identity, while refreshing one channel would corrupt
-        // the echo signal.
-        const s = try sketch.build(gpa, body);
-        const sil = try silhouette_mod.build(gpa, body);
-        out.refreshed += 1;
+        try bodies.append(gpa, body);
+        try live.append(gpa, path); // arena-owned
+        try slots.append(gpa, existing);
+    }
+
+    const fresh_sketches = try gpa.alloc(sketch.Sketch, bodies.items.len);
+    defer gpa.free(fresh_sketches);
+    const fresh_sils = try gpa.alloc(silhouette_mod.Silhouette, bodies.items.len);
+    defer gpa.free(fresh_sils);
+    // Both channels refresh together. A failure invalidates the warm view so
+    // the caller can rebuild live; retaining stale bytes would violate
+    // indexed/live identity, while refreshing one channel would corrupt the
+    // echo signal. The shared pass DEGRADES a failure to the maximally-far
+    // record for the live rung's benefit, so the fold has to re-raise it —
+    // an `empty` here would be a silently wrong fingerprint, not a missing one.
+    const lost = try fingerprint.fill(sketch.Sketch, sketch.build, gpa, bodies.items, fresh_sketches) +
+        try fingerprint.fill(silhouette_mod.Silhouette, silhouette_mod.build, gpa, bodies.items, fresh_sils);
+    // `Corrupt`, not a `FingerprintFailed` of its own (ADR-373 law 2): the
+    // persist domain is exactly "an artifact's bytes are untrustworthy — the
+    // kinship atlas among them — so it fails CLOSED to the live path, costing
+    // speed and never answers", which is what a record we could not rebuild
+    // makes of the warm view. The caller degrades to the live build.
+    if (lost != 0) return fault.Persist.Corrupt;
+
+    out.refreshed = bodies.items.len;
+    for (live.items, slots.items, fresh_sketches, fresh_sils) |path, existing, s, sil| {
         if (existing) |id| {
             out.sketches.items[id] = s;
             out.silhouettes.items[id] = sil;
         } else {
-            try out.paths.append(gpa, path); // arena-owned
+            try out.paths.append(gpa, path);
             try out.sketches.append(gpa, s);
             try out.silhouettes.append(gpa, sil);
         }

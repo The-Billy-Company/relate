@@ -18,7 +18,10 @@
 
 const std = @import("std");
 const codexmod = @import("codex.zig");
+const fault = @import("../../../fault.zig");
 const frame = @import("../frame/frame.zig");
+const fresh = @import("../trigrams/fresh.zig");
+const corpus_mod = @import("../../tree/corpus.zig");
 
 const Codex = codexmod.Codex;
 const Cursor = frame.Cursor;
@@ -26,6 +29,14 @@ const putInt = frame.putInt;
 
 const MAGIC = "SHLF";
 const VERSION: u32 = 1;
+
+const shelf_path = corpus_mod.ArtifactPath("codex.shelf");
+
+/// Where the persisted shelf lives — the one name every reader and writer
+/// resolves, so no face can build one artifact and query another.
+pub fn shelfFile() []const u8 {
+    return shelf_path.get();
+}
 
 /// One document's share of a corpus-wide answer.
 pub const DocCount = struct { doc: u32, count: u32 };
@@ -93,8 +104,15 @@ pub const Shelf = struct {
 
     /// Per-document occurrence counts, descending by count (path order breaks
     /// ties). Costs one locate per occurrence — O(m + occ·t). Caller frees.
-    pub fn tally(self: *const Shelf, gpa: std.mem.Allocator, pattern: []const u8) ![]DocCount {
-        const hits = try self.cx.find(gpa, pattern);
+    ///
+    /// Inherits `Codex.find`'s declinature: a shelf whose codex was built
+    /// without locate samples can still answer `count` corpus-wide, just not
+    /// which document each occurrence lives in.
+    pub fn tally(self: *const Shelf, gpa: std.mem.Allocator, pattern: []const u8) !fault.Answer([]DocCount) {
+        const hits = switch (try self.cx.find(gpa, pattern)) {
+            .declined => |d| return .{ .declined = d },
+            .got => |h| h,
+        };
         defer gpa.free(hits);
         var per: std.AutoArrayHashMapUnmanaged(u32, u32) = .empty;
         defer per.deinit(gpa);
@@ -106,7 +124,7 @@ pub const Shelf = struct {
                 return if (x.count != y.count) x.count > y.count else x.doc < y.doc;
             }
         }.gt);
-        return out;
+        return .{ .got = out };
     }
 
     /// Frame: magic · version · built_ns · doc count · offsets · path blob ·
@@ -160,3 +178,54 @@ pub const Shelf = struct {
         return .{ .cx = cx, .paths = paths, .offsets = offsets, .built_ns = built_ns, .path_blob = path_blob };
     }
 };
+
+/// What one `persist` produced, for the caller's own report line.
+pub const Persisted = struct { bytes: usize, bits_per_char: f64 };
+
+/// Build a shelf over a loaded corpus and write it atomically to `shelfFile()`.
+/// The one write seam: `gist codex build` and `relate index --shelf` are two
+/// product verbs over a single artifact, and an artifact with two writers is an
+/// artifact with two formats a version apart.
+pub fn persist(
+    gpa: std.mem.Allocator,
+    io: std.Io,
+    docs: []const []const u8,
+    paths: []const []const u8,
+    built_ns: i64,
+) !Persisted {
+    var shelf = try Shelf.build(gpa, docs, paths, built_ns, .{});
+    defer shelf.deinit(gpa);
+    const blob = try shelf.save(gpa);
+    defer gpa.free(blob);
+    try frame.writeAtomic(io, shelfFile(), blob);
+    return .{ .bytes = blob.len, .bits_per_char = shelf.cx.stats.bitsPerChar() };
+}
+
+/// Read the persisted shelf from disk, distinguishing "never built" from
+/// "there but unusable". Fail-CLOSED, unlike the `loadQuiet` next door in
+/// `atlas`/`frag`: those degrade to a live walk, and a codex answer has nothing
+/// to degrade to — it is exact or it is absent. So the error comes back to the
+/// caller, whose product face owns the sentence that names the rebuild command.
+/// Both members are declared taxonomy (ADR-373 law 2): `FileNotFound` is the
+/// corpus domain's name for "this path could not be opened", which is the whole
+/// of what a failed read means here, and `Corrupt` is the persist domain's for
+/// bytes that are there but untrustworthy. A `Missing`/`NotBuilt` spelling would
+/// be a third synonym for the first.
+pub const OpenError = error{ FileNotFound, Corrupt };
+
+pub fn open(gpa: std.mem.Allocator, io: std.Io) OpenError!Shelf {
+    const blob = std.Io.Dir.cwd().readFileAlloc(io, shelfFile(), gpa, .unlimited) catch
+        return error.FileNotFound;
+    defer gpa.free(blob);
+    return Shelf.load(gpa, blob) catch error.Corrupt;
+}
+
+/// How many corpus files changed since `built_ns`. The blob carries its anchor
+/// but not its roots, so freshness is measured against the corpus a rebuild
+/// HERE would cover — identical in the steady state of one corpus per tree.
+/// Errors read as 0: staleness annotates an answer, it never gates one.
+pub fn staleCount(gpa: std.mem.Allocator, io: std.Io, built_ns: i64) usize {
+    const roots = corpus_mod.resolveRoots(gpa) catch return 0;
+    defer corpus_mod.freeRoots(gpa, roots);
+    return fresh.staleCount(gpa, io, roots, built_ns);
+}

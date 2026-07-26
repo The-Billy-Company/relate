@@ -51,8 +51,25 @@ pub const Result = retrieval.Result;
 pub const PackResult = retrieval.PackResult;
 const QueryError = error{OutOfMemory};
 
+/// The resident tier's fail-CLOSED fold: anything that stopped us from PROVING
+/// the overlay current means the warm answer is unsound, so the query declines
+/// to the cold path rather than answering from a stale mapping. OOM alone stays
+/// a fault — it is the one failure re-running cold cannot fix.
+///
+/// `anyerror` is deliberate here, and the opposite of `notice.pathErrNote`'s
+/// named `WalkFault` (ADR-373 law 2): nothing downstream renders this error, so
+/// a widened std set cannot become a mystery string. It can only ever mean
+/// "freshness unprovable" — which is already the safe answer. Naming the union
+/// of four inferred sets would buy a compile error where the fold is total by
+/// construction.
+///
+/// What the widening WOULD cost is diagnosability, so the discarded fault goes
+/// to the `.fault` lens on its way out (`GIST_TRACE=fault`) — the same channel
+/// `fault.spare` uses. Without it, "why did the daemon answer cold?" is
+/// invisible: the decline is correct, silent, and microseconds long.
 fn freshnessFailure(comptime T: type, err: anyerror) QueryError!fault.Answer(T) {
     if (err == error.OutOfMemory) return error.OutOfMemory;
+    assay.trace(.fault, "resident declined: freshness unprovable ({t})\n", .{err});
     return .{ .declined = .freshness_unprovable };
 }
 

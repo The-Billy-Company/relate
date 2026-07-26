@@ -8,6 +8,7 @@
 //! repetitive corpora, plus a seeded property-fuzz loop.
 
 const std = @import("std");
+const fault = @import("../../../fault.zig");
 const sais = @import("sais.zig");
 const rrr = @import("rrr.zig");
 const wavelet = @import("wavelet.zig");
@@ -228,7 +229,7 @@ fn expectCodexFaithful(text: []const u8, opts: codex.Options, patterns: []const 
     for (patterns) |p| {
         try testing.expectEqual(oracleCount(text, p), idx.count(p));
         if (opts.sample_rate > 0) {
-            const got = try idx.find(gpa, p);
+            const got = (try idx.find(gpa, p)).got;
             defer gpa.free(got);
             const want = try oracleFind(gpa, text, p);
             defer gpa.free(want);
@@ -262,7 +263,10 @@ test "codex: sample_rate 0 disables locate but keeps count/restore" {
     var idx = try codex.Codex.build(gpa, "count only", .{ .sample_rate = 0 });
     defer idx.deinit(gpa);
     try testing.expectEqual(@as(usize, 2), idx.count("o"));
-    try testing.expectError(error.LocateUnsupported, idx.find(gpa, "o"));
+    // Locate DECLINES rather than faulting: a mark-less codex is a smaller
+    // index, not a broken one, and it still counts exactly (ADR-373 law 1).
+    try testing.expectEqual(fault.Decline.capability_missing, (try idx.find(gpa, "o")).declined);
+    try testing.expectEqual(fault.Decline.capability_missing, idx.posOf(0).declined);
     const rebuilt = try idx.restore(gpa);
     defer gpa.free(rebuilt);
     try testing.expectEqualSlices(u8, "count only", rebuilt);
@@ -295,7 +299,7 @@ test "codex: property fuzz — random corpora, sampled + mutated patterns" {
             if (rand.boolean()) pat_buf[rand.intRangeLessThan(usize, 0, m)] +%= 1;
             const p = pat_buf[0..m];
             try testing.expectEqual(oracleCount(text, p), idx.count(p));
-            const got = try idx.find(gpa, p);
+            const got = (try idx.find(gpa, p)).got;
             defer gpa.free(got);
             const want = try oracleFind(gpa, text, p);
             defer gpa.free(want);
@@ -342,7 +346,7 @@ test "codex: save/load round-trip is behaviorally identical, both postures" {
                     const p = pat_buf[0..m];
                     try testing.expectEqual(oracleCount(text, p), loaded.count(p));
                     if (rate > 0) {
-                        const got = try loaded.find(gpa, p);
+                        const got = (try loaded.find(gpa, p)).got;
                         defer gpa.free(got);
                         const want = try oracleFind(gpa, text, p);
                         defer gpa.free(want);
@@ -419,7 +423,7 @@ test "shelf: count and tally match per-document oracles, through save/load" {
         for (&docs) |d| want_total += oracleCount(d, pat);
         try testing.expectEqual(want_total, shelf.count(pat));
 
-        const t = try shelf.tally(gpa, pat);
+        const t = (try shelf.tally(gpa, pat)).got;
         defer gpa.free(t);
         var tallied: usize = 0;
         for (t, 0..) |dc, i| {

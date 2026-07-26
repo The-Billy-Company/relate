@@ -44,6 +44,7 @@ const channel_mod = @import("../metric/channel.zig");
 const pairs_mod = @import("pairs.zig");
 const families_mod = @import("families.zig");
 const signals = @import("../../rank/signals.zig");
+const parallel = @import("../../primitives/parallel.zig");
 
 const Sketch = sketch_mod.Sketch;
 const Silhouette = silhouette_mod.Silhouette;
@@ -85,7 +86,7 @@ pub fn massFloor(chan: Channel) usize {
     return switch (chan) {
         .copies => sketch_mass,
         .shapes, .twins, .any => silhouette_mass,
-        .recall => 0,
+        .recall, .context => 0,
     };
 }
 
@@ -199,9 +200,11 @@ pub const Pair = struct {
 };
 
 /// One fork family. `edge` is the LOOSEST admitted edge inside it (a family is
-/// only as tight as its weakest link), `bytes`/`structure` the worst pair in
-/// each channel, `repeated_lines` the conservative consolidation opportunity:
-/// the smallest member's length times the redundant copies.
+/// only as tight as its weakest link), `bytes`/`structure` that same worst
+/// admitted edge priced in each channel — the pairs the family was actually
+/// built from, not the transitive closure's diameter — and `repeated_lines` the
+/// conservative consolidation opportunity: the smallest member's length times
+/// the redundant copies.
 pub const Family = struct {
     members: []u32,
     edge: f64,
@@ -359,7 +362,8 @@ fn admit(
             try pairs_mod.forEachCandidatePair(Silhouette, gpa, table.silhouettes, &ctx, Ctx.visit);
             dedup(&out);
         },
-        .recall => {}, // not a pairwise channel; no relation can be admitted
+        // Neither is a pairwise channel: no relation can be admitted.
+        .recall, .context => {},
     }
     return out;
 }
@@ -383,9 +387,21 @@ fn dedup(list: *std.ArrayList(Pair)) void {
 }
 
 /// Union-find over the admitted edges, then materialize families ≥ `min_size`,
-/// each priced by its worst pair in both channels. Ranked by the consolidation
-/// opportunity — repeated lines when the unit has them, else family size — so
-/// the top row is the biggest safe win rather than the highest number.
+/// each priced by its worst ADMITTED edge in both channels. Ranked by the
+/// consolidation opportunity — repeated lines when the unit has them, else
+/// family size — so the top row is the biggest safe win rather than the highest
+/// number.
+///
+/// A family is priced from the pairs that actually formed it, which is both the
+/// honest reading and the only tractable one. A family is a transitive closure:
+/// two members at opposite ends of a chain were never adjudicated as kin, so
+/// scoring them as "the family's worst pair" reports a number no admission
+/// decision ever stood behind, and inflates looseness with chain length. It is
+/// also quadratic in a way the corpus does not survive — on this tree the
+/// closure yields one 8,968-member component, whose all-pairs scan is 40.2M
+/// distances (~17 s) for a row the deletion gate then discards. Every admitted
+/// edge is already priced in both channels by `admit`, so the worst of them is
+/// one O(edges) pass with no distance recomputed at all.
 fn group(gpa: std.mem.Allocator, table: Table, params: Params, edges: []const Pair) ![]Family {
     const graph = try gpa.alloc(families_mod.Edge, edges.len);
     defer gpa.free(graph);
@@ -396,42 +412,66 @@ fn group(gpa: std.mem.Allocator, table: Table, params: Params, edges: []const Pa
     const groups = try families_mod.components(gpa, table.labels, graph, dir, params.min_size);
     defer gpa.free(groups);
 
+    // Member → the family it landed in, so one pass over the edges can price
+    // every family at once. Members of a sub-`min_size` component map to
+    // `unplaced` and their edges are skipped.
+    const unplaced = std.math.maxInt(u32);
+    const family_of = try gpa.alloc(u32, table.len());
+    defer gpa.free(family_of);
+    @memset(family_of, unplaced);
+    for (groups, 0..) |g, fi| for (g.members) |m| {
+        family_of[m] = @intCast(fi);
+    };
+
+    const worst = try gpa.alloc(Priced, groups.len);
+    defer gpa.free(worst);
+    @memset(worst, .{});
+    for (edges) |e| {
+        const fi = family_of[e.i];
+        if (fi == unplaced) continue;
+        worst[fi].widen(e);
+    }
+
     const list = try gpa.alloc(Family, groups.len);
     var built: usize = 0;
     errdefer {
         for (list[0..built]) |f| gpa.free(f.members);
         gpa.free(list);
     }
-    for (groups, list) |g, *f| {
-        f.* = summarize(table, g.members, g.edge);
+    for (groups, worst, list) |g, w, *f| {
+        f.* = summarize(table, g.members, g.edge, w);
         built += 1;
     }
     std.mem.sort(Family, list, table.labels, familyLess);
     return list;
 }
 
-/// Family-level channel stats + opportunity. Members are few (2–~6), so the
-/// O(k²) worst-pair scan is cheap and honest: it reports the WORST pair in each
-/// channel rather than one edge's flattering number.
-fn summarize(table: Table, members: []u32, edge: f64) Family {
+/// The loosest admitted edge a family has seen in each channel, accumulated as
+/// its edges stream past. A channel stays at its zero until a non-NaN edge
+/// widens it, so an unresolved record reports 0.0 rather than poisoning the max.
+const Priced = struct {
+    bytes: f64 = 0.0,
+    structure: f64 = 0.0,
+
+    fn widen(self: *Priced, e: Pair) void {
+        if (!std.math.isNan(e.bytes)) self.bytes = @max(self.bytes, e.bytes);
+        if (!std.math.isNan(e.structure)) self.structure = @max(self.structure, e.structure);
+    }
+};
+
+/// Family-level channel stats + opportunity. Both channel numbers arrive
+/// already accumulated over the family's admitted edges (`group`); all this
+/// adds is the conservative consolidation estimate, which is O(members).
+fn summarize(table: Table, members: []u32, edge: f64, worst: Priced) Family {
     var shortest: u32 = std.math.maxInt(u32);
     for (members) |m| if (table.lines.len > m) {
         shortest = @min(shortest, table.lines[m]);
     };
-
-    var worst_bytes: f64 = 0.0;
-    var worst_structure: f64 = 0.0;
-    for (members, 0..) |a, ai| for (members[ai + 1 ..]) |b| {
-        const db = table.bytesAt(a, b);
-        const ds = table.structureAt(a, b);
-        if (!std.math.isNan(db)) worst_bytes = @max(worst_bytes, db);
-        if (!std.math.isNan(ds)) worst_structure = @max(worst_structure, ds);
-    };
     return .{
         .members = members,
         .edge = edge,
-        .bytes = if (table.sketches.len == 0) std.math.nan(f64) else worst_bytes,
-        .structure = if (table.silhouettes.len == 0) std.math.nan(f64) else worst_structure,
+        .bytes = if (table.sketches.len == 0) std.math.nan(f64) else worst.bytes,
+        .structure = if (table.silhouettes.len == 0) std.math.nan(f64) else worst.structure,
         .repeated_lines = if (shortest == std.math.maxInt(u32)) 0 else @as(usize, shortest) * (members.len - 1),
     };
 }
@@ -457,45 +497,114 @@ fn isolated(gpa: std.mem.Allocator, table: Table, participates: []const bool, ed
         connected[e.j] = true;
     }
 
-    var out: std.ArrayList(Lonely) = .empty;
-    errdefer out.deinit(gpa);
-    const prefer_structure = table.silhouettes.len > 0;
+    // The lonely units, in canonical order. Every one of them costs a full
+    // sweep of the participating population, so this list — not the table — is
+    // the work.
+    var lonely: std.ArrayList(u32) = .empty;
+    defer lonely.deinit(gpa);
     for (0..table.len()) |i| {
         if (connected[i] or !participates[i]) continue;
-        const me: u32 = @intCast(i);
-        var nearest: ?u32 = null;
-        var best_bytes = std.math.inf(f64);
-        var best_structure = std.math.inf(f64);
-        for (0..table.len()) |j| {
-            if (i == j or !participates[j]) continue;
-            const other: u32 = @intCast(j);
-            const db = table.bytesAt(me, other);
-            const ds = table.structureAt(me, other);
-            // Rank the miss on whichever channel the table can measure, with
-            // the other as the tiebreak, then the label — a total order.
-            const primary = if (prefer_structure) ds else db;
-            const best_primary = if (prefer_structure) best_structure else best_bytes;
-            const secondary = if (prefer_structure) db else ds;
-            const best_secondary = if (prefer_structure) best_bytes else best_structure;
-            const closer = primary < best_primary or
-                (primary == best_primary and secondary < best_secondary) or
-                (primary == best_primary and secondary == best_secondary and nearest != null and
-                    std.mem.order(u8, table.labels[other], table.labels[nearest.?]) == .lt);
-            if (closer) {
-                nearest = other;
-                best_bytes = db;
-                best_structure = ds;
-            }
-        }
-        try out.append(gpa, .{
-            .unit = me,
-            .nearest = nearest,
-            .bytes = if (nearest == null) 1.0 else best_bytes,
-            .structure = if (nearest == null) 1.0 else best_structure,
-        });
+        try lonely.append(gpa, @intCast(i));
     }
-    std.mem.sort(Lonely, out.items, table.labels, lonelyLess);
-    return out.toOwnedSlice(gpa);
+
+    const out = try gpa.alloc(Lonely, lonely.items.len);
+    errdefer gpa.free(out);
+    // Each sweep reads shared immutable records and writes only its own row, so
+    // the shards are independent and the answer is order-free. Two thresholds
+    // gate the spawn: enough sweeps to divide, and enough population per sweep
+    // that the scan dominates the thread cost.
+    const population = table.len();
+    const nthr = shardCount(lonely.items.len, population);
+    if (nthr < 2) {
+        for (lonely.items, out) |me, *row| row.* = nearestMiss(table, participates, me);
+    } else {
+        const shards = try gpa.alloc(MissShard, nthr);
+        defer gpa.free(shards);
+        const threads = try gpa.alloc(std.Thread, nthr);
+        defer gpa.free(threads);
+        // Equal sweep counts, because every sweep costs the same population
+        // walk — the byte-greedy split the fingerprint passes use has nothing
+        // to balance here.
+        const per = (lonely.items.len + nthr - 1) / nthr;
+        for (shards, 0..) |*sh, s| {
+            const lo = @min(s * per, lonely.items.len);
+            sh.* = .{
+                .table = table,
+                .participates = participates,
+                .units = lonely.items[lo..@min(lo + per, lonely.items.len)],
+                .out = out[lo..@min(lo + per, lonely.items.len)],
+            };
+        }
+        parallel.fanOut(MissShard, shards, threads, MissShard.run);
+    }
+    std.mem.sort(Lonely, out, table.labels, lonelyLess);
+    return out;
+}
+
+/// One contiguous run of lonely units and the rows they fill. Holds no
+/// allocator: a shard only reads the shared table and writes its own slice.
+const MissShard = struct {
+    table: Table,
+    participates: []const bool,
+    units: []const u32,
+    out: []Lonely,
+
+    fn run(sh: *MissShard) void {
+        for (sh.units, sh.out) |me, *row| row.* = nearestMiss(sh.table, sh.participates, me);
+    }
+};
+
+/// How many shards the complement sweep earns, or `<2` to stay serial. The
+/// work is `sweeps × population` comparisons rather than bytes, so the shared
+/// byte floor doesn't apply; this is the same discipline against the quantity
+/// that actually scales.
+fn shardCount(sweeps: usize, population: usize) usize {
+    if (sweeps *| population < min_comparisons) return 1;
+    const cores = std.Thread.getCpuCount() catch 1;
+    return @min(@min(cores, sweeps), parallel.max_shards);
+}
+
+/// Below this many pair comparisons the complement stays serial — thread spawn
+/// costs more than the sweep saves.
+const min_comparisons: usize = 1 << 16;
+
+/// The nearest unit that is NOT kin to `me`, priced on both channels.
+///
+/// The channel the table can measure ranks the miss and the other breaks ties,
+/// so the secondary is priced only for a candidate that could still win — once
+/// a close miss is in hand most of the population is rejected on the primary
+/// alone, which halves the cost of the one query shape that cannot be answered
+/// from seed buckets. The guard is written `!(p <= best)` so an unmeasurable
+/// NaN pair is rejected rather than admitted, matching the total order below.
+fn nearestMiss(table: Table, participates: []const bool, me: u32) Lonely {
+    const prefer_structure = table.silhouettes.len > 0;
+    var nearest: ?u32 = null;
+    var best_primary = std.math.inf(f64);
+    var best_secondary = std.math.inf(f64);
+    for (0..table.len()) |j| {
+        const other: u32 = @intCast(j);
+        if (other == me or !participates[j]) continue;
+        const primary = if (prefer_structure) table.structureAt(me, other) else table.bytesAt(me, other);
+        if (!(primary <= best_primary)) continue;
+        const secondary = if (prefer_structure) table.bytesAt(me, other) else table.structureAt(me, other);
+        const closer = primary < best_primary or
+            secondary < best_secondary or
+            (secondary == best_secondary and nearest != null and
+                std.mem.order(u8, table.labels[other], table.labels[nearest.?]) == .lt);
+        if (closer) {
+            nearest = other;
+            best_primary = primary;
+            best_secondary = secondary;
+        }
+    }
+    const bytes = if (prefer_structure) best_secondary else best_primary;
+    const structure = if (prefer_structure) best_primary else best_secondary;
+    return .{
+        .unit = me,
+        .nearest = nearest,
+        .bytes = if (nearest == null) 1.0 else bytes,
+        .structure = if (nearest == null) 1.0 else structure,
+    };
 }
 
 /// Least-related first — the most genuinely distinct unit leads.
@@ -751,6 +860,80 @@ test "families rank by the biggest safe consolidation, priced by the worst pair"
     try t.expectEqual(@as(usize, 14), d.families[0].repeated_lines);
     try t.expectEqual(@as(usize, 3), d.families[0].members.len);
     try t.expectEqual(@as(usize, 6), d.families[1].repeated_lines);
+}
+
+// A transitive chain, built so the closure's endpoints share nothing: `chain_a`
+// and `chain_b` share one half, `chain_b` and `chain_c` share the other, and
+// `chain_a` vs `chain_c` have no block in common. Union-find still collapses all
+// three into one family — which is what makes this the fixture where "worst
+// admitted edge" and "worst member pair" give different answers.
+const block_p =
+    \\  const parsed_pa = try decode_pa(buffer_pa, cursor_pa);
+    \\  const parsed_pb = try verify_pb(parsed_pa, checksum_pb);
+    \\  const parsed_pc = try expand_pc(parsed_pb, dictionary_pc);
+    \\  if (parsed_pc.width_pd > limit_pd) return error.WidePd;
+    \\  var running_pe: usize = parsed_pc.width_pd + offset_pe;
+    \\  running_pe += tail_pf(parsed_pc, running_pe, scale_pf);
+    \\
+;
+const block_q =
+    \\  const merged_qa = try gather_qa(stream_qa, window_qa);
+    \\  const merged_qb = try flatten_qb(merged_qa, depth_qb);
+    \\  const merged_qc = try reorder_qc(merged_qb, comparator_qc);
+    \\  if (merged_qc.height_qd < floor_qd) return error.ShortQd;
+    \\  var tally_qe: usize = merged_qc.height_qd * factor_qe;
+    \\  tally_qe -= trim_qf(merged_qc, tally_qe, margin_qf);
+    \\
+;
+const block_r =
+    \\  const staged_ra = try admit_ra(payload_ra, quota_ra);
+    \\  const staged_rb = try balance_rb(staged_ra, weighting_rb);
+    \\  const staged_rc = try publish_rc(staged_rb, registry_rc);
+    \\  if (staged_rc.depth_rd == sentinel_rd) return error.FlatRd;
+    \\  var ledger_re: usize = staged_rc.depth_rd ^ salt_re;
+    \\  ledger_re |= seal_rf(staged_rc, ledger_re, nonce_rf);
+    \\
+;
+const block_s =
+    \\  const routed_sa = try dispatch_sa(envelope_sa, lane_sa);
+    \\  const routed_sb = try annotate_sb(routed_sa, provenance_sb);
+    \\  const routed_sc = try compress_sc(routed_sb, codebook_sc);
+    \\  if (routed_sc.girth_sd != expected_sd) return error.SkewSd;
+    \\  var receipt_se: usize = routed_sc.girth_sd +% pepper_se;
+    \\  receipt_se &= close_sf(routed_sc, receipt_se, epilogue_sf);
+    \\
+;
+const chain_a = "fn one_a() !usize {\n" ++ block_p ++ block_q ++ "}";
+const chain_b = "fn two_b() !usize {\n" ++ block_q ++ block_r ++ "}";
+const chain_c = "fn three_c() !usize {\n" ++ block_r ++ block_s ++ "}";
+
+test "a family is priced by its worst ADMITTED edge, not the closure's diameter" {
+    const gpa = t.allocator;
+    var fx = try Fixture.init(gpa, &.{ "a.zig#L1", "b.zig#L1", "c.zig#L1" }, &.{ chain_a, chain_b, chain_c });
+    defer fx.deinit();
+    const tbl = fx.table();
+
+    // Calibrate off the fixture itself rather than three magic constants: a-b
+    // and b-c are the links, a-c is the closure the chain manufactures.
+    const d_ab = tbl.bytesAt(0, 1);
+    const d_bc = tbl.bytesAt(1, 2);
+    const d_ac = tbl.bytesAt(0, 2);
+    const links = @max(d_ab, d_bc);
+    try t.expect(d_ac > links); // the endpoints really are the far pair
+
+    // A threshold that admits both links and refuses the closure.
+    var d = try fx.run(.{ .channel = .copies, .shape = .families, .max_dist = links, .min_size = 3, .min_mass = 1, .exhaustive = true });
+    defer d.deinit();
+    try t.expectEqual(@as(usize, 1), d.families.len);
+    try t.expectEqualSlices(u32, &.{ 0, 1, 2 }, d.families[0].members);
+
+    // The contract: every number on the row came from an edge some admission
+    // decision actually stood behind, so it cannot exceed the threshold. The
+    // all-pairs reading would report `d_ac` here — a distance this run
+    // explicitly REFUSED — and would grow with chain length forever.
+    try t.expectEqual(links, d.families[0].bytes);
+    try t.expect(d.families[0].bytes <= links);
+    try t.expect(d.families[0].bytes < d_ac);
 }
 
 test "a same-name, different-implementation pair does not group" {

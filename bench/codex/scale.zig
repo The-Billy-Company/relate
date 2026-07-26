@@ -202,7 +202,7 @@ fn runSlice(gpa: std.mem.Allocator, io: std.Io, text: []const u8, n_queries: usi
             for (pats) |p| {
                 if (idx.count(p) > 100) continue;
                 const sp = Span.open(io);
-                const hits = try idx.find(gpa, p);
+                const hits = (try idx.find(gpa, p)).got;
                 total_ns += sp.read(io).ns();
                 gpa.free(hits);
                 timed += 1;

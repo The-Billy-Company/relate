@@ -28,10 +28,12 @@
 //! oracles over random, degenerate, and binary corpora.
 
 const std = @import("std");
+const fault = @import("../../../fault.zig");
 const sais = @import("sais.zig");
 const rrr = @import("rrr.zig");
 const wavelet = @import("wavelet.zig");
 
+const Oom = std.mem.Allocator.Error;
 const SIGMA: usize = 257; // 256 byte symbols shifted +1, sentinel 0
 
 pub const Options = struct {
@@ -199,23 +201,29 @@ pub const Codex = struct {
 
     /// Text position of one exemplar row of a suffix interval — the cheapest
     /// possible locate (a single sampled-mark walk, O(sample_rate) LF steps).
-    /// Requires locate support (`sample_rate > 0` at build).
-    pub fn posOf(self: *const Codex, row: usize) !u32 {
-        const marks = if (self.marks) |*m| m else return error.LocateUnsupported;
+    ///
+    /// **Declines** when the index was built without locate samples
+    /// (`sample_rate == 0`): counting is exact either way, so a mark-less codex
+    /// is a smaller index that answers *where* nowhere rather than a broken one
+    /// (ADR-373 law 1). The declinature rides the success position because every
+    /// caller has somewhere to go — "(not in corpus)" — and a `try` here would
+    /// turn a legitimately cheaper artifact into an abort.
+    pub fn posOf(self: *const Codex, row: usize) fault.Answer(u32) {
+        const marks = if (self.marks) |*m| m else return .{ .declined = .capability_missing };
         std.debug.assert(row < self.n);
-        return self.suffixAt(marks, row);
+        return .{ .got = self.suffixAt(marks, row) };
     }
 
-    /// Every match position of `pattern`, ascending. Requires locate support
-    /// (`sample_rate > 0` at build). Caller frees.
-    pub fn find(self: *const Codex, gpa: std.mem.Allocator, pattern: []const u8) ![]u32 {
-        const marks = if (self.marks) |*m| m else return error.LocateUnsupported;
-        if (pattern.len == 0) return gpa.alloc(u32, 0);
+    /// Every match position of `pattern`, ascending. Declines without locate
+    /// support, exactly as `posOf` does. Caller frees.
+    pub fn find(self: *const Codex, gpa: std.mem.Allocator, pattern: []const u8) Oom!fault.Answer([]u32) {
+        const marks = if (self.marks) |*m| m else return .{ .declined = .capability_missing };
+        if (pattern.len == 0) return .{ .got = try gpa.alloc(u32, 0) };
         const r = self.range(pattern);
         const out = try gpa.alloc(u32, r.hi - r.lo);
         for (out, r.lo..) |*pos, row| pos.* = self.suffixAt(marks, row);
         std.mem.sort(u32, out, {}, std.sort.asc(u32));
-        return out;
+        return .{ .got = out };
     }
 
     /// Reconstruct the full original text from the index alone — the proof the
