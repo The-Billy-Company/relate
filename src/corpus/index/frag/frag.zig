@@ -143,7 +143,7 @@ pub fn buildAll(gpa: std.mem.Allocator, corpus: *const corpus_mod.Corpus) !Build
 
 /// Serialize a built fragment index under the `built_ns` anchor and the `roots`
 /// the corpus was built over (so a later fold walks exactly that corpus).
-/// Caller frees the blob and persists it (`persist.writeAtomic`).
+/// Caller frees the blob and persists it (`frame.writeAtomic`).
 pub fn save(gpa: std.mem.Allocator, b: *const Build, built_ns: i64, roots: []const []const u8) ![]u8 {
     var out: std.ArrayList(u8) = .empty;
     errdefer out.deinit(gpa);

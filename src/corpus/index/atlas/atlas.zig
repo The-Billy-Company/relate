@@ -71,7 +71,7 @@ const Cursor = frame.Cursor;
 /// Serialize `paths` + their `sketches` and `silhouettes` (same order) under
 /// the `built_ns` anchor, plus the `roots` the corpus was built over (so a
 /// later fold walks exactly that corpus). Caller frees the blob and persists
-/// it (persist.writeAtomic).
+/// it (frame.writeAtomic).
 pub fn save(gpa: std.mem.Allocator, paths: []const []const u8, sketches: []const Sketch, silhouettes: []const Silhouette, built_ns: i64, roots: []const []const u8) ![]u8 {
     std.debug.assert(paths.len == sketches.len and paths.len == silhouettes.len);
     var out: std.ArrayList(u8) = .empty;

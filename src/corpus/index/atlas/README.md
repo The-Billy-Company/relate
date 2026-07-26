@@ -14,7 +14,7 @@ doc_radar:
       contains: "try fresh.changedSince(gpa, io, roots, atl.built_ns, a, &changed);"
     - description: "the lifecycle verb that builds it is relate's own"
       file: libs/kernels/irregex/src/surface/face/relate/lifecycle.zig
-      contains: "try persist.writeAtomic(io, atlas_mod.atlasFile(), blob)"
+      contains: "try frame.writeAtomic(io, atlas_mod.atlasFile(), blob)"
 ---
 
 # atlas — the persisted kinship index
