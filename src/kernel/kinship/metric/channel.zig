@@ -45,6 +45,11 @@ pub const Channel = enum {
     /// retrieval engine prices it against a whole document), but it grades on
     /// bands like any other, so one `Verdict` covers probes of both kinds.
     recall,
+    /// The fraction of a query's priced description a SET of documents jointly
+    /// explains — `pack`'s answer. Not pairwise, and not `recall`: recall asks
+    /// how cheaply one document quotes a probe, while this asks how much of the
+    /// question a reading list actually answers, so the two need separate bands.
+    context,
 
     /// Which direction is "stronger" on this channel: a distance closes toward
     /// zero, while a gap and a coding gain both grow.
@@ -53,14 +58,15 @@ pub const Channel = enum {
     pub fn polarity(self: Channel) Polarity {
         return switch (self) {
             .copies, .shapes, .any => .distance,
-            .twins, .recall => .stronger,
+            .twins, .recall, .context => .stronger,
         };
     }
 
-    /// Is this a channel two records can be compared on? `recall` is not —
-    /// it prices a text probe against one document.
+    /// Is this a channel two records can be compared on? `recall` and
+    /// `context` are not — one prices a text probe against a document, the
+    /// other prices a whole answer set against a question.
     pub fn pairwise(self: Channel) bool {
-        return self != .recall;
+        return self != .recall and self != .context;
     }
 
     /// The underlying metric's name, for stderr diagnostics and prior-art
@@ -72,6 +78,7 @@ pub const Channel = enum {
             .shapes => "structure",
             .any => "fused",
             .recall => "gain",
+            .context => "coverage",
         };
     }
 
@@ -84,6 +91,7 @@ pub const Channel = enum {
             .copies, .shapes, .any => "distance",
             .twins => "echo",
             .recall => "gain",
+            .context => "coverage",
         };
     }
 
@@ -98,7 +106,7 @@ pub const Channel = enum {
             .shapes => structure,
             .twins => bytes - structure,
             .any => @min(bytes, structure),
-            .recall => std.math.nan(f64),
+            .recall, .context => std.math.nan(f64),
         };
     }
 
@@ -189,6 +197,18 @@ pub fn of(channel: Channel, score: f64) Grade {
         else if (score >= 0.45)
             .moderate
         else if (score >= 0.30)
+            .weak
+        else
+            .none,
+        // Pack coverage: the weighted mean strength with which the picks
+        // explain the query's priced aspects. `identical` is unreachable by
+        // construction — BM25 saturation means a single aspect only approaches
+        // 1.0 — so a pack never claims to BE the answer, only to cover it.
+        .context => if (score >= 0.60)
+            .strong
+        else if (score >= 0.40)
+            .moderate
+        else if (score >= 0.22)
             .weak
         else
             .none,

@@ -41,20 +41,29 @@ pub const PackPick = struct {
     path: []u8,
     marginal_bits: f64,
     covered_bits: f64,
+    solo_bits: f64,
+    owns: u64,
 };
 
 pub const PackResult = struct {
     picks: []PackPick,
+    /// The priced aspect table the picks were scored against — borrowed term
+    /// slices into the caller's query, so the renderer can name what each pick
+    /// is there for without re-tokenizing.
+    aspects: []coverage.Aspect,
     total_bits: f64,
     foreign: usize,
+    glue: usize,
     indexed_files: usize,
     candidates: usize,
+    pool: usize,
     refreshed: usize,
     gpa: std.mem.Allocator,
 
     pub fn deinit(self: *PackResult) void {
         for (self.picks) |pick| self.gpa.free(pick.path);
         self.gpa.free(self.picks);
+        self.gpa.free(self.aspects);
     }
 };
 
@@ -78,23 +87,6 @@ fn rootsCovered(roots: []const []const u8, indexed: []const []const u8) bool {
     const filter: scope.PathFilter = .{ .roots = indexed };
     for (roots) |root| if (!filter.admits(scope.normalizeRoot(root))) return false;
     return true;
-}
-
-fn terms(gpa: std.mem.Allocator, query: []const u8) ![][]const u8 {
-    var out: std.ArrayList([]const u8) = .empty;
-    errdefer out.deinit(gpa);
-
-    // Exact phrasing is the strongest evidence when present; words recover the
-    // descriptive-query case where no document repeats the whole sentence.
-    if (query.len >= 3) try out.append(gpa, query);
-    var it = std.mem.tokenizeAny(u8, query, " \t\r\n.,;:!?()[]{}<>/\\|\"'`~@#$%^&*+=-");
-    while (it.next()) |term| {
-        if (term.len < 3) continue;
-        var duplicate = false;
-        for (out.items) |seen| duplicate = duplicate or std.mem.eql(u8, seen, term);
-        if (!duplicate) try out.append(gpa, term);
-    }
-    return out.toOwnedSlice(gpa);
 }
 
 fn liveEvidence(body: []const u8, needles: []const []const u8, weights: []const f64) f64 {
@@ -125,13 +117,6 @@ fn referenceFor(gpa: std.mem.Allocator, body: []const u8, needles: []const []con
     return out.toOwnedSlice(gpa);
 }
 
-const Mode = enum { search, pack };
-
-const Match = struct {
-    evidence_bits: f64 = 0.0,
-    mask: u64 = 0,
-};
-
 /// Where a `WarmQuery`'s warm state comes from. `.load` is the one-shot CLI
 /// lane: mmap the index and walk the tree for freshness, both discarded when
 /// the query ends. `.resident` is the daemon lane (ADR-352 rung 2.5): the
@@ -155,28 +140,32 @@ const WarmQuery = struct {
     gpa: std.mem.Allocator,
     io: std.Io,
     roots: []const []const u8,
-    mode: Mode,
     /// Borrowed pointer; `owns_persisted` decides whether `deinit` unmaps it.
     persisted: *persist.Persisted,
     owns_persisted: bool,
     terms: [][]const u8,
     weights: []f64,
+    /// Postings per active term — the corpus document frequency `pack` prices
+    /// its aspects from, kept so nobody queries the index twice for it.
+    dfs: []usize,
     selective: std.ArrayList([]const u8) = .empty,
-    matches: std.AutoHashMapUnmanaged(u32, Match) = .empty,
+    matches: std.AutoHashMapUnmanaged(u32, f64) = .empty,
     /// The freshness walk result — set (and owned) ONLY on the `.load` lane.
     /// A resident query injects `fresh_ids` directly and leaves this null.
     freshness: ?fresh.Candidates = null,
     /// The changed-doc set folded live in `foldFresh`, aliasing either
     /// `freshness.fresh_ids` (one-shot) or the session's cached overlay.
     fresh_ids: []const u32 = &.{},
-    foreign: usize = 0,
 
+    /// `max_terms` caps how many query chunks participate — `pack` needs its
+    /// aspect table to fit one `u64` attribution mask, while a search has no
+    /// reason to drop a term.
     fn init(
         gpa: std.mem.Allocator,
         io: std.Io,
         query: []const u8,
         roots: []const []const u8,
-        mode: Mode,
+        max_terms: usize,
         src: Source,
     ) !?WarmQuery {
         const p: *persist.Persisted, const owns = switch (src) {
@@ -198,13 +187,18 @@ const WarmQuery = struct {
         };
         if (!rootsCovered(roots, p.roots.items)) return null;
 
-        const query_terms = try terms(gpa, query);
+        const query_terms = try coverage.decompose(gpa, query);
         if (query_terms.len == 0) {
             gpa.free(query_terms);
             return null;
         }
-        const active = query_terms[0..@min(query_terms.len, if (mode == .pack) 64 else query_terms.len)];
+        const active = query_terms[0..@min(query_terms.len, max_terms)];
         const weights = gpa.alloc(f64, active.len) catch |err| {
+            gpa.free(query_terms);
+            return err;
+        };
+        const dfs = gpa.alloc(usize, active.len) catch |err| {
+            gpa.free(weights);
             gpa.free(query_terms);
             return err;
         };
@@ -212,25 +206,22 @@ const WarmQuery = struct {
             .gpa = gpa,
             .io = io,
             .roots = roots,
-            .mode = mode,
             .persisted = p,
             .owns_persisted = owns,
             .terms = query_terms,
             .weights = weights,
+            .dfs = dfs,
         };
         errdefer self.deinit();
 
-        for (active, self.weights, 0..) |needle, *weight, bit| {
+        const n = self.persisted.paths.items.len;
+        for (active, self.weights, self.dfs) |needle, *weight, *df| {
             const ids = self.persisted.queryLiteral(gpa, needle) catch return null;
             defer gpa.free(ids);
-            if (mode == .pack and ids.len == 0) {
-                self.foreign += 1;
-                weight.* = 0.0;
-                continue;
-            }
+            df.* = ids.len;
             // Ubiquitous glue words carry little information. A lone broad
             // term stays honest; broad branches yield to rarer companions.
-            if (active.len > 1 and ids.len > @max(self.persisted.paths.items.len / 20, 1024)) {
+            if (coverage.kindOf(ids.len, n, active.len) == .glue) {
                 weight.* = 0.0;
                 continue;
             }
@@ -238,11 +229,7 @@ const WarmQuery = struct {
             weight.* = self.dfBits(ids.len);
             for (ids) |doc| {
                 const gop = try self.matches.getOrPut(gpa, doc);
-                if (!gop.found_existing) gop.value_ptr.* = .{};
-                switch (mode) {
-                    .search => gop.value_ptr.evidence_bits += weight.*,
-                    .pack => gop.value_ptr.mask |= @as(u64, 1) << @intCast(bit),
-                }
+                gop.value_ptr.* = (if (gop.found_existing) gop.value_ptr.* else 0.0) + weight.*;
             }
         }
 
@@ -273,6 +260,7 @@ const WarmQuery = struct {
         if (self.freshness) |*f| f.deinit();
         self.matches.deinit(self.gpa);
         self.selective.deinit(self.gpa);
+        self.gpa.free(self.dfs);
         self.gpa.free(self.weights);
         self.gpa.free(self.terms);
         if (self.owns_persisted) {
@@ -297,18 +285,6 @@ const WarmQuery = struct {
             std.math.log2(@as(f64, @floatFromInt(count)) / @as(f64, @floatFromInt(df)));
     }
 
-    fn liveMatch(self: *const WarmQuery, body: []const u8) Match {
-        if (self.mode == .search)
-            return .{ .evidence_bits = liveEvidence(body, self.activeTerms(), self.weights) };
-
-        var mask: u64 = 0;
-        for (self.activeTerms(), self.weights, 0..) |needle, weight, bit|
-            if (weight > 0.0 and std.mem.find(u8, body, needle) != null) {
-                mask |= @as(u64, 1) << @intCast(bit);
-            };
-        return .{ .mask = mask };
-    }
-
     fn foldFresh(self: *WarmQuery) !void {
         for (self.fresh_ids) |doc| {
             if (doc >= self.persisted.paths.items.len or !self.admits(self.persisted.paths.items[doc])) {
@@ -320,12 +296,28 @@ const WarmQuery = struct {
                 continue;
             };
             defer self.gpa.free(body);
-            const match = self.liveMatch(body);
-            if (match.evidence_bits > 0.0 or match.mask != 0)
-                try self.matches.put(self.gpa, doc, match)
+            const evidence = liveEvidence(body, self.activeTerms(), self.weights);
+            if (evidence > 0.0)
+                try self.matches.put(self.gpa, doc, evidence)
             else
                 _ = self.matches.remove(doc);
         }
+    }
+
+    /// The nominee pool, strongest posting evidence first. Both deciders start
+    /// here: the index can say which documents mention the query, never which
+    /// are about it, so the ranking exists to bound how many bodies get read.
+    fn nominate(self: *const WarmQuery, gpa: std.mem.Allocator) !std.ArrayList(Candidate) {
+        var ranked: std.ArrayList(Candidate) = .empty;
+        errdefer ranked.deinit(gpa);
+        var it = self.matches.iterator();
+        while (it.next()) |entry| {
+            const doc = entry.key_ptr.*;
+            if (doc < self.persisted.paths.items.len and self.admits(self.persisted.paths.items[doc]))
+                try ranked.append(gpa, .{ .doc = doc, .evidence_bits = entry.value_ptr.* });
+        }
+        std.mem.sort(Candidate, ranked.items, self.persisted.paths.items, Candidate.before);
+        return ranked;
     }
 
     fn refreshed(self: *const WarmQuery) usize {
@@ -347,18 +339,11 @@ pub fn retrieve(
     src: Source,
 ) !?Result {
     if (query.len < 3 or top == 0) return null;
-    var warm = (try WarmQuery.init(gpa, io, query, roots, .search, src)) orelse return null;
+    var warm = (try WarmQuery.init(gpa, io, query, roots, std.math.maxInt(usize), src)) orelse return null;
     defer warm.deinit();
 
-    var ranked: std.ArrayList(Candidate) = .empty;
+    var ranked = try warm.nominate(gpa);
     defer ranked.deinit(gpa);
-    var sit = warm.matches.iterator();
-    while (sit.next()) |entry| {
-        const doc = entry.key_ptr.*;
-        if (doc < warm.persisted.paths.items.len and warm.admits(warm.persisted.paths.items[doc]))
-            try ranked.append(gpa, .{ .doc = doc, .evidence_bits = entry.value_ptr.evidence_bits });
-    }
-    std.mem.sort(Candidate, ranked.items, warm.persisted.paths.items, Candidate.before);
 
     const pool = @min(ranked.items.len, @max(top * 3, 12));
     var hits: std.ArrayList(Hit) = .empty;
@@ -402,9 +387,22 @@ pub fn retrieve(
     };
 }
 
-/// Index-backed weighted max-coverage for `relate pack`. Query chunks are
-/// corpus-priced from posting frequency; a picked document pays only for
-/// chunks not covered by earlier picks. `src` picks the lane (see `retrieve`).
+/// How many nominees `pack` reads before grading. The index knows which
+/// documents MENTION the query; only the bytes say which are about it, and a
+/// changelog that name-drops every term outranks the module on postings alone.
+/// Deep enough that the right file survives a bad nomination order, shallow
+/// enough to stay inside the query budget (~48 reads ≈ 200 ms warm).
+fn poolSize(top: usize) usize {
+    return @max(top * 8, 48);
+}
+
+/// Index-backed graded coverage packing for `relate pack`.
+///
+/// Postings nominate, bytes decide. Aspects are priced from corpus document
+/// frequency (`−log₂(df/N)`), every pooled body is graded on each aspect by
+/// saturating density, and the greedy facility-location sweep picks the set
+/// that jointly explains the most priced bits. `src` picks the lane (see
+/// `retrieve`).
 pub fn pack(
     gpa: std.mem.Allocator,
     io: std.Io,
@@ -414,27 +412,63 @@ pub fn pack(
     src: Source,
 ) !?PackResult {
     if (query.len < 3 or top == 0) return null;
-    var warm = (try WarmQuery.init(gpa, io, query, roots, .pack, src)) orelse return null;
+    var warm = (try WarmQuery.init(gpa, io, query, roots, coverage.max_aspects, src)) orelse return null;
     defer warm.deinit();
 
-    var docs: std.ArrayList(coverage.MaskCandidate) = .empty;
-    defer docs.deinit(gpa);
-    var mit = warm.matches.iterator();
-    while (mit.next()) |entry| {
-        const doc = entry.key_ptr.*;
-        if (doc >= warm.persisted.paths.items.len or !warm.admits(warm.persisted.paths.items[doc])) continue;
-        const size = (Dir.cwd().statFile(io, warm.persisted.paths.items[doc], .{}) catch continue).size;
-        try docs.append(gpa, .{
-            .doc = doc,
-            .mask = entry.value_ptr.mask,
-            .cost = std.math.log2(@as(f64, @floatFromInt(size + 2))),
-        });
+    const n = warm.persisted.paths.items.len;
+    const paths = warm.persisted.paths.items;
+    const active = warm.activeTerms();
+
+    // Price the aspects against the whole indexed corpus, not the pool: what a
+    // term is WORTH is a fact about the corpus, and pool-local frequency would
+    // reprice it by however the nomination happened to land.
+    const aspects = try gpa.alloc(coverage.Aspect, active.len);
+    errdefer gpa.free(aspects);
+    for (active, warm.dfs, aspects) |term, df, *aspect| {
+        const kind = coverage.kindOf(df, n, active.len);
+        aspect.* = .{
+            .term = term,
+            .bits = if (kind == .priced) coverage.bitsOf(df, n) else 0.0,
+            .df = df,
+            .kind = kind,
+        };
     }
 
-    var total_bits: f64 = 0.0;
-    for (warm.weights) |weight| total_bits += weight;
-    const selected = try coverage.greedyMasks(gpa, docs.items, warm.weights, warm.persisted.paths.items, top);
+    var ranked = try warm.nominate(gpa);
+    defer ranked.deinit(gpa);
+    const pool = @min(ranked.items.len, poolSize(top));
+
+    // Read the pool once; grade it once the mean length is known.
+    var bodies: std.ArrayList([]u8) = .empty;
+    defer {
+        for (bodies.items) |body| gpa.free(body);
+        bodies.deinit(gpa);
+    }
+    var docs: std.ArrayList(u32) = .empty;
+    defer docs.deinit(gpa);
+    var total_len: u64 = 0;
+    for (ranked.items[0..pool]) |candidate| {
+        const body = corpus.readMember(io, Dir.cwd(), paths[candidate.doc], gpa) orelse continue;
+        try bodies.append(gpa, body);
+        try docs.append(gpa, candidate.doc);
+        total_len += body.len;
+    }
+    const mean_len = if (bodies.items.len == 0) 0.0 else @as(f64, @floatFromInt(total_len)) / @as(f64, @floatFromInt(bodies.items.len));
+
+    const grades = try gpa.alloc(f64, bodies.items.len * active.len);
+    defer gpa.free(grades);
+    const cands = try gpa.alloc(coverage.Candidate, bodies.items.len);
+    defer gpa.free(cands);
+    for (bodies.items, docs.items, 0..) |body, doc, i| {
+        const row = grades[i * active.len ..][0..active.len];
+        coverage.gradeBody(row, aspects, body, mean_len);
+        cands[i] = .{ .doc = doc, .strength = row };
+    }
+
+    const total_bits = coverage.pricedBits(aspects);
+    const selected = try coverage.greedy(gpa, aspects, cands, paths, top, minGain(total_bits));
     defer gpa.free(selected);
+
     var picks: std.ArrayList(PackPick) = .empty;
     errdefer {
         for (picks.items) |pick| gpa.free(pick.path);
@@ -442,34 +476,54 @@ pub fn pack(
     }
     for (selected) |pick|
         try picks.append(gpa, .{
-            .path = try gpa.dupe(u8, warm.persisted.paths.items[pick.doc]),
+            .path = try gpa.dupe(u8, paths[pick.doc]),
             .marginal_bits = pick.marginal_bits,
             .covered_bits = pick.covered_bits,
+            .solo_bits = pick.solo_bits,
+            .owns = pick.owns,
         });
 
     return .{
         .picks = try picks.toOwnedSlice(gpa),
+        .aspects = aspects,
         .total_bits = total_bits,
-        .foreign = warm.foreign,
-        .indexed_files = warm.persisted.paths.items.len,
-        .candidates = docs.items.len,
+        .foreign = countKind(aspects, .foreign),
+        .glue = countKind(aspects, .glue),
+        .indexed_files = n,
+        .candidates = ranked.items.len,
+        .pool = bodies.items.len,
         .refreshed = warm.refreshed(),
         .gpa = gpa,
     };
 }
 
-test "query chunks retain a three-byte term and deduplicate whole-query words" {
-    const gpa = std.testing.allocator;
-    const short = try terms(gpa, "dog");
-    defer gpa.free(short);
-    try std.testing.expectEqual(@as(usize, 1), short.len);
-    try std.testing.expectEqualStrings("dog", short[0]);
+fn countKind(aspects: []const coverage.Aspect, kind: coverage.Kind) usize {
+    var n: usize = 0;
+    for (aspects) |aspect| n += @intFromBool(aspect.kind == kind);
+    return n;
+}
 
-    const phrase = try terms(gpa, "resident session freshness");
-    defer gpa.free(phrase);
-    try std.testing.expectEqual(@as(usize, 4), phrase.len);
-    try std.testing.expectEqualStrings("resident session freshness", phrase[0]);
-    try std.testing.expectEqualStrings("resident", phrase[1]);
+/// The floor a pick must clear to earn a place in the reading set: 2% of the
+/// query's priced description, and never less than a quarter-bit. Padding a
+/// pack out to `--top` with files that explain nothing new is the same lie as
+/// reporting 100% coverage from one pick — it just costs more to read.
+pub fn minGain(total_bits: f64) f64 {
+    return @max(0.02 * total_bits, 0.25);
+}
+
+test "the read pool is deep enough that a bad nomination order is survivable" {
+    // The nomination order is posting evidence, which cannot tell "mentions it"
+    // from "is about it" — so the pool has to be much deeper than the ask.
+    try std.testing.expect(poolSize(4) >= 48);
+    try std.testing.expectEqual(@as(usize, 160), poolSize(20));
+}
+
+test "a pick must clear a floor relative to the query it is answering" {
+    // 2% of the priced description, never under a quarter-bit: a pack padded
+    // out to --top with files that explain nothing new just costs more to read.
+    try std.testing.expectApproxEqAbs(@as(f64, 0.6), minGain(30.0), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 0.25), minGain(1.0), 1e-9);
+    try std.testing.expectApproxEqAbs(@as(f64, 0.25), minGain(0.0), 1e-9);
 }
 
 test "evidence reference is bounded and keeps distant query neighborhoods" {
