@@ -7,12 +7,12 @@ records from raw bytes.
 
 ## Files
 
-| File              | Job                                                                                                                                                                                                         |
-| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File              | Job                                                                                                                                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sketch.zig`      | The byte channel — LZJD over LZ78 phrase-dictionary bottom-k MinHash (`min_phrase=3` noise floor); backs `relate similar` / `echoes --as copies`                                                           |
-| `silhouette.zig`  | The structure channel — MOSS-style winnowed shingles over a normalized token stream (identifiers→I, numbers→N, strings→S, comments dropped, pan-language keywords kept), KMV bottom-k; backs `--as shapes`  |
-| `channel.zig`     | The channel vocabulary (`copies` · `twins` · `shapes` · `any` · `recall` · `context`) and its calibrated grade bands — one set of cut points the kernel and every renderer share                            |
-| `fingerprint.zig` | Parallel bytes→record pass: byte-balanced sharding over `primitives/parallel.zig`, fail-to-`empty` degradation; the live rung and the atlas freshness fold both build through here                          |
+| `silhouette.zig`  | The structure channel — MOSS-style winnowed shingles over a normalized token stream (identifiers→I, numbers→N, strings→S, comments dropped, pan-language keywords kept), KMV bottom-k; backs `--as shapes` |
+| `channel.zig`     | The channel vocabulary (`copies` · `twins` · `shapes` · `any` · `recall` · `context`) and its calibrated grade bands — one set of cut points the kernel and every renderer share                           |
+| `fingerprint.zig` | Parallel bytes→record pass: byte-balanced sharding over `primitives/parallel.zig`, fail-to-`empty` degradation; the live rung and the atlas freshness fold both build through here                         |
 
 An identical skeleton under renamed identifiers reads **exactly 0** on the
 structure channel while the byte channel reads far — the gap is what `echoes`

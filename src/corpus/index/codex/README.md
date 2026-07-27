@@ -76,15 +76,15 @@ adversarial oracle suite, and the at-scale proof below.
 
 ## The layers
 
-| file             | structure                                           | rôle                                                                |
-| ---------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
+| file             | structure                                           | rôle                                                                                |
+| ---------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | `sais.zig`       | SA-IS suffix array (Nong–Zhang–Chan 2009)           | O(n) construction — the sentinel seam over vendored libsais; build-time only, freed |
-| `rrr.zig`        | Plain + RRR bitvectors behind one `Bits` seam       | O(1) rank at entropy space; `adopt` keeps the smaller per vector    |
-| `wavelet.zig`    | canonical-Huffman wavelet tree, σ ≤ 4096            | occ/access in one descent — the rank oracle                         |
-| `codex.zig`      | the `Codex`: build → count/find/restore + save/load | the product surface; text/SA/BWT all freed after build              |
-| `cento.zig`      | Ziv–Merhav cross-parse + Shannon phrase pricing     | corpus-global relatedness: quote a query out of the corpus, in bits |
-| `shelf.zig`      | multi-document corpus behind one codex              | doc catalog + offsets + freshness anchor; count/tally per file      |
-| `codex_test.zig` | differential + property suite                       | every layer vs a naive oracle; nothing self-referential             |
+| `rrr.zig`        | Plain + RRR bitvectors behind one `Bits` seam       | O(1) rank at entropy space; `adopt` keeps the smaller per vector                    |
+| `wavelet.zig`    | canonical-Huffman wavelet tree, σ ≤ 4096            | occ/access in one descent — the rank oracle                                         |
+| `codex.zig`      | the `Codex`: build → count/find/restore + save/load | the product surface; text/SA/BWT all freed after build                              |
+| `cento.zig`      | Ziv–Merhav cross-parse + Shannon phrase pricing     | corpus-global relatedness: quote a query out of the corpus, in bits                 |
+| `shelf.zig`      | multi-document corpus behind one codex              | doc catalog + offsets + freshness anchor; count/tally per file                      |
+| `codex_test.zig` | differential + property suite                       | every layer vs a naive oracle; nothing self-referential                             |
 
 Bytes are lifted to u16 symbols c+1 under sentinel 0, so all 256 byte values
 — including NUL — are ordinary, searchable content.

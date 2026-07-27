@@ -21,11 +21,11 @@ Pure kernel math; verb dispatch and rendering live in
 
 The floor splits by the **question** each group answers:
 
-| Group                  | Question                                          | Files                                                  |
-| ---------------------- | ------------------------------------------------- | ------------------------------------------------------ |
-| [`metric/`](metric/)   | _How far apart are two bodies?_                   | `sketch` · `silhouette` · `channel` · `fingerprint`    |
-| [`cluster/`](cluster/) | _Which bodies (or functions) are the same thing?_ | `pairs` · `families` · `echoes`                        |
-| [`recall/`](recall/)   | _Which files best explain a query?_               | `lexicon` · `zipper` · `coverage`                      |
+| Group                  | Question                                          | Files                                               |
+| ---------------------- | ------------------------------------------------- | --------------------------------------------------- |
+| [`metric/`](metric/)   | _How far apart are two bodies?_                   | `sketch` · `silhouette` · `channel` · `fingerprint` |
+| [`cluster/`](cluster/) | _Which bodies (or functions) are the same thing?_ | `pairs` · `families` · `echoes`                     |
+| [`recall/`](recall/)   | _Which files best explain a query?_               | `lexicon` · `zipper` · `coverage`                   |
 
 ## Pipeline
 
