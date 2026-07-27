@@ -6,7 +6,7 @@ doc_radar:
     - file: libs/kernels/irregex/src/kernel/kinship/recall/zipper.zig
       contains: ["pub fn coldBits", "pub const Automaton"]
     - file: libs/kernels/irregex/src/kernel/kinship/recall/coverage.zig
-      contains: ["pub fn greedyPack", "marginal_bits"]
+      contains: ["pub fn greedy", "marginal_bits"]
     - file: libs/kernels/irregex/src/kernel/kinship/metric/channel.zig
       contains: [".twins => bytes - structure", ".any => @min(bytes, structure)"]
       description: each channel composes the two measured distances in exactly one place

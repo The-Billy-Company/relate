@@ -18,7 +18,7 @@
 //! `surface/cli/grade.zig` re-exports these and adds the stderr verdict.
 //!
 //! Cut points are measured, not chosen. Distances: 0.05 near-exact, 0.25 "same
-//! thing, drifted" (the `dups` admission default), 0.50 "shares style, not
+//! thing, drifted" (the `copies` admission default), 0.50 "shares style, not
 //! substance". Gaps: the 0.15 `--min-echo` floor, below which structural
 //! closeness is small-sample noise. Recall gains, measured over this repo's
 //! 20k-file corpus — a sentence lifted verbatim from a source file scored
@@ -115,11 +115,11 @@ pub const Channel = enum {
     /// way — the aliases are spellings, not a second code path.
     pub fn parse(s: []const u8) ?Channel {
         const table = .{
-            .{ "copies", Channel.copies },  .{ "bytes", Channel.copies },
-            .{ "twins", Channel.twins },    .{ "echo", Channel.twins },
-            .{ "shapes", Channel.shapes },  .{ "structure", Channel.shapes },
-            .{ "any", Channel.any },        .{ "fused", Channel.any },
-            .{ "recall", Channel.recall },  .{ "gain", Channel.recall },
+            .{ "copies", Channel.copies }, .{ "bytes", Channel.copies },
+            .{ "twins", Channel.twins },   .{ "echo", Channel.twins },
+            .{ "shapes", Channel.shapes }, .{ "structure", Channel.shapes },
+            .{ "any", Channel.any },       .{ "fused", Channel.any },
+            .{ "recall", Channel.recall }, .{ "gain", Channel.recall },
         };
         inline for (table) |row| if (std.mem.eql(u8, s, row[0])) return row[1];
         return null;
@@ -137,7 +137,7 @@ pub const Grade = enum {
     /// The same bytes, the same skeleton, or — on `recall` — text the corpus
     /// can already quote.
     identical,
-    /// A real relation — the `--max-distance 0.25` band `dups` ships with.
+    /// A real relation — the `--max-distance 0.25` band `copies` ships with.
     strong,
     /// Related, worth a look, not a fork.
     moderate,
@@ -233,7 +233,7 @@ test "one vocabulary: both spellings parse into the same channel" {
 test "distance bands match the documented cut points" {
     try t.expectEqual(Grade.identical, of(.copies, 0.00));
     try t.expectEqual(Grade.identical, of(.copies, 0.05));
-    try t.expectEqual(Grade.strong, of(.copies, 0.25)); // the dups default
+    try t.expectEqual(Grade.strong, of(.copies, 0.25)); // the copies default
     try t.expectEqual(Grade.moderate, of(.shapes, 0.50));
     try t.expectEqual(Grade.weak, of(.copies, 0.60)); // past "shares style, not substance"
     try t.expectEqual(Grade.weak, of(.copies, 0.75));

@@ -1,3 +1,14 @@
+---
+doc_radar:
+  paths_exist:
+    - libs/kernels/irregex/bench/codex/scale.zig
+    - libs/kernels/irregex/bench/codex/race.sh
+  sentinels:
+    - description: "the codex-scale build step is wired"
+      file: libs/kernels/irregex/build.zig
+      contains: 'b.step("codex-scale"'
+---
+
 # bench/codex — the self-index at-scale proof
 
 Harness + driver proving `src/corpus/index/codex/` (the compressed self-index) on real

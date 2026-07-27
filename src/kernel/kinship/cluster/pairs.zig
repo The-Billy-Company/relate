@@ -1,5 +1,5 @@
-//! relate — the near-duplicate pair machinery `dups`, `clusters`, and `echoes`
-//! share: bottom-16 seed-hash candidate buckets nominate, exact pairwise
+//! relate — the near-duplicate pair machinery every `echoes` channel rides:
+//! bottom-16 seed-hash candidate buckets nominate, exact pairwise
 //! verification decides, and the total (distance, path, path) order sorts.
 //!
 //! Pure kernel: given records that expose `slots()`/`len` (a `Sketch` or a

@@ -134,7 +134,7 @@ test "a refused doc degrades to empty and is counted, never dropped" {
     try t.expectEqual(@as(usize, 1), failed);
     try t.expectEqual(@as(usize, 1), out[0].n);
     try t.expectEqual(@as(usize, 0), out[1].n); // the refusal, degraded
-    try t.expectEqual(@as(usize, 2), out[2].n); // its neighbours are unaffected
+    try t.expectEqual(@as(usize, 2), out[2].n); // its neighbors are unaffected
 }
 
 test "an empty corpus needs no shards" {

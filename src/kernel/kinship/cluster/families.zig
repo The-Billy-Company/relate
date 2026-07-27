@@ -1,7 +1,7 @@
 //! relate — union-find over the verified near-duplicate graph, the transitive
-//! closure `clusters` reports as fork families.
+//! closure `--shape families` reports as fork families.
 //!
-//! Pure kernel: given the edges `dups` verifies, `Forest` collapses connected
+//! Pure kernel: given the edges `pairs` verifies, `Forest` collapses connected
 //! components with path-compressing finds and min-index roots. No ranks — the
 //! find loop halves paths aggressively enough for these graph sizes, and
 //! determinism comes from the driver's final sort, not the tree shape.
