@@ -24,12 +24,11 @@ persists two channels per corpus file: one LZJD sketch
 (`kernel/kinship/metric/sketch.zig` — bottom-k of the LZ78 phrase-hash
 dictionary, ~1 KiB) and one structure silhouette
 (`kernel/kinship/metric/silhouette.zig` — winnowed normalized-token shingles,
-~2 KiB), so the kinship verbs (`similar` / `dups` / `clusters` / `echoes`)
-answer from tens of MiB of index instead of re-reading and re-parsing a
-couple hundred MiB of corpus per invocation. Built by `relate index`,
-reported by `relate status`. Both channels refresh together in the fold —
-a row whose sketch and silhouette answered from different bytes would
-corrupt the echo signal.
+~2 KiB), so the kinship verbs (`similar` / `echoes`) answer from tens of MiB
+of index instead of re-reading and re-parsing a couple hundred MiB of corpus
+per invocation. Built by `relate index`, reported by `relate status`. Both
+channels refresh together in the fold — a row whose sketch and silhouette
+answered from different bytes would corrupt the echo signal.
 
 Same covenant as every irregex index — **an accelerator, never an
 authority**:
