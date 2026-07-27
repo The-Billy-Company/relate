@@ -1,9 +1,10 @@
 ---
 doc_radar:
   counts:
-    - path: "libs/kernels/irregex/src/corpus/index/codex"
-      glob: "*.zig"
-      expect: 7
+    - description: "the codex package — seven Zig source files"
+      glob: libs/kernels/irregex/src/corpus/index/codex/*.zig
+      unit: files
+      equals: 7
   sentinels:
     - file: "libs/kernels/irregex/src/root.zig"
       contains:
@@ -14,6 +15,7 @@ doc_radar:
     - file: "libs/kernels/irregex/build.zig"
       contains:
         - "codex-scale"
+        - "vendor/libsais/src"
     - file: "libs/kernels/irregex/src/surface/face/gist/main.zig"
       contains:
         - '"codex"'
@@ -23,6 +25,7 @@ doc_radar:
     - file: "libs/kernels/irregex/src/corpus/index/codex/sais.zig"
       contains:
         - "induced sorting"
+        - "extern fn libsais"
     - file: "libs/kernels/irregex/src/corpus/index/codex/rrr.zig"
       contains:
         - "Raman–Raman–Rao"
@@ -75,7 +78,7 @@ adversarial oracle suite, and the at-scale proof below.
 
 | file             | structure                                           | rôle                                                                |
 | ---------------- | --------------------------------------------------- | ------------------------------------------------------------------- |
-| `sais.zig`       | SA-IS suffix array (Nong–Zhang–Chan 2009)           | O(n) construction — build-time only, freed                          |
+| `sais.zig`       | SA-IS suffix array (Nong–Zhang–Chan 2009)           | O(n) construction — the sentinel seam over vendored libsais; build-time only, freed |
 | `rrr.zig`        | Plain + RRR bitvectors behind one `Bits` seam       | O(1) rank at entropy space; `adopt` keeps the smaller per vector    |
 | `wavelet.zig`    | canonical-Huffman wavelet tree, σ ≤ 4096            | occ/access in one descent — the rank oracle                         |
 | `codex.zig`      | the `Codex`: build → count/find/restore + save/load | the product surface; text/SA/BWT all freed after build              |
@@ -105,7 +108,7 @@ either way; `sample_rate = 0` drops locate for a count/restore-only index.
 topology, samples); everything derived — rank samples, canonical codes,
 superblock cursors — is rebuilt through the layers' validating constructors
 at load, so a mangled blob fails closed with `error.Corrupt` instead of
-answering wrong. Load is ~0.3% of build (29ms vs 10s at 128MB).
+answering wrong. Load is ~0.6% of build (29ms vs 4.5s at 128MB).
 
 `shelf.zig` lifts one codex over a multi-document corpus (newline-sentinel
 concatenation, doc catalog, per-doc offsets, its own T3-style freshness
@@ -129,7 +132,9 @@ anchor) and is what the product verbs persist (`codex.shelf`):
 
 - **Correctness** — `codex_test.zig` checks SA-IS against a comparison-sort
   oracle (degenerate/Fibonacci/binary/all-256-bytes plus seeded random
-  sweeps), RRR rank/get at _every_ position across densities and block
+  sweeps) and, at a megabyte where the construction changes strategy and a
+  naive sort cannot follow, against a linear permutation-and-adjacency oracle;
+  RRR rank/get at _every_ position across densities and block
   boundaries, wavelet occ/access against literal scans, and end-to-end
   count/find/restore against `std.mem` scans under a property-fuzz loop with
   mutated patterns.
@@ -172,9 +177,37 @@ a naive scan:
 128× the corpus: count is _flat_ (cache noise only); the scan pays 118×. The
 speedup grows unboundedly with corpus size — that is the Ω(m)-floor signature,
 not a constant-factor win. `.plain_only` trades ~2× space for ~6× faster
-ranks (~1.7µs at m=16) when the corpus is small enough to spend it. Build is
-SA-IS-bound: ~10s at 128MB, linear; whole-corpus `restore()` verifies
-byte-exact at every size.
+ranks (~1.7µs at m=16) when the corpus is small enough to spend it.
+Whole-corpus `restore()` verifies byte-exact at every size.
+
+### Build cost, and what still floors it (2026-07-26)
+
+Build was SA-IS-bound, and the sort is now vendored libsais rather than a
+hand-rolled induced sort. Per-phase wall time, min of 3, on real repo source:
+
+| n     | suffix sort | BWT + histogram | wavelet + RRR | locate | build      |
+| ----- | ----------- | --------------- | ------------- | ------ | ---------- |
+| 32MB  | 0.44s       | 0.12s           | 0.44s         | 0.04s  | **1.03s**  |
+| 128MB | 2.02s       | 0.61s           | 1.78s         | 0.14s  | **4.55s**  |
+| 200MB | 3.23s       | 1.13s           | 2.41s         | 0.22s  | **6.98s**  |
+
+The retired implementation sorted the same 200MB in 10.58s, so the swap is
+**3.3× on the sort and 2.1× on the whole build** — and it is byte-identical:
+the two constructions were run against each other over the full corpus and
+agreed on all 209,715,201 rows. The adapter costs nothing measurable, because
+the sentinel row is a single stored word and libsais sorts straight into the
+tail of the same allocation.
+
+The interesting number is the one that _didn't_ move. The sort fell from 74%
+of the build to 46%, which means a **free** suffix sort would still leave 3.8s
+at 200MB — and the shelf's persist step adds ~2s of concatenation and
+serialization on top. So the sort is no longer what keeps `relate index
+--shelf` opt-in; at this corpus size (21k files, 208MiB) the shelf is a ~9s
+artifact whose floor is now the wavelet/RRR construction and the 79MiB
+serialize, and no further work on suffix sorting can reach a default-on
+budget. That is a claim about where to look next, measured rather than
+assumed: `.local/spikes/libsais-eval/phases.zig` times each phase and prints
+the sort-free ceiling beside the total.
 
 Persistence — save/load of the full index, loaded answers re-verified
 against the naive oracle:
@@ -218,4 +251,5 @@ Shannon 1948 · Burrows & Wheeler SRC-124 1994 · Ferragina & Manzini FOCS
 2000 · Manzini JACM 2001 · Raman, Raman & Rao SODA 2002 · Grossi, Gupta &
 Vitter SODA 2003 · Nong, Zhang & Chan DCC 2009 · Mäkinen & Navarro SPIRE 2007
 · Navarro & Mäkinen, _Compressed Full-Text Indexes_, ACM Surveys 2007 ·
-Ohlebusch, Gog & Kügel SPIRE 2010.
+Ohlebusch, Gog & Kügel SPIRE 2010 · Grebnov, _libsais_ 2.10.2 (the shipped
+induced sort — pinned under [`vendor/libsais/`](../../../../vendor/libsais/)).

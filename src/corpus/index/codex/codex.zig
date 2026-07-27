@@ -13,7 +13,8 @@
 //!              This is the Shannon claim made mechanical: the index is a
 //!              decodable lossless code — a compression — not a companion to one.
 //!
-//! Pipeline: SA-IS suffix array (O(n), `sais.zig`) → Burrows–Wheeler transform
+//! Pipeline: SA-IS suffix array (O(n), `sais.zig` over vendored libsais) →
+//! Burrows–Wheeler transform
 //! (a permutation: zero information change, Manzini JACM 2001 bounds its
 //! zeroth-order-coded size by nH_k) → Huffman-shaped wavelet tree over
 //! RRR-compressed bitvectors (`wavelet.zig` + `rrr.zig` — Ferragina–Manzini
@@ -65,7 +66,9 @@ pub const Codex = struct {
     n: usize, // symbol count = text len + 1
     stats: Stats,
 
-    /// Build from `text` (any bytes, ≤ ~4GiB). The text is not retained.
+    /// Build from `text` (any bytes, up to `sais.max_text_len` — the suffix
+    /// sort's 2 GiB addressing ceiling, past which this returns `Oversized`
+    /// rather than a truncated index). The text is not retained.
     pub fn build(gpa: std.mem.Allocator, text: []const u8, opts: Options) !Codex {
         const n = text.len + 1;
         const sa = try sais.build(gpa, text);
@@ -74,14 +77,18 @@ pub const Codex = struct {
         // BWT (Burrows–Wheeler): permute so each symbol sits by its right
         // context. Zeroth-order coding of the BWT ≤ nH_k of the original
         // (Manzini JACM 2001) — why the wavelet+RRR below reaches k-th order.
+        // The histogram rides along: this loop is stalled on a random gather
+        // into `text`, so counting the symbol it just produced costs nothing
+        // measurable and spares a second sequential sweep of all n symbols.
         const bwt = try gpa.alloc(u16, n);
         defer gpa.free(bwt);
+        var freq: [SIGMA]u64 = @splat(0);
         for (sa, 0..) |p, j| {
             const prev = if (p == 0) n - 1 else p - 1;
-            bwt[j] = if (prev == n - 1) 0 else @as(u16, text[prev]) + 1;
+            const sym: u16 = if (prev == n - 1) 0 else @as(u16, text[prev]) + 1;
+            bwt[j] = sym;
+            freq[sym] += 1;
         }
-        var freq: [SIGMA]u64 = @splat(0);
-        for (bwt) |c| freq[c] += 1;
         var c_table: [SIGMA]usize = undefined;
         var acc: usize = 0;
         for (0..SIGMA) |c| {
@@ -348,10 +355,10 @@ const frame = @import("../frame/frame.zig");
 const putInt = frame.putInt;
 const putWords = frame.putWords;
 const Cursor = frame.Cursor;
+const signet = @import("../../../kernel/primitives/signet.zig");
 
 fn putBits(gpa: std.mem.Allocator, out: *std.ArrayList(u8), bits: *const rrr.Bits) !void {
     try out.append(gpa, @intFromEnum(std.meta.activeTag(bits.*)));
-const signet = @import("../../../kernel/primitives/signet.zig");
     try putInt(gpa, out, u64, @intCast(bits.nbits()));
     switch (bits.*) {
         .plain => |*p| try putWords(gpa, out, p.words),

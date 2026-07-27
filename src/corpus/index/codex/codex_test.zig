@@ -73,6 +73,47 @@ fn expectSaisMatchesOracle(text: []const u8) !void {
     try testing.expectEqualSlices(u32, want, got);
 }
 
+/// O(n) suffix-array verification, independent of how the array was built: it
+/// must be a permutation of `0..=text.len`, and every adjacent pair must be in
+/// order. Adjacency is decided in O(1) from the rank of the NEXT suffix rather
+/// than by comparing bytes, so this stays linear on exactly the repetitive
+/// corpora that make the comparison-sort oracle above quadratic — which is
+/// what lets it run at a megabyte, where the construction takes code paths a
+/// 400-byte text never reaches.
+fn expectValidSuffixArray(text: []const u8) !void {
+    const gpa = testing.allocator;
+    const sa = try sais.build(gpa, text);
+    defer gpa.free(sa);
+    const n = text.len + 1;
+    try testing.expectEqual(n, sa.len);
+
+    const rank = try gpa.alloc(u32, n);
+    defer gpa.free(rank);
+    @memset(rank, std.math.maxInt(u32));
+    for (sa, 0..) |p, r| {
+        try testing.expect(p < n);
+        try testing.expectEqual(std.math.maxInt(u32), rank[p]); // no repeats
+        rank[p] = @intCast(r);
+    }
+
+    // symbol(i): the lifted alphabet the codex indexes — byte c ↦ c+1, with a
+    // unique smallest sentinel 0 at text.len.
+    const sym = struct {
+        fn at(t: []const u8, i: usize) u16 {
+            return if (i == t.len) 0 else @as(u16, t[i]) + 1;
+        }
+    }.at;
+    for (1..n) |r| {
+        const a = sa[r - 1];
+        const b = sa[r];
+        const ca = sym(text, a);
+        const cb = sym(text, b);
+        // Equal symbols mean neither is the sentinel, so both successors exist.
+        const ordered = if (ca != cb) ca < cb else rank[a + 1] < rank[b + 1];
+        try testing.expect(ordered);
+    }
+}
+
 // ── sais ──
 
 test "sais: degenerate and adversarial texts match the sort oracle" {
@@ -111,6 +152,49 @@ test "sais: property — random texts across alphabet sizes match the oracle" {
         for (text) |*c| c.* = rand.intRangeAtMost(u8, 0, sigma);
         try expectSaisMatchesOracle(text);
     }
+}
+
+test "sais: megabyte corpora stay valid where the construction changes strategy" {
+    // Every text above is small enough to sort naively, and a suffix sort does
+    // not do at 400 bytes what it does at a megabyte: the LMS recursion goes
+    // several levels deep, the bucket arrays stop fitting in cache, and the
+    // scale-tuned paths of the vendored constructor take over. These shapes are
+    // the ones that break induced sorting when it breaks — a binary alphabet
+    // (maximal recursion depth), a pure run (every suffix in one bucket), a
+    // period-2 string (LMS substrings that all name equal), and the Fibonacci
+    // word (the classic worst case for LMS naming) — each checked by the linear
+    // oracle rather than trusted.
+    const gpa = testing.allocator;
+    const mib = 1 << 20;
+
+    var prng = std.Random.DefaultPrng.init(0x5a15_1a26);
+    const binary = try gpa.alloc(u8, mib);
+    defer gpa.free(binary);
+    for (binary) |*c| c.* = prng.random().intRangeAtMost(u8, 0, 1);
+    try expectValidSuffixArray(binary);
+
+    const run = try gpa.alloc(u8, mib);
+    defer gpa.free(run);
+    @memset(run, 'a');
+    try expectValidSuffixArray(run);
+    for (run, 0..) |*c, i| c.* = if (i % 2 == 0) 'a' else 'b';
+    try expectValidSuffixArray(run);
+
+    // Fibonacci word: S(k) = S(k-1) ++ S(k-2), grown past a megabyte.
+    var fib: std.ArrayList(u8) = .empty;
+    defer fib.deinit(gpa);
+    var prev: std.ArrayList(u8) = .empty;
+    defer prev.deinit(gpa);
+    try fib.appendSlice(gpa, "ab");
+    try prev.append(gpa, 'a');
+    while (fib.items.len < mib) {
+        const next = try gpa.dupe(u8, fib.items);
+        defer gpa.free(next);
+        try fib.appendSlice(gpa, prev.items);
+        prev.clearRetainingCapacity();
+        try prev.appendSlice(gpa, next);
+    }
+    try expectValidSuffixArray(fib.items);
 }
 
 // ── rrr ──
