@@ -100,8 +100,8 @@ either way; `sample_rate = 0` drops locate for a count/restore-only index.
 
 ## Persistence & the two tiers riding it
 
-`Codex.save`/`load` is a versioned, XxHash64-checksummed wire format that
-stores only **primary** data (bitvector payloads, Huffman code lengths, tree
+`Codex.save`/`load` is a versioned wire format, sealed with the shared
+[`signet`](../../../kernel/primitives/signet.zig), that stores only **primary** data (bitvector payloads, Huffman code lengths, tree
 topology, samples); everything derived — rank samples, canonical codes,
 superblock cursors — is rebuilt through the layers' validating constructors
 at load, so a mangled blob fails closed with `error.Corrupt` instead of

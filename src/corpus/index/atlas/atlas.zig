@@ -58,17 +58,20 @@ pub fn atlasFile() []const u8 {
 
 const MAGIC = "ATLS";
 // v2 added the build-roots blob; v3 added the silhouette (structure-channel)
-// rows. An older atlas is treated as corrupt — every verb degrades to a live
-// build and suggests `relate index`; guessing sections an old blob never
-// recorded could unsoundly answer a query warm.
-const VERSION: u32 = 3;
+// rows; v4 replaced the FNV-1a u64 trailer with a BLAKE3 signet. An older atlas
+// is treated as corrupt — every verb degrades to a live build and suggests
+// `relate index`; guessing sections an old blob never recorded could unsoundly
+// answer a query warm.
+const VERSION: u32 = 4;
 
 // Little-endian serializer + fail-closed cursor + NUL catalog codec shared by
 // every persisted irregex artifact.
 const frame = @import("../frame/frame.zig");
 const putInt = frame.putInt;
-const fnv64 = frame.fnv64;
 const Cursor = frame.Cursor;
+// The seal. A 64 MB atlas behind a 64-bit non-cryptographic trailer was the
+// weakest integrity claim of any artifact here; `signet` makes it a real one.
+const signet = @import("../../../kernel/primitives/signet.zig");
 
 /// Serialize `paths` + their `sketches` and `silhouettes` (same order) under
 /// the `built_ns` anchor, plus the `roots` the corpus was built over (so a
@@ -91,7 +94,7 @@ pub fn save(gpa: std.mem.Allocator, paths: []const []const u8, sketches: []const
     // + silhouette rows, and the trailer hash. Each row is u16 len + k×u64
     // slots (zero-padded past len) — see format header.
     const row_bytes: usize = 2 * @sizeOf(u16) + (sketch.k + silhouette_mod.k) * @sizeOf(u64);
-    try out.ensureTotalCapacityPrecise(gpa, out.items.len + blob_len + 8 + roots_len + paths.len * row_bytes + 8);
+    try out.ensureTotalCapacityPrecise(gpa, out.items.len + blob_len + 8 + roots_len + paths.len * row_bytes + signet.len);
     try frame.joinNul(gpa, &out, paths);
 
     try putInt(gpa, &out, u64, roots_len);
@@ -106,7 +109,7 @@ pub fn save(gpa: std.mem.Allocator, paths: []const []const u8, sketches: []const
         for (s.h) |v| try putInt(gpa, &out, u64, v);
     }
 
-    try putInt(gpa, &out, u64, fnv64(out.items));
+    try signet.sealInto(gpa, &out);
     return out.toOwnedSlice(gpa);
 }
 
@@ -133,10 +136,8 @@ pub const Atlas = struct {
 
 /// Parse a `save` blob; fails closed on any framing/bounds/checksum violation.
 pub fn parse(gpa: std.mem.Allocator, bytes: []const u8) !Atlas {
-    if (bytes.len < MAGIC.len + 8 or !std.mem.eql(u8, bytes[0..MAGIC.len], MAGIC)) return error.Corrupt;
-    const body = bytes[0 .. bytes.len - 8];
-    const declared = std.mem.readInt(u64, bytes[bytes.len - 8 ..][0..8], .little);
-    if (fnv64(body) != declared) return error.Corrupt;
+    if (bytes.len < MAGIC.len + signet.len or !std.mem.eql(u8, bytes[0..MAGIC.len], MAGIC)) return error.Corrupt;
+    const body = try signet.unseal(bytes);
 
     var c = Cursor{ .buf = body, .pos = MAGIC.len };
     const version = try c.int(u32);

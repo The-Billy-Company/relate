@@ -248,11 +248,13 @@ pub const Codex = struct {
     // fails closed with `error.Corrupt` instead of answering wrong.
 
     const MAGIC = "CDX1";
-    const VERSION: u32 = 1;
+    // v2 replaced the XxHash64 trailer with the shared BLAKE3 signet; an older
+    // blob reads as corrupt and the shelf is rebuilt.
+    const VERSION: u32 = 2;
 
     /// Serialize to an owned byte buffer (I/O stays with the caller). The
-    /// payload is framed magic + version up front, XxHash64 checksum at the
-    /// tail. Caller frees.
+    /// payload is framed magic + version up front, sealed at the tail. Caller
+    /// frees.
     pub fn save(self: *const Codex, gpa: std.mem.Allocator) ![]u8 {
         var out: std.ArrayList(u8) = .empty;
         errdefer out.deinit(gpa);
@@ -272,17 +274,15 @@ pub const Codex = struct {
         if (self.marks) |*m| try putBits(gpa, &out, m);
         try putInt(gpa, &out, u64, @intCast(self.samples.len));
         for (self.samples) |s| try putInt(gpa, &out, u32, s);
-        try putInt(gpa, &out, u64, std.hash.XxHash64.hash(0, out.items));
+        try signet.sealInto(gpa, &out);
         return out.toOwnedSlice(gpa);
     }
 
     /// Deserialize a `save` buffer. Fails closed (`error.Corrupt`) on any
     /// framing, checksum, or structural violation.
     pub fn load(gpa: std.mem.Allocator, bytes: []const u8) !Codex {
-        if (bytes.len < MAGIC.len + 4 + 8 or !std.mem.eql(u8, bytes[0..4], MAGIC)) return error.Corrupt;
-        const body = bytes[0 .. bytes.len - 8];
-        var tail = Cursor{ .buf = bytes, .pos = bytes.len - 8 };
-        if (try tail.int(u64) != std.hash.XxHash64.hash(0, body)) return error.Corrupt;
+        if (bytes.len < MAGIC.len + 4 + signet.len or !std.mem.eql(u8, bytes[0..4], MAGIC)) return error.Corrupt;
+        const body = try signet.unseal(bytes);
         var c = Cursor{ .buf = body, .pos = MAGIC.len };
         if (try c.int(u32) != VERSION) return error.Corrupt;
         const n = try c.int(u64);
@@ -351,6 +351,7 @@ const Cursor = frame.Cursor;
 
 fn putBits(gpa: std.mem.Allocator, out: *std.ArrayList(u8), bits: *const rrr.Bits) !void {
     try out.append(gpa, @intFromEnum(std.meta.activeTag(bits.*)));
+const signet = @import("../../../kernel/primitives/signet.zig");
     try putInt(gpa, out, u64, @intCast(bits.nbits()));
     switch (bits.*) {
         .plain => |*p| try putWords(gpa, out, p.words),

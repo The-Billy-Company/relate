@@ -26,9 +26,11 @@ const corpus_mod = @import("../../tree/corpus.zig");
 const Codex = codexmod.Codex;
 const Cursor = frame.Cursor;
 const putInt = frame.putInt;
+const signet = @import("../../../kernel/primitives/signet.zig");
 
 const MAGIC = "SHLF";
-const VERSION: u32 = 1;
+// v2 sealed the outer frame and re-sealed the codex it embeds.
+const VERSION: u32 = 2;
 
 const shelf_path = corpus_mod.ArtifactPath("codex.shelf");
 
@@ -128,7 +130,11 @@ pub const Shelf = struct {
     }
 
     /// Frame: magic · version · built_ns · doc count · offsets · path blob ·
-    /// codex blob (which carries its own checksum). Caller frees.
+    /// codex blob · seal. The embedded codex carries its own seal, but that
+    /// only ever covered the codex — the shelf's own offsets and path table sat
+    /// outside any digest, so a torn write there produced a structurally valid
+    /// shelf that quoted the wrong file. This seal closes over all of it.
+    /// Caller frees.
     pub fn save(self: *const Shelf, gpa: std.mem.Allocator) ![]u8 {
         var out: std.ArrayList(u8) = .empty;
         errdefer out.deinit(gpa);
@@ -143,12 +149,15 @@ pub const Shelf = struct {
         defer gpa.free(cx_blob);
         try putInt(gpa, &out, u64, @intCast(cx_blob.len));
         try out.appendSlice(gpa, cx_blob);
+        try signet.sealInto(gpa, &out);
         return out.toOwnedSlice(gpa);
     }
 
-    /// Load a `save` buffer; fails closed on any framing violation, and the
-    /// embedded codex re-validates its own checksum + structure.
-    pub fn load(gpa: std.mem.Allocator, bytes: []const u8) !Shelf {
+    /// Load a `save` buffer; the seal is checked before a single field is
+    /// trusted, then it fails closed on any framing violation, and the embedded
+    /// codex re-validates its own seal + structure.
+    pub fn load(gpa: std.mem.Allocator, sealed: []const u8) !Shelf {
+        const bytes = try signet.unseal(sealed);
         if (bytes.len < 4 or !std.mem.eql(u8, bytes[0..4], MAGIC)) return error.Corrupt;
         var c = Cursor{ .buf = bytes, .pos = 4 };
         if (try c.int(u32) != VERSION) return error.Corrupt;

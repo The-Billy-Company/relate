@@ -53,8 +53,10 @@ pub fn fragFile() []const u8 {
 }
 
 const MAGIC = "FRAG";
-const VERSION: u32 = 1;
-const fnv64 = frame.fnv64;
+// v2 replaced the FNV-1a u64 trailer with a BLAKE3 signet; an older blob reads
+// as corrupt and the fold rebuilds it live.
+const VERSION: u32 = 2;
+const signet = @import("../../../kernel/primitives/signet.zig");
 
 /// A fragment's location: byte range in its file (for on-demand byte slicing)
 /// and 1-based line range (for display). Byte range fits u32 — files are capped
@@ -170,7 +172,7 @@ pub fn save(gpa: std.mem.Allocator, b: *const Build, built_ns: i64, roots: []con
         for (sil.slots()) |v| try putInt(gpa, &out, u64, v);
     }
 
-    try putInt(gpa, &out, u64, fnv64(out.items));
+    try signet.sealInto(gpa, &out);
     return out.toOwnedSlice(gpa);
 }
 
@@ -204,10 +206,8 @@ pub const Frag = struct {
 
 /// Parse a `save` blob; fails closed on any framing/bounds/checksum violation.
 pub fn parse(gpa: std.mem.Allocator, bytes: []const u8) !Frag {
-    if (bytes.len < MAGIC.len + 8 or !std.mem.eql(u8, bytes[0..MAGIC.len], MAGIC)) return error.Corrupt;
-    const body = bytes[0 .. bytes.len - 8];
-    const declared = std.mem.readInt(u64, bytes[bytes.len - 8 ..][0..8], .little);
-    if (fnv64(body) != declared) return error.Corrupt;
+    if (bytes.len < MAGIC.len + signet.len or !std.mem.eql(u8, bytes[0..MAGIC.len], MAGIC)) return error.Corrupt;
+    const body = try signet.unseal(bytes);
 
     var c = Cursor{ .buf = body, .pos = MAGIC.len };
     if (try c.int(u32) != VERSION) return error.Corrupt;
