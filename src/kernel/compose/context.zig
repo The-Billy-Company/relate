@@ -127,12 +127,18 @@ test "context: packs only inside the exact filter, never a non-matching file" {
     const gpa = t.allocator;
     // The query describes wallet-grant code. Doc 2 does not contain the pattern
     // literal, so the exact filter must exclude it however well it would score.
+    //
+    // Each admitted doc owns one aspect outright — `wallet` in a.zig, `ledger`
+    // in b.zig — so both earn a pick well clear of `minGain`. A fixture where
+    // every admitted doc merely mentions the terms prices them at ~0 bits
+    // (df == n ⇒ −log₂(1) == 0) and packs nothing, which would vacuously pass
+    // the "never a non-matching file" loop below.
     const terms = [_][]const u8{ "wallet", "grant", "ledger" };
     const docs = [_][]const u8{
-        "fn grant() { the wallet grant applies a credit to the user ledger balance }",
-        "grant helper: adds a credit to the user ledger balance too",
+        "fn grant() { the wallet wallet credit lands on the balance }",
+        "grant helper: ledger ledger rows land on the audit trail",
         "unrelated telemetry sampling notes for the fleet dashboards here",
-        "the wallet grant applies a credit to the user ledger balance",
+        "grant summary: totals only, nothing else of note here",
     };
     const paths = [_][]const u8{ "a.zig", "b.zig", "c.zig", "d.txt" };
     var set = try compileSet(gpa, &.{"grant"});
@@ -143,11 +149,13 @@ test "context: packs only inside the exact filter, never a non-matching file" {
     var packed_result = try pack(gpa, &docs, &paths, &cs, &terms, 8);
     defer packed_result.deinit();
 
+    // Both aspect-owning docs earn a pick, so the exclusion below is checked
+    // against a non-empty set rather than passing on an empty one.
+    try t.expect(packed_result.picks.len >= 2);
     // c.zig (no `grant`) is never a candidate, so it can never be picked.
     for (packed_result.picks) |p| try t.expect(p.doc != 2);
     // Every pick's mask is non-zero — it earned its place on the exact filter.
     for (packed_result.picks) |p| try t.expect(p.mask != 0);
-    try t.expect(packed_result.picks.len >= 1);
 }
 
 test "context: local pricing keeps a rare-in-the-set term discriminating" {
