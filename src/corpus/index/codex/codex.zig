@@ -34,8 +34,77 @@ const sais = @import("sais.zig");
 const rrr = @import("rrr.zig");
 const wavelet = @import("wavelet.zig");
 
+const parallel = @import("../../../kernel/primitives/parallel.zig");
+
 const Oom = std.mem.Allocator.Error;
 const SIGMA: usize = 257; // 256 byte symbols shifted +1, sentinel 0
+
+/// One contiguous row range of the BWT derivation, and the histogram of the
+/// symbols it produced. Row j reads `sa[j]` and writes `bwt[j]` and nothing
+/// else, so the transform is embarrassingly parallel — only the 257-entry
+/// tallies have to meet, once, at the end.
+const Weave = struct {
+    text: []const u8,
+    sa: []const u32,
+    bwt: []u16,
+    lo: usize,
+    hi: usize,
+    tally: [SIGMA]u64 = @splat(0),
+
+    fn run(self: *Weave) void {
+        const n = self.sa.len;
+        const out = self.bwt[self.lo..self.hi];
+        for (self.sa[self.lo..self.hi], out) |p, *sym| {
+            const prev = if (p == 0) n - 1 else p - 1;
+            sym.* = if (prev == n - 1) 0 else @as(u16, self.text[prev]) + 1;
+        }
+        // The histogram deliberately stays a SECOND sweep, inside the shard.
+        // Folding `tally[sym] += 1` into the loop above looks like a free
+        // saving — one pass instead of two — and measures 0.87–0.90x, i.e.
+        // reliably SLOWER (2026-07-27, 128MB and 200MB, ReleaseFast). That loop
+        // is bound by the random gather into `text` and sustains it only by
+        // keeping many independent loads in flight; a counter update that
+        // depends on the byte just loaded serializes them. This sweep is a pure
+        // sequential stream and costs less than the parallelism it buys back.
+        // Re-measure `phases.zig` before fusing.
+        var tally: [SIGMA]u64 = @splat(0);
+        for (out) |c| tally[c] += 1;
+        self.tally = tally;
+    }
+};
+
+/// One row range of the locate scaffolding: which rows carry a sampled suffix
+/// rank. Two fan-outs over the same shards — `tally`, then `scatter` — because
+/// a shard cannot know where its samples belong in the shared array until the
+/// shards before it have counted theirs. The bit marks need no such handshake
+/// (each shard owns whole words), so only `samples` waits on the prefix sum.
+const Mark = struct {
+    sa: []const u32,
+    rate: u32,
+    plain: *rrr.Plain,
+    lo: usize,
+    hi: usize,
+    found: usize = 0,
+    base: usize = 0,
+    out: []u32 = &.{},
+
+    fn tally(self: *Mark) void {
+        var k: usize = 0;
+        for (self.sa[self.lo..self.hi]) |p| k += @intFromBool(p % self.rate == 0);
+        self.found = k;
+    }
+
+    fn scatter(self: *Mark) void {
+        var w = self.base;
+        for (self.sa[self.lo..self.hi], self.lo..) |p, row| {
+            if (p % self.rate == 0) {
+                self.plain.set(row);
+                self.out[w] = p;
+                w += 1;
+            }
+        }
+    }
+};
 
 pub const Options = struct {
     /// Suffix-rank sampling stride for `find`. Smaller = faster locate,
@@ -77,17 +146,22 @@ pub const Codex = struct {
         // BWT (Burrows–Wheeler): permute so each symbol sits by its right
         // context. Zeroth-order coding of the BWT ≤ nH_k of the original
         // (Manzini JACM 2001) — why the wavelet+RRR below reaches k-th order.
-        // The histogram rides along: this loop is stalled on a random gather
-        // into `text`, so counting the symbol it just produced costs nothing
-        // measurable and spares a second sequential sweep of all n symbols.
         const bwt = try gpa.alloc(u16, n);
         defer gpa.free(bwt);
         var freq: [SIGMA]u64 = @splat(0);
-        for (sa, 0..) |p, j| {
-            const prev = if (p == 0) n - 1 else p - 1;
-            const sym: u16 = if (prev == n - 1) 0 else @as(u16, text[prev]) + 1;
-            bwt[j] = sym;
-            freq[sym] += 1;
+        {
+            const bounds = try parallel.evenBounds(n, @sizeOf(u16), 1, parallel.build_min_bytes, parallel.max_shards, gpa);
+            defer gpa.free(bounds);
+            const shards = try gpa.alloc(Weave, bounds.len - 1);
+            defer gpa.free(shards);
+            const threads = try gpa.alloc(std.Thread, shards.len);
+            defer gpa.free(threads);
+            for (shards, bounds[0 .. bounds.len - 1], bounds[1..]) |*sh, lo, hi|
+                sh.* = .{ .text = text, .sa = sa, .bwt = bwt, .lo = lo, .hi = hi };
+            parallel.fanOut(Weave, shards, threads, Weave.run);
+            for (shards) |*sh| for (&freq, sh.tally) |*f, t| {
+                f.* += t;
+            };
         }
         var c_table: [SIGMA]usize = undefined;
         var acc: usize = 0;
@@ -107,17 +181,25 @@ pub const Codex = struct {
         if (opts.sample_rate > 0) {
             var plain = try rrr.Plain.initEmpty(gpa, n);
             errdefer plain.deinit(gpa);
-            var n_samples: usize = 0;
-            for (sa) |p| n_samples += @intFromBool(p % opts.sample_rate == 0);
-            samples = try gpa.alloc(u32, n_samples);
-            var w: usize = 0;
-            for (sa, 0..) |p, row| {
-                if (p % opts.sample_rate == 0) {
-                    plain.set(row);
-                    samples[w] = p;
-                    w += 1;
-                }
+            // 64-grain: the shards set marks in one shared word array, so a
+            // boundary inside a word would be a lost read-modify-write.
+            const bounds = try parallel.evenBounds(n, @sizeOf(u32), 64, parallel.build_min_bytes, parallel.max_shards, gpa);
+            defer gpa.free(bounds);
+            const shards = try gpa.alloc(Mark, bounds.len - 1);
+            defer gpa.free(shards);
+            const threads = try gpa.alloc(std.Thread, shards.len);
+            defer gpa.free(threads);
+            for (shards, bounds[0 .. bounds.len - 1], bounds[1..]) |*sh, lo, hi|
+                sh.* = .{ .sa = sa, .rate = opts.sample_rate, .plain = &plain, .lo = lo, .hi = hi };
+            parallel.fanOut(Mark, shards, threads, Mark.tally);
+            var total: usize = 0;
+            for (shards) |*sh| {
+                sh.base = total;
+                total += sh.found;
             }
+            samples = try gpa.alloc(u32, total);
+            for (shards) |*sh| sh.out = samples;
+            parallel.fanOut(Mark, shards, threads, Mark.scatter);
             try plain.finalize(gpa);
             marks = try rrr.Bits.adopt(gpa, plain);
         }

@@ -108,7 +108,7 @@ either way; `sample_rate = 0` drops locate for a count/restore-only index.
 topology, samples); everything derived — rank samples, canonical codes,
 superblock cursors — is rebuilt through the layers' validating constructors
 at load, so a mangled blob fails closed with `error.Corrupt` instead of
-answering wrong. Load is ~0.6% of build (29ms vs 4.5s at 128MB).
+answering wrong. Load is ~0.9% of build (29ms vs 3.4s at 128MB).
 
 `shelf.zig` lifts one codex over a multi-document corpus (newline-sentinel
 concatenation, doc catalog, per-doc offsets, its own T3-style freshness
@@ -180,34 +180,52 @@ not a constant-factor win. `.plain_only` trades ~2× space for ~6× faster
 ranks (~1.7µs at m=16) when the corpus is small enough to spend it.
 Whole-corpus `restore()` verifies byte-exact at every size.
 
-### Build cost, and what still floors it (2026-07-26)
+### Build cost, and what still floors it (2026-07-27)
 
-Build was SA-IS-bound, and the sort is now vendored libsais rather than a
-hand-rolled induced sort. Per-phase wall time, min of 3, on real repo source:
+Two construction phases were rebuilt: the suffix sort is now vendored libsais
+instead of a hand-rolled induced sort, and each wavelet level is woven in one
+pass instead of two. Per-phase wall time, min of 3, on real repo source:
 
-| n     | suffix sort | BWT + histogram | wavelet + RRR | locate | build      |
-| ----- | ----------- | --------------- | ------------- | ------ | ---------- |
-| 32MB  | 0.44s       | 0.12s           | 0.44s         | 0.04s  | **1.03s**  |
-| 128MB | 2.02s       | 0.61s           | 1.78s         | 0.14s  | **4.55s**  |
-| 200MB | 3.23s       | 1.13s           | 2.41s         | 0.22s  | **6.98s**  |
+| n     | suffix sort | BWT + histogram | wavelet + RRR | locate | build     |
+| ----- | ----------- | --------------- | ------------- | ------ | --------- |
+| 32MB  | 0.43s       | 0.11s           | 0.16s         | 0.03s  | **0.73s** |
+| 128MB | 2.01s       | 0.63s           | 0.63s         | 0.10s  | **3.36s** |
+| 200MB | 3.10s       | 1.04s           | 0.87s         | 0.16s  | **5.17s** |
 
-The retired implementation sorted the same 200MB in 10.58s, so the swap is
-**3.3× on the sort and 2.1× on the whole build** — and it is byte-identical:
-the two constructions were run against each other over the full corpus and
-agreed on all 209,715,201 rows. The adapter costs nothing measurable, because
-the sentinel row is a single stored word and libsais sorts straight into the
-tail of the same allocation.
+Absolute wall time on this box is not portable — ~10 agents cowork here, and
+the 32MB sort inflates 3.6× between a quiet load and a busy one. What _is_
+portable is that both harnesses carry the retired implementation as a live arm
+and run it in the same process against the same bytes, so the ratios below hold
+whatever else the machine is doing. The table above is one such session.
 
-The interesting number is the one that _didn't_ move. The sort fell from 74%
-of the build to 46%, which means a **free** suffix sort would still leave 3.8s
-at 200MB — and the shelf's persist step adds ~2s of concatenation and
-serialization on top. So the sort is no longer what keeps `relate index
---shelf` opt-in; at this corpus size (21k files, 208MiB) the shelf is a ~9s
-artifact whose floor is now the wavelet/RRR construction and the 79MiB
-serialize, and no further work on suffix sorting can reach a default-on
-budget. That is a claim about where to look next, measured rather than
-assumed: `.local/spikes/libsais-eval/phases.zig` times each phase and prints
-the sort-free ceiling beside the total.
+- **Suffix sort: 3.2×** (9.91s → 3.10s at 200MB), and byte-identical — the two
+  constructions agreed on all 209,715,201 rows. The adapter costs nothing
+  measurable: the sentinel row is a single stored word and libsais sorts
+  straight into the tail of the same allocation.
+- **Wavelet tree: 2.7×** (2.38s → 0.90s at 200MB), also identical — old and new
+  node builders agreed on every `access` result across the whole corpus and on
+  every sampled `occ`.
+
+Together the build is **2.3×** (11.99s → 5.17s at 200MB). The sort is still 60%
+of it, so it stayed the pole even after a 3.2× cut, and a _free_ suffix sort
+would still leave 2.07s.
+
+That remainder was profiled rather than guessed, and it moved the target twice.
+Serialization was the obvious suspect and was never a pole at all — 51ms for a
+53MiB blob. The wavelet tree was, but not where it looked: 85% of it was
+weaving levels and only 15% was the RRR entropy transcode, which is why the fix
+was a pass structure rather than a faster encoder. One fusion measured
+_backwards_ and was reverted — folding the BWT histogram into the gather loop
+that produces it costs 0.87–0.90× because the counter update depends on the
+byte just loaded and starves the gather's memory-level parallelism.
+
+So `relate index --shelf` stays opt-in, but for a different reason than before.
+At this corpus size (21k files, 208MiB) the shelf is no longer a ~9s artifact;
+its remaining floor is the suffix sort itself, and the only lever left that is
+worth multiples is parallelism — libsais ships an OpenMP entry point, deliberately
+compiled out (see [`vendor/libsais/README.md`](../../../../vendor/libsais/README.md)).
+`.local/spikes/libsais-eval/` holds both harnesses: `phases.zig` times each
+phase against the sort-free ceiling, `floor.zig` splits what remains.
 
 Persistence — save/load of the full index, loaded answers re-verified
 against the naive oracle:
