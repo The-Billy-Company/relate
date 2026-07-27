@@ -90,6 +90,11 @@ pub fn massFloor(chan: Channel) usize {
     };
 }
 
+/// A pair priced on both channels, plus the score the caller's channel ranks
+/// by. Both raw numbers ride every row — they are reported side by side, never
+/// fused into one opaque number.
+const Scores = struct { score: f64, bytes: f64, structure: f64 };
+
 /// Which shape of repetition answer the caller wants.
 pub const Shape = enum {
     /// Which two units repeat — the flat, closest-first pair list.
@@ -127,6 +132,69 @@ pub const Table = struct {
     fn structureAt(self: Table, i: u32, j: u32) f64 {
         if (self.silhouettes.len == 0) return std.math.nan(f64);
         return silhouette_mod.distance(&self.silhouettes[i], &self.silhouettes[j]);
+    }
+
+    /// The same distance, or null when it provably exceeds `ceiling`. An
+    /// unmeasurable channel answers null too: both spellings of "this pair is
+    /// not it" reach the same `continue`, and neither can be mistaken for a
+    /// relation.
+    fn bytesWithin(self: Table, i: u32, j: u32, ceiling: f64) ?f64 {
+        if (self.sketches.len == 0) return null;
+        return sketch_mod.within(&self.sketches[i], &self.sketches[j], ceiling);
+    }
+
+    fn structureWithin(self: Table, i: u32, j: u32, ceiling: f64) ?f64 {
+        if (self.silhouettes.len == 0) return null;
+        return silhouette_mod.within(&self.silhouettes[i], &self.silhouettes[j], ceiling);
+    }
+
+    /// A pair's exact score in both channels, or null when this channel's
+    /// threshold provably cannot admit it.
+    ///
+    /// Every number returned is exact — a ceiling decides only whether the
+    /// merge runs to the end or abandons a pair it has already disqualified,
+    /// never what it reports. Two savings follow, and the second is the larger:
+    /// the disqualifying channel stops early, and the companion channel — which
+    /// the row prints but no threshold consults — is priced only for a pair
+    /// that survived. In a repetition sweep the survivors are a fraction of a
+    /// percent, so nearly every pair now pays one truncated merge instead of
+    /// two complete ones.
+    fn priced(self: Table, params: Params, a: u32, z: u32) ?Scores {
+        return switch (params.channel) {
+            // The score IS one channel's distance: bound that one.
+            .copies => if (self.bytesWithin(a, z, params.max_dist)) |b|
+                .{ .score = b, .bytes = b, .structure = self.structureAt(a, z) }
+            else
+                null,
+            .shapes => if (self.structureWithin(a, z, params.max_dist)) |s|
+                .{ .score = s, .bytes = self.bytesAt(a, z), .structure = s }
+            else
+                null,
+            // A gap needs both sides, but a distance can never exceed 1, so a
+            // gap of `min_echo` caps how structurally distant its pair may be.
+            // That ceiling is where the unrelated majority dies: strangers sit
+            // at a structure distance near 1.0, which no admissible gap allows.
+            .twins => if (self.structureWithin(a, z, 1.0 - params.min_echo)) |s| gap: {
+                const b = self.bytesAt(a, z);
+                break :gap if (params.admits(b - s))
+                    .{ .score = b - s, .bytes = b, .structure = s }
+                else
+                    null;
+            } else null,
+            // Close in EITHER channel. Whichever answers under the ceiling
+            // admits the pair; the other is then priced in full for the row.
+            .any => either: {
+                if (self.bytesWithin(a, z, params.max_dist)) |b| {
+                    const s = self.structureAt(a, z);
+                    break :either .{ .score = @min(b, s), .bytes = b, .structure = s };
+                }
+                const s = self.structureWithin(a, z, params.max_dist) orelse break :either null;
+                const b = self.bytesAt(a, z);
+                break :either .{ .score = @min(b, s), .bytes = b, .structure = s };
+            },
+            // Neither is a pairwise channel: no relation can be admitted.
+            .recall, .context => null,
+        };
     }
 
     /// Does unit `i` carry enough of EVERY record this channel reads? `twins`
@@ -330,17 +398,14 @@ fn admit(
 
         fn visit(self: *@This(), a: u32, z: u32) error{OutOfMemory}!void {
             if (!self.participates[a] or !self.participates[z]) return;
-            const bytes = self.table.bytesAt(a, z);
-            const structure = self.table.structureAt(a, z);
-            const score = self.params.channel.score(bytes, structure);
-            if (self.params.admits(score))
-                try self.out.append(self.gpa, .{
-                    .i = @min(a, z),
-                    .j = @max(a, z),
-                    .score = score,
-                    .bytes = bytes,
-                    .structure = structure,
-                });
+            const s = self.table.priced(self.params, a, z) orelse return;
+            try self.out.append(self.gpa, .{
+                .i = @min(a, z),
+                .j = @max(a, z),
+                .score = s.score,
+                .bytes = s.bytes,
+                .structure = s.structure,
+            });
         }
     };
     var ctx = Ctx{ .gpa = gpa, .table = table, .params = params, .participates = participates, .out = &out };
@@ -574,8 +639,15 @@ const min_comparisons: usize = 1 << 16;
 /// so the secondary is priced only for a candidate that could still win — once
 /// a close miss is in hand most of the population is rejected on the primary
 /// alone, which halves the cost of the one query shape that cannot be answered
-/// from seed buckets. The guard is written `!(p <= best)` so an unmeasurable
-/// NaN pair is rejected rather than admitted, matching the total order below.
+/// from seed buckets.
+///
+/// That rejection is itself the bound: `primary ≤ best` is exactly the question
+/// the bounded merge answers, and `best` only ever tightens as the sweep runs.
+/// So each candidate is measured against the standing champion rather than
+/// measured and then compared — a pair that cannot beat the incumbent abandons
+/// its merge instead of completing one whose answer is discarded. An
+/// unmeasurable pair answers null and is rejected, matching the total order
+/// below (where the old `!(p <= best)` guard rejected its NaN).
 fn nearestMiss(table: Table, participates: []const bool, me: u32) Lonely {
     const prefer_structure = table.silhouettes.len > 0;
     var nearest: ?u32 = null;
@@ -584,8 +656,10 @@ fn nearestMiss(table: Table, participates: []const bool, me: u32) Lonely {
     for (0..table.len()) |j| {
         const other: u32 = @intCast(j);
         if (other == me or !participates[j]) continue;
-        const primary = if (prefer_structure) table.structureAt(me, other) else table.bytesAt(me, other);
-        if (!(primary <= best_primary)) continue;
+        const primary = (if (prefer_structure)
+            table.structureWithin(me, other, best_primary)
+        else
+            table.bytesWithin(me, other, best_primary)) orelse continue;
         const secondary = if (prefer_structure) table.bytesAt(me, other) else table.structureAt(me, other);
         const closer = primary < best_primary or
             secondary < best_secondary or

@@ -54,11 +54,17 @@ Codex feeds bytes, and `sais.build` caps at `i32` indices, so the 32-bit 8-bit
 unit is the whole reachable surface.
 
 The OpenMP entry points (`libsais_omp` and friends) sit behind
-`#if defined(LIBSAIS_OPENMP)` and stay compiled out: the parallel path needs a
-`libomp` that is neither in the toolchain nor in the ledger, and codex's own
-measurements put a wide-alphabet parallel sort behind the serial one on a
-loaded machine. The pin keeps the code available for the day the dependency is
-worth admitting.
+`#if defined(LIBSAIS_OPENMP)` and stay compiled out — measured, not assumed.
+Compiled against Homebrew `libomp`, `libsais_omp` buys **1.65×** on the sort and
+saturates at 8 threads, and beyond that adds threads without adding speed. That
+is the whole offer, and the price is a `libomp`/`libgomp` runtime that is in
+neither the toolchain nor the ledger and that every build host, cross-compile
+target, and CI image would have to carry. Codex declined it and sharded the
+phases it owns instead (`kernel/primitives/parallel.zig`, pure `std.Thread`,
+zero dependencies), which is why the sort is now a *third* of a build that used
+to be seven eighths. The pin keeps the code available for the day a second
+1.65× is worth a link-time dependency; the harness that priced it is
+`.local/spikes/libsais-eval/` (`-Domp=true`).
 
 ## Updating
 

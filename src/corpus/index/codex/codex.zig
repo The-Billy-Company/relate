@@ -140,69 +140,84 @@ pub const Codex = struct {
     /// rather than a truncated index). The text is not retained.
     pub fn build(gpa: std.mem.Allocator, text: []const u8, opts: Options) !Codex {
         const n = text.len + 1;
-        const sa = try sais.build(gpa, text);
-        defer gpa.free(sa);
-
-        // BWT (Burrows–Wheeler): permute so each symbol sits by its right
-        // context. Zeroth-order coding of the BWT ≤ nH_k of the original
-        // (Manzini JACM 2001) — why the wavelet+RRR below reaches k-th order.
         const bwt = try gpa.alloc(u16, n);
         defer gpa.free(bwt);
         var freq: [SIGMA]u64 = @splat(0);
-        {
-            const bounds = try parallel.evenBounds(n, @sizeOf(u16), 1, parallel.build_min_bytes, parallel.max_shards, gpa);
-            defer gpa.free(bounds);
-            const shards = try gpa.alloc(Weave, bounds.len - 1);
-            defer gpa.free(shards);
-            const threads = try gpa.alloc(std.Thread, shards.len);
-            defer gpa.free(threads);
-            for (shards, bounds[0 .. bounds.len - 1], bounds[1..]) |*sh, lo, hi|
-                sh.* = .{ .text = text, .sa = sa, .bwt = bwt, .lo = lo, .hi = hi };
-            parallel.fanOut(Weave, shards, threads, Weave.run);
-            for (shards) |*sh| for (&freq, sh.tally) |*f, t| {
-                f.* += t;
-            };
-        }
-        var c_table: [SIGMA]usize = undefined;
-        var acc: usize = 0;
-        for (0..SIGMA) |c| {
-            c_table[c] = acc;
-            acc += freq[c];
-        }
-
-        var tree = try wavelet.Tree.build(gpa, bwt, &freq, opts.encoding);
-        errdefer tree.deinit(gpa);
-
         // locate scaffolding: mark rows whose suffix position is ≡ 0 (mod rate)
         var marks: ?rrr.Bits = null;
         var samples: []u32 = &.{};
         errdefer if (marks) |*m| m.deinit(gpa);
         errdefer gpa.free(samples);
-        if (opts.sample_rate > 0) {
-            var plain = try rrr.Plain.initEmpty(gpa, n);
-            errdefer plain.deinit(gpa);
-            // 64-grain: the shards set marks in one shared word array, so a
-            // boundary inside a word would be a lost read-modify-write.
-            const bounds = try parallel.evenBounds(n, @sizeOf(u32), 64, parallel.build_min_bytes, parallel.max_shards, gpa);
-            defer gpa.free(bounds);
-            const shards = try gpa.alloc(Mark, bounds.len - 1);
-            defer gpa.free(shards);
-            const threads = try gpa.alloc(std.Thread, shards.len);
-            defer gpa.free(threads);
-            for (shards, bounds[0 .. bounds.len - 1], bounds[1..]) |*sh, lo, hi|
-                sh.* = .{ .sa = sa, .rate = opts.sample_rate, .plain = &plain, .lo = lo, .hi = hi };
-            parallel.fanOut(Mark, shards, threads, Mark.tally);
-            var total: usize = 0;
-            for (shards) |*sh| {
-                sh.base = total;
-                total += sh.found;
+
+        // Both readers of the suffix array live in this scope, so the scope is
+        // its lifetime — and that is a memory decision, not a tidiness one. The
+        // SA is the largest thing this function ever holds (4n bytes against the
+        // tree's 2n), so the phases that need it run FIRST and it is gone before
+        // the most memory-hungry phase starts. Ordering the build this way is
+        // what pays for the wavelet tree's second half.
+        {
+            const sa = try sais.build(gpa, text);
+            defer gpa.free(sa);
+
+            // BWT (Burrows–Wheeler): permute so each symbol sits by its right
+            // context. Zeroth-order coding of the BWT ≤ nH_k of the original
+            // (Manzini JACM 2001) — why the wavelet+RRR below reaches k-th order.
+            {
+                const bounds = try parallel.evenBounds(n, @sizeOf(u16), 1, parallel.build_min_bytes, parallel.max_shards, gpa);
+                defer gpa.free(bounds);
+                const shards = try gpa.alloc(Weave, bounds.len - 1);
+                defer gpa.free(shards);
+                const threads = try gpa.alloc(std.Thread, shards.len);
+                defer gpa.free(threads);
+                for (shards, bounds[0 .. bounds.len - 1], bounds[1..]) |*sh, lo, hi|
+                    sh.* = .{ .text = text, .sa = sa, .bwt = bwt, .lo = lo, .hi = hi };
+                parallel.fanOut(Weave, shards, threads, Weave.run);
+                for (shards) |*sh| for (&freq, sh.tally) |*f, t| {
+                    f.* += t;
+                };
             }
-            samples = try gpa.alloc(u32, total);
-            for (shards) |*sh| sh.out = samples;
-            parallel.fanOut(Mark, shards, threads, Mark.scatter);
-            try plain.finalize(gpa);
-            marks = try rrr.Bits.adopt(gpa, plain);
+
+            if (opts.sample_rate > 0) {
+                var plain = try rrr.Plain.initEmpty(gpa, n);
+                errdefer plain.deinit(gpa);
+                // 64-grain: the shards set marks in one shared word array, so a
+                // boundary inside a word would be a lost read-modify-write.
+                const bounds = try parallel.evenBounds(n, @sizeOf(u32), 64, parallel.build_min_bytes, parallel.max_shards, gpa);
+                defer gpa.free(bounds);
+                const shards = try gpa.alloc(Mark, bounds.len - 1);
+                defer gpa.free(shards);
+                const threads = try gpa.alloc(std.Thread, shards.len);
+                defer gpa.free(threads);
+                for (shards, bounds[0 .. bounds.len - 1], bounds[1..]) |*sh, lo, hi|
+                    sh.* = .{ .sa = sa, .rate = opts.sample_rate, .plain = &plain, .lo = lo, .hi = hi };
+                parallel.fanOut(Mark, shards, threads, Mark.tally);
+                // Prefix sum: each shard's write cursor is where its predecessors
+                // stopped, so the scatter below needs no lock and no merge.
+                var total: usize = 0;
+                for (shards) |*sh| {
+                    sh.base = total;
+                    total += sh.found;
+                }
+                samples = try gpa.alloc(u32, total);
+                for (shards) |*sh| sh.out = samples;
+                parallel.fanOut(Mark, shards, threads, Mark.scatter);
+                try plain.finalize(gpa);
+                marks = try rrr.Bits.adopt(gpa, plain);
+            }
         }
+
+        var c_table: [SIGMA]usize = undefined;
+        var acc: usize = 0;
+        for (0..SIGMA) |c| {
+            c_table[c] = acc;
+            // The tallies are u64 by the shard's counter width, but they partition
+            // `text` — every one is ≤ `text.len`, itself a usize — so narrowing to
+            // the cumulative index type is exact on any address width.
+            acc += @intCast(freq[c]);
+        }
+
+        var tree = try wavelet.Tree.build(gpa, bwt, &freq, opts.encoding);
+        errdefer tree.deinit(gpa);
 
         var self = Codex{ .tree = tree, .c_table = c_table, .marks = marks, .samples = samples, .sample_rate = opts.sample_rate, .n = n, .stats = undefined };
         self.setStats();
@@ -374,7 +389,11 @@ pub const Codex = struct {
         const body = try signet.unseal(bytes);
         var c = Cursor{ .buf = body, .pos = MAGIC.len };
         if (try c.int(u32) != VERSION) return error.Corrupt;
-        const n = try c.int(u64);
+        // The format records the BWT length as u64 (width-neutral on disk), but the
+        // wavelet tree indexes it as `usize`. A value past this address space is
+        // therefore not a truncation to paper over — it is an artifact this build
+        // cannot load, which is exactly what `Corrupt` means to every caller.
+        const n = std.math.cast(usize, try c.int(u64)) orelse return error.Corrupt;
         if (n == 0) return error.Corrupt;
         const sample_rate = try c.int(u32);
         var c_table: [SIGMA]usize = undefined;

@@ -93,8 +93,13 @@ pub fn save(gpa: std.mem.Allocator, paths: []const []const u8, sketches: []const
     // Header already written; reserve path + roots blobs, fixed-width sketch
     // + silhouette rows, and the trailer hash. Each row is u16 len + k×u64
     // slots (zero-padded past len) — see format header.
-    const row_bytes: usize = 2 * @sizeOf(u16) + (sketch.k + silhouette_mod.k) * @sizeOf(u64);
-    try out.ensureTotalCapacityPrecise(gpa, out.items.len + blob_len + 8 + roots_len + paths.len * row_bytes + signet.len);
+    const row_bytes: u64 = 2 * @sizeOf(u16) + (sketch.k + silhouette_mod.k) * @sizeOf(u64);
+    // Summed at the format's width (the blob lengths are u64), then narrowed once:
+    // an artifact larger than this address space can hold is `OutOfMemory`, which
+    // is what the appends below would answer anyway — just before a truncated
+    // reservation could silently under-reserve and re-grow.
+    const want = out.items.len + blob_len + 8 + roots_len + paths.len * row_bytes + signet.len;
+    try out.ensureTotalCapacityPrecise(gpa, std.math.cast(usize, want) orelse return error.OutOfMemory);
     try frame.joinNul(gpa, &out, paths);
 
     try putInt(gpa, &out, u64, roots_len);

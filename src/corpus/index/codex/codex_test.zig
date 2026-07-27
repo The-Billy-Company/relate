@@ -356,6 +356,71 @@ test "codex: sample_rate 0 disables locate but keeps count/restore" {
     try testing.expectEqualSlices(u8, "count only", rebuilt);
 }
 
+test "codex: the sharded build agrees with ground truth at multi-megabyte scale" {
+    // Every corpus above is far below `parallel.build_min_bytes`, so all of
+    // them build on one thread and never enter the sharded BWT derivation or
+    // the sharded locate scatter. This is the smallest corpus that crosses both
+    // floors — that, and not a taste for big numbers, is why it is this size.
+    //
+    // The three ways sharding breaks are all invisible under the floor: a
+    // histogram reduction that drops a shard's tally yields a wrong C table; a
+    // `Mark` prefix sum off by one yields sample writes that overlap; a shard
+    // boundary that is not a multiple of 64 yields a lost read-modify-write on
+    // a mark word two shards share. So every oracle below is ground truth —
+    // the text itself — rather than a second implementation of the sharding,
+    // which would agree with the bug.
+    const gpa = testing.allocator;
+    const len = (2 << 20) + 7331; // deliberately neither 64- nor shard-aligned
+    const text = try gpa.alloc(u8, len);
+    defer gpa.free(text);
+
+    var prng = std.Random.DefaultPrng.init(0x5ade_1a26);
+    const rand = prng.random();
+    // Skewed the way real text is — a few hot bytes over a long tail — so the
+    // Huffman tree is deep and lopsided rather than a balanced 8 levels.
+    for (text) |*c| c.* = if (rand.uintLessThan(u8, 4) == 0) rand.int(u8) else "abcdefghij \n"[rand.uintLessThan(usize, 12)];
+    // Plant every one of the 256 values, so the reduction has a live tally in
+    // every bucket instead of leaving the tail to chance.
+    for (text[0..256], 0..) |*c, i| c.* = @intCast(i);
+    // A needle repeated across the whole corpus, so `find` walks marks in every
+    // shard rather than clustering its rows inside one of them.
+    const needle = "\x00sentinel-straddle\xff";
+    var at: usize = 997;
+    while (at + needle.len < len) : (at += 65_536) @memcpy(text[at..][0..needle.len], needle);
+
+    var idx = try codex.Codex.build(gpa, text, .{ .sample_rate = 32 });
+    defer idx.deinit(gpa);
+
+    // The C table IS the sharded histogram, reduced and accumulated. Compare it
+    // with a direct count over the text: one dropped tally shifts every bucket
+    // after it, and nothing else in the index would notice on its own.
+    var freq: [257]usize = @splat(0);
+    freq[0] = 1; // the sentinel holds exactly one row
+    for (text) |c| freq[@as(usize, c) + 1] += 1;
+    var acc: usize = 0;
+    for (&idx.c_table, &freq) |got, f| {
+        try testing.expectEqual(acc, got);
+        acc += f;
+    }
+
+    // restore() re-derives the whole text from the wavelet tree and that C
+    // table alone, so a wrong bucket surfaces here as a byte divergence.
+    const rebuilt = try idx.restore(gpa);
+    defer gpa.free(rebuilt);
+    try testing.expectEqualSlices(u8, text, rebuilt);
+
+    // find() is the only path that reads the sharded marks AND the
+    // prefix-summed sample array, so it is where a bad `base` shows up.
+    for ([_][]const u8{ needle, "abc", "\xff", "zzzz-absent" }) |p| {
+        try testing.expectEqual(oracleCount(text, p), idx.count(p));
+        const got = (try idx.find(gpa, p)).got;
+        defer gpa.free(got);
+        const want = try oracleFind(gpa, text, p);
+        defer gpa.free(want);
+        try testing.expectEqualSlices(u32, want, got);
+    }
+}
+
 test "codex: property fuzz — random corpora, sampled + mutated patterns" {
     const gpa = testing.allocator;
     var prng = std.Random.DefaultPrng.init(0xc0dec5);

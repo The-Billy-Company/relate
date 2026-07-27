@@ -107,8 +107,10 @@ pub fn verifiedPairs(
         pairs: std.ArrayList(Pair) = .empty,
 
         fn visit(self: *@This(), a: u32, z: u32) error{OutOfMemory}!void {
-            const d = sketch.distance(&self.sketches[a], &self.sketches[z]);
-            if (d <= self.max_dist) try self.pairs.append(self.gpa, .{ .dist = d, .i = a, .j = z });
+            // The admission test IS the bound, so a nominee that cannot clear
+            // it abandons its merge rather than completing one to be discarded.
+            const d = sketch.within(&self.sketches[a], &self.sketches[z], self.max_dist) orelse return;
+            try self.pairs.append(self.gpa, .{ .dist = d, .i = a, .j = z });
         }
     };
     var ctx = Ctx{ .gpa = gpa, .sketches = sketches, .max_dist = max_dist };

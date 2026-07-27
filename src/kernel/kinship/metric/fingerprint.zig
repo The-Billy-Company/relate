@@ -37,14 +37,6 @@ pub fn fill(
     std.debug.assert(out.len == docs.len);
     if (docs.len == 0) return 0;
 
-    var total: usize = 0;
-    for (docs) |d| total += d.len;
-
-    // One thread per ~4 MiB of corpus, capped at the core count: thread spawn
-    // only amortizes once the fingerprinting dominates.
-    const ncpu = std.Thread.getCpuCount() catch 1;
-    const nthr = @min(@max(@as(usize, 1), total / (4 << 20)), ncpu);
-
     const Shard = struct {
         docs: []const []const u8,
         out: []T,
@@ -58,16 +50,33 @@ pub fn fill(
         }
     };
 
-    const bounds = try gpa.alloc(usize, nthr + 1);
-    defer gpa.free(bounds);
-    parallel.greedyBounds([]const u8, docs, {}, parallel.sliceLen, total, bounds);
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const a = arena.allocator();
 
-    const shards = try gpa.alloc(Shard, nthr);
-    defer gpa.free(shards);
-    const threads = try gpa.alloc(std.Thread, nthr);
-    defer gpa.free(threads);
-    for (0..nthr) |s|
-        shards[s] = .{ .docs = docs[bounds[s]..bounds[s + 1]], .out = out[bounds[s]..bounds[s + 1]] };
+    // Gate on the shared build floor, then use the whole machine. Sizing the
+    // thread count as `bytes ÷ floor` instead conflated two different
+    // questions — a floor decides WHETHER a pass earns a fan-out, never how
+    // wide it may go — and silently capped every medium batch: a ~20 MiB
+    // fragment batch drew five threads on a sixteen-core box, so the widest
+    // `--unit function` byte channel ran at a third of the machine.
+    //
+    // Staying serial is the one-shard case rather than a second code path, so
+    // the small-corpus answer cannot drift from the sharded one.
+    const bounds = parallel.shardBounds(
+        []const u8,
+        docs,
+        {},
+        parallel.sliceLen,
+        parallel.build_min_bytes,
+        parallel.max_shards,
+        a,
+    ) orelse try a.dupe(usize, &.{ 0, docs.len });
+
+    const shards = try a.alloc(Shard, bounds.len - 1);
+    const threads = try a.alloc(std.Thread, shards.len);
+    for (shards, bounds[0 .. bounds.len - 1], bounds[1..]) |*sh, lo, hi|
+        sh.* = .{ .docs = docs[lo..hi], .out = out[lo..hi] };
     // A shard whose thread never spawned still runs inline, so every slot fills.
     parallel.fanOut(Shard, shards, threads, Shard.run);
 

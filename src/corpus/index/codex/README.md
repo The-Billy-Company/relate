@@ -182,50 +182,93 @@ Whole-corpus `restore()` verifies byte-exact at every size.
 
 ### Build cost, and what still floors it (2026-07-27)
 
-Two construction phases were rebuilt: the suffix sort is now vendored libsais
-instead of a hand-rolled induced sort, and each wavelet level is woven in one
-pass instead of two. Per-phase wall time, min of 3, on real repo source:
+Three things changed. The suffix sort is vendored libsais instead of a
+hand-rolled induced sort; each wavelet level is woven in one pass instead of
+two; and every phase that is a _sweep over rows_ — the BWT and its histogram,
+the locate marks, each wavelet level — is now divided across cores by the same
+[`parallel.zig`](../../../kernel/primitives/parallel.zig) floor the search
+engines shard on. Per-phase wall time, min of 2, real repo source, one session
+at load 32 on 16 cores:
 
 | n     | suffix sort | BWT + histogram | wavelet + RRR | locate | build     |
 | ----- | ----------- | --------------- | ------------- | ------ | --------- |
-| 32MB  | 0.43s       | 0.11s           | 0.16s         | 0.03s  | **0.73s** |
-| 128MB | 2.01s       | 0.63s           | 0.63s         | 0.10s  | **3.36s** |
-| 200MB | 3.10s       | 1.04s           | 0.87s         | 0.16s  | **5.17s** |
+| 32MB  | 0.47s       | 0.05s           | 0.86s         | 0.06s  | **1.44s** |
+| 128MB | 4.16s       | 0.37s           | 3.36s         | 0.21s  | **8.09s** |
 
-Absolute wall time on this box is not portable — ~10 agents cowork here, and
-the 32MB sort inflates 3.6× between a quiet load and a busy one. What _is_
-portable is that both harnesses carry the retired implementation as a live arm
-and run it in the same process against the same bytes, so the ratios below hold
-whatever else the machine is doing. The table above is one such session.
+**No absolute number on this box is portable.** ~10 agents cowork here; the
+load average during that session ran 32–49 on 16 cores, and the same 32MB sort
+has been measured anywhere from 0.43s to 11s depending on who else was running.
+What _is_ portable is a ratio between two arms in the same process over the same
+bytes, which is how every claim below is taken — each harness keeps the retired
+shape as a live arm rather than quoting a number from a previous session:
 
-- **Suffix sort: 3.2×** (9.91s → 3.10s at 200MB), and byte-identical — the two
-  constructions agreed on all 209,715,201 rows. The adapter costs nothing
+- **BWT + histogram: 9.6× at 32MB, 15.9× at 128MB.** Superlinear against the
+  serial arm is expected, not suspicious: the pass is a random gather through
+  the suffix array, so splitting it also splits the working set and multiplies
+  the memory-level parallelism. Each shard derives its own slice and tallies a
+  private histogram; the histograms are folded at the join.
+- **Locate marks: 2.8–3.1×.** Two fan-outs with a prefix sum between them —
+  shards count their samples, the sum hands each one its offset, then they
+  scatter. Boundaries are forced to 64-row multiples so no two shards carry a
+  read-modify-write on the same mark word.
+- **Wavelet weave: 1.45×**, measured at load **63** — i.e. with no idle core to
+  win with, so it is a floor. See the two-shapes note below.
+- **Suffix sort: 3.2×** quiet (9.91s → 3.10s at 200MB), and byte-identical — the
+  two constructions agreed on all 209,715,201 rows. The adapter costs nothing
   measurable: the sentinel row is a single stored word and libsais sorts
   straight into the tail of the same allocation.
-- **Wavelet tree: 2.7×** (2.38s → 0.90s at 200MB), also identical — old and new
-  node builders agreed on every `access` result across the whole corpus and on
-  every sampled `occ`.
+- **Wavelet tree: 4.1×** against the pre-rewrite node builder (single-pass
+  weave plus the fan-out), also identical — old and new agreed on every `access`
+  result across the whole corpus and on every sampled `occ`.
 
-Together the build is **2.3×** (11.99s → 5.17s at 200MB). The sort is still 60%
-of it, so it stayed the pole even after a 3.2× cut, and a _free_ suffix sort
-would still leave 2.07s.
+Assembled from arms one process ran back to back, the whole build is **8.3–8.9×**
+(67.4s → 8.1s at 128MB). End to end, `relate index --shelf` over the live repo
+(21,081 files, 209MiB → a 79.3MiB shelf) builds the shelf in **5.1s** and the
+whole three-artifact index in **9.0s** (min of 3, load 31–35), consuming ~33
+CPU-seconds in those 9 wall seconds — measured the same way, the pre-sharding
+build spent ~1.1 CPU-seconds per wall second on a 16-core box. Peak RSS is
+3.2GB, with the suffix array released before the tree allocates.
 
-That remainder was profiled rather than guessed, and it moved the target twice.
-Serialization was the obvious suspect and was never a pole at all — 51ms for a
-53MiB blob. The wavelet tree was, but not where it looked: 85% of it was
-weaving levels and only 15% was the RRR entropy transcode, which is why the fix
-was a pass structure rather than a faster encoder. One fusion measured
-_backwards_ and was reverted — folding the BWT histogram into the gather loop
-that produces it costs 0.87–0.90× because the counter update depends on the
-byte just loaded and starves the gather's memory-level parallelism.
+Weaving a level deliberately keeps **both** a serial and a sharded shape,
+because which one wins is a fact about the machine rather than about the
+algorithm. A lone worker knows where a symbol lands the moment it reads it, so
+it codes the level's bitvector and routes the symbol in one sweep. Shards
+cannot: a shard's destination offsets depend on how many symbols the shards
+before it sent left, and nobody knows that until they have looked, so they read
+the range twice. Two sweeps across a dozen threads only beats one sweep on one
+thread if there are cores to spare — the fork sits at
+`parallel.build_min_bytes`, and `floor.zig` carries the shipped builder with its
+fan-out forced off as a third arm so the crossover can be re-read per session
+instead of assumed.
 
-So `relate index --shelf` stays opt-in, but for a different reason than before.
-At this corpus size (21k files, 208MiB) the shelf is no longer a ~9s artifact;
-its remaining floor is the suffix sort itself, and the only lever left that is
-worth multiples is parallelism — libsais ships an OpenMP entry point, deliberately
-compiled out (see [`vendor/libsais/README.md`](../../../../vendor/libsais/README.md)).
-`.local/spikes/libsais-eval/` holds both harnesses: `phases.zig` times each
-phase against the sort-free ceiling, `floor.zig` splits what remains.
+Sharding the tree at all required a structural change that pays for itself
+twice: symbols now shuttle between two n-symbol halves ping-ponged by depth
+rather than compacting in place, so row ranges never move, sibling nodes can
+never reach each other's symbols, and the old per-node scratch allocation is
+gone. `Codex.build` also frees the suffix array **before** the wavelet tree
+rather than at return — the SA is 4n bytes against the tree's 2n, and both of
+its readers now run first, so the most memory-hungry phase starts with that
+room already free.
+
+Two candidate optimizations were **rejected by measurement**, and both are
+recorded at the site rather than in a commit message. Folding the BWT histogram
+into the gather loop that produces it measures 0.87–0.90× — reliably _slower_,
+because the counter update depends on the byte just loaded and starves the
+gather's memory-level parallelism. And libsais's OpenMP sort buys 1.65×,
+saturating at 8 threads, in exchange for a `libomp` runtime every build host and
+cross-compile target would have to carry; codex declined the dependency and
+sharded the phases it owns with `std.Thread` instead (see
+[`vendor/libsais/README.md`](../../../../vendor/libsais/README.md)).
+Serialization, the original suspect, was never a pole at all — 51ms for a 53MiB
+blob.
+
+**What floors it now** is the suffix sort (still ~half the build, and serial by
+choice) plus the RRR entropy transcode, which is 55–64% of the wavelet tree and
+the one remaining phase that is neither parallel nor cheap. It is per-node and
+the nodes are independent, so it is shardable — that is the next lever, not a
+faster encoder. `.local/spikes/libsais-eval/` holds the harnesses:
+`phases.zig` times each phase against the sort-free Amdahl ceiling, `floor.zig`
+splits the tree into weave vs transcode and carries both retired arms.
 
 Persistence — save/load of the full index, loaded answers re-verified
 against the naive oracle:

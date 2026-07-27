@@ -41,6 +41,7 @@ const regions = @import("../../../kernel/compose/regions.zig");
 const corpus_mod = @import("../../tree/corpus.zig");
 const fresh = @import("../trigrams/fresh.zig");
 const frame = @import("../frame/frame.zig");
+const parallel = @import("../../../kernel/primitives/parallel.zig");
 
 const Silhouette = silhouette_mod.Silhouette;
 const Dir = std.Io.Dir;
@@ -134,11 +135,70 @@ pub const Build = struct {
 /// Extract every corpus file into one `Build` (the shared index-build + live
 /// rung). Caller keeps `corpus` alive (silhouette rows are values, but path
 /// strings borrow it) and calls `deinit`.
+///
+/// Extraction is per-file independent — one language-selected parse plus one
+/// silhouette per function — so the corpus splits byte-greedily and each shard
+/// accumulates its OWN `Build`, which are then concatenated in shard order.
+/// Because shards are contiguous ranges of the corpus, that concatenation *is*
+/// corpus order: fragment ids, the path table, and every row downstream come
+/// out byte-identical to the serial walk. Only `path_idx` needs rebasing, since
+/// each shard numbered its paths from zero.
+///
+/// This is where a live `--unit function` query spends nearly all of its time,
+/// and it used to spend it on a single core while the rest of the machine idled.
 pub fn buildAll(gpa: std.mem.Allocator, corpus: *const corpus_mod.Corpus) !Build {
-    var b = Build{ .gpa = gpa };
-    errdefer b.deinit();
-    for (corpus.docs, corpus.paths) |doc, path| try b.addFile(path, doc);
-    return b;
+    var out = Build{ .gpa = gpa };
+    errdefer out.deinit();
+    if (corpus.docs.len == 0) return out;
+
+    var arena = std.heap.ArenaAllocator.init(gpa);
+    defer arena.deinit();
+    const a = arena.allocator();
+    const bounds = parallel.shardBounds(
+        []const u8,
+        corpus.docs,
+        {},
+        parallel.sliceLen,
+        parallel.build_min_bytes,
+        parallel.max_shards,
+        a,
+    ) orelse try a.dupe(usize, &.{ 0, corpus.docs.len });
+
+    const Shard = struct {
+        docs: []const []const u8,
+        paths: []const []const u8,
+        build: Build,
+        failed: bool = false,
+
+        fn run(sh: *@This()) void {
+            for (sh.docs, sh.paths) |doc, path| sh.build.addFile(path, doc) catch {
+                sh.failed = true;
+                return;
+            };
+        }
+    };
+    const shards = try a.alloc(Shard, bounds.len - 1);
+    const threads = try a.alloc(std.Thread, shards.len);
+    for (shards, bounds[0..shards.len], bounds[1..]) |*sh, lo, hi| sh.* = .{
+        .docs = corpus.docs[lo..hi],
+        .paths = corpus.paths[lo..hi],
+        // A worker never touches the caller's allocator: each shard grows its
+        // own tables straight from the page allocator.
+        .build = .{ .gpa = std.heap.page_allocator },
+    };
+    defer for (shards) |*sh| sh.build.deinit();
+    parallel.fanOut(Shard, shards, threads, Shard.run);
+
+    for (shards) |*sh| {
+        if (sh.failed) return error.OutOfMemory;
+        const base: u32 = @intCast(out.paths.items.len);
+        try out.paths.appendSlice(gpa, sh.build.paths.items);
+        try out.spans.appendSlice(gpa, sh.build.spans.items);
+        try out.silhouettes.appendSlice(gpa, sh.build.silhouettes.items);
+        try out.path_idx.ensureUnusedCapacity(gpa, sh.build.path_idx.items.len);
+        for (sh.build.path_idx.items) |p| out.path_idx.appendAssumeCapacity(p + base);
+    }
+    return out;
 }
 
 // ── persistence ──

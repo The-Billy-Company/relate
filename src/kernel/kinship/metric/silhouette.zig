@@ -77,6 +77,13 @@ pub fn distance(a: *const Silhouette, b: *const Silhouette) f64 {
     return sketch.kmvDistance(a.slots(), b.slots());
 }
 
+/// That distance, or null when it provably exceeds `ceiling` — see
+/// `sketch.kmvWithin`. Structure is the channel a nearest-miss sweep ranks on,
+/// and a sweep only ever needs the distances that beat the one it is holding.
+pub fn within(a: *const Silhouette, b: *const Silhouette, ceiling: f64) ?f64 {
+    return sketch.kmvWithin(a.slots(), b.slots(), ceiling);
+}
+
 // ── the pan-language keyword shelf ──
 // One closed union of the structural words across Billy's seven languages
 // (no per-file language detection). Keywords survive normalization verbatim;
