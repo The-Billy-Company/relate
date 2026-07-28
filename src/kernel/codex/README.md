@@ -1,17 +1,19 @@
 ---
+
 doc_radar:
   counts:
-    - description: "the codex package — seven Zig source files"
-      glob: libs/kernels/irregex/src/corpus/index/codex/*.zig
+    - description: "codex kernel math — codex · cento (+ test)"
+      glob: libs/kernels/irregex/src/kernel/codex/*.zig
       unit: files
-      equals: 7
+      equals: 3
   sentinels:
-    - file: "libs/kernels/irregex/src/root.zig"
+    - description: "root re-exports codex math, succinct floor, and the shelf artifact"
+      file: libs/kernels/irregex/src/root.zig
       contains:
-        - "index/codex/sais.zig"
-        - "index/codex/cento.zig"
-        - "index/codex/shelf.zig"
-        - "index/codex/codex_test.zig"
+        - 'pub const sais = @import("kernel/math/succinct/sais.zig");'
+        - 'pub const index = @import("kernel/codex/codex.zig");'
+        - 'pub const cento = @import("kernel/codex/cento.zig");'
+        - 'pub const shelf = @import("corpus/index/shelf/shelf.zig");'
     - file: "libs/kernels/irregex/build.zig"
       contains:
         - "codex-scale"
@@ -22,24 +24,35 @@ doc_radar:
     - file: "libs/kernels/irregex/src/surface/face/relate/repertoire.zig"
       contains:
         - '"quote"'
-    - file: "libs/kernels/irregex/src/corpus/index/codex/sais.zig"
+    - file: "libs/kernels/irregex/src/kernel/math/succinct/sais.zig"
       contains:
         - "induced sorting"
         - "extern fn libsais"
-    - file: "libs/kernels/irregex/src/corpus/index/codex/rrr.zig"
+    - file: "libs/kernels/irregex/src/kernel/math/succinct/rrr.zig"
       contains:
         - "Raman–Raman–Rao"
 ---
 
-# codex — the compressed self-index
+# `src/kernel/codex/` — the compression codebook
 
 _What if the index over a corpus **was** the compression of that corpus?_
 
-That is not a metaphor; it is a theorem, and this module is its
-implementation. A codex holds a text at entropy-bound size while answering
-exact substring queries at the information-theoretic time floor — and can
-regenerate the text it replaced, byte for byte, from itself alone. The book
-is its own index; the index is the book.
+That is not a metaphor; it is a theorem, and this package is the FM-index
+composition that proves it. A codex holds a text at entropy-bound size while
+answering exact substring queries at the information-theoretic time floor —
+and can regenerate the text it replaced, byte for byte, from itself alone.
+The book is its own index; the index is the book.
+
+**Three homes, one idea.** The old monolithic `corpus/index/codex/` split
+along the crate’s admission rule:
+
+| Home | What lives there |
+| ---- | ---------------- |
+| [`../math/succinct/`](../math/succinct/) | Generic structure math — SA-IS, RRR, wavelet (not FM-private) |
+| **this package** | FM-index composition (`codex.zig`) + Ziv–Merhav cross-parse (`cento.zig`) |
+| [`../../corpus/index/shelf/`](../../corpus/index/shelf/) | Persisted SHLF multi-doc artifact the product verbs read |
+
+Math up, artifact down — the same split trigrams already had with `postings/`.
 
 The idea arrived as a Shannon claim: text is a number stream; if the set of
 information in that stream is already indexed, lookup should run at the
@@ -74,17 +87,17 @@ adversarial oracle suite, and the at-scale proof below.
    tree alone: `restore()` re-emits the original text. The structure is a
    decodable code in Shannon's exact sense — the index **is** a compression.
 
-## The layers
+## The layers (this package + its floor + its artifact)
 
-| file             | structure                                           | rôle                                                                                |
-| ---------------- | --------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `sais.zig`       | SA-IS suffix array (Nong–Zhang–Chan 2009)           | O(n) construction — the sentinel seam over vendored libsais; build-time only, freed |
-| `rrr.zig`        | Plain + RRR bitvectors behind one `Bits` seam       | O(1) rank at entropy space; `adopt` keeps the smaller per vector                    |
-| `wavelet.zig`    | canonical-Huffman wavelet tree, σ ≤ 4096            | occ/access in one descent — the rank oracle                                         |
-| `codex.zig`      | the `Codex`: build → count/find/restore + save/load | the product surface; text/SA/BWT all freed after build                              |
-| `cento.zig`      | Ziv–Merhav cross-parse + Shannon phrase pricing     | corpus-global relatedness: quote a query out of the corpus, in bits                 |
-| `shelf.zig`      | multi-document corpus behind one codex              | doc catalog + offsets + freshness anchor; count/tally per file                      |
-| `codex_test.zig` | differential + property suite                       | every layer vs a naive oracle; nothing self-referential                             |
+| file / home | structure | rôle |
+| ----------- | --------- | ---- |
+| [`../math/succinct/sais.zig`](../math/succinct/sais.zig) | SA-IS suffix array (Nong–Zhang–Chan 2009) | O(n) construction — sentinel seam over vendored libsais |
+| [`../math/succinct/rrr.zig`](../math/succinct/rrr.zig) | Plain + RRR bitvectors behind one `Bits` seam | O(1) rank at entropy space |
+| [`../math/succinct/wavelet.zig`](../math/succinct/wavelet.zig) | canonical-Huffman wavelet tree, σ ≤ 4096 | occ/access in one descent — the rank oracle |
+| `codex.zig` | the `Codex`: build → count/find/restore + save/load | FM composition; text/SA/BWT freed after build |
+| `cento.zig` | Ziv–Merhav cross-parse + Shannon phrase pricing | corpus-global relatedness: quote a query in bits |
+| [`../../corpus/index/shelf/shelf.zig`](../../corpus/index/shelf/shelf.zig) | multi-document corpus behind one codex | doc catalog + offsets + freshness; count/tally per file |
+| `codex_test.zig` | differential + property suite | every layer vs a naive oracle |
 
 Bytes are lifted to u16 symbols c+1 under sentinel 0, so all 256 byte values
 — including NUL — are ordinary, searchable content.
@@ -104,15 +117,17 @@ either way; `sample_rate = 0` drops locate for a count/restore-only index.
 ## Persistence & the two tiers riding it
 
 `Codex.save`/`load` is a versioned wire format, sealed with the shared
-[`signet`](../../../kernel/primitives/signet.zig), that stores only **primary** data (bitvector payloads, Huffman code lengths, tree
-topology, samples); everything derived — rank samples, canonical codes,
-superblock cursors — is rebuilt through the layers' validating constructors
-at load, so a mangled blob fails closed with `error.Corrupt` instead of
-answering wrong. Load is ~0.9% of build (29ms vs 3.4s at 128MB).
+[`signet`](../../corpus/index/frame/signet.zig), that stores only **primary**
+data (bitvector payloads, Huffman code lengths, tree topology, samples);
+everything derived — rank samples, canonical codes, superblock cursors — is
+rebuilt through the layers' validating constructors at load, so a mangled
+blob fails closed with `error.Corrupt` instead of answering wrong. Load is
+~0.9% of build (29ms vs 3.4s at 128MB).
 
-`shelf.zig` lifts one codex over a multi-document corpus (newline-sentinel
-concatenation, doc catalog, per-doc offsets, its own T3-style freshness
-anchor) and is what the product verbs persist (`codex.shelf`):
+The [`shelf`](../../corpus/index/shelf/) artifact lifts one codex over a
+multi-document corpus (newline-sentinel concatenation, doc catalog, per-doc
+offsets, its own T3-style freshness anchor) and is what the product verbs
+persist (`codex.shelf`):
 
 - **`gist codex build | count <text> | tally <text> | status`** — the exact
   existence/count tier beside the trigram index. The trigram tier nominates
@@ -186,7 +201,7 @@ Three things changed. The suffix sort is vendored libsais instead of a
 hand-rolled induced sort; each wavelet level is woven in one pass instead of
 two; and every phase that is a _sweep over rows_ — the BWT and its histogram,
 the locate marks, each wavelet level — is now divided across cores by the same
-[`parallel.zig`](../../../kernel/primitives/parallel.zig) floor the search
+[`parallel.zig`](../../../kernel/math/parallel.zig) floor the search
 engines shard on. Per-phase wall time, min of 2, real repo source, one session
 at load 32 on 16 cores:
 

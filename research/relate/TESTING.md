@@ -63,7 +63,7 @@ positive, a descriptive query, a scoped query, and a multi-file pack.
 
 ---
 
-## 4. Compression vs embeddings — `bench/relate/` (`zig build relate-knn`)
+## 4. Compression vs embeddings — `bench/knn/` (`zig build relate-knn`)
 
 Runs the **real** engine as a k-NN classifier over a labeled manifest:
 
@@ -101,7 +101,7 @@ verifies byte-near candidates.
 ## 6. Codex / quote scale
 
 `zig build codex-scale` and the tables in
-[`src/corpus/index/codex/README.md`](../../src/corpus/index/codex/README.md): known vs
+[`src/kernel/codex/README.md`](../../src/kernel/codex/README.md): known vs
 foreign bits/byte separation, O(|text|) cross-parse after the shelf is loaded,
 and restore byte-identity. End-to-end `quote` also pays shelf loading and
 filesystem freshness work; `codex-scale` records rather than ratchets latency

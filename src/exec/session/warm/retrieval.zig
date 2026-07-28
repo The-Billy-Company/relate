@@ -31,20 +31,20 @@
 //! intact and the query is declined (`freshness_unprovable` → the client
 //! answers cold).
 //! Concurrent queries overlap under a shared `Ward` lease
-//! (`kernel/primitives/ward.zig`) on the watcher-clean fast path while a
+//! (`kernel/math/lease.zig`) on the watcher-clean fast path while a
 //! recompute runs alone under the exclusive lease; the watcher only ever touches
 //! the shared `Seqlock` (`seqlock.zig`) + the `dirty_log`, so the barrier is a
 //! lock-free seqlock over a ward-guarded overlay.
 
 const std = @import("std");
-const assay = @import("../../../../assay/assay.zig");
-const fault = @import("../../../../fault.zig");
-const fresh = @import("../../../../corpus/index/trigrams/fresh.zig");
-const persist = @import("../../../../corpus/index/trigrams/persist.zig");
-const dirtylog = @import("../freshness/dirty.zig");
-const Seqlock = @import("../freshness/seqlock.zig").Seqlock;
-const Ward = @import("../../../../kernel/primitives/ward.zig").Ward;
-const retrieval = @import("../../cold/engine/retrieval.zig");
+const assay = @import("../../../assay/assay.zig");
+const fault = @import("../../../fault.zig");
+const fresh = @import("../../../corpus/fresh/fresh.zig");
+const persist = @import("../../../corpus/index/trigrams/persist.zig");
+const dirtylog = @import("../reconcile/dirty.zig");
+const Seqlock = @import("../reconcile/seqlock.zig").Seqlock;
+const Ward = @import("../../../kernel/math/lease.zig").Ward;
+const retrieval = @import("../../retrieval/retrieval.zig");
 const Dir = std.Io.Dir;
 
 pub const Result = retrieval.Result;
@@ -103,7 +103,7 @@ pub const RetrievalSession = struct {
     index_gen: []u8,
 
     /// The reader/writer discipline shared with gist's `ResidentSession`
-    /// (`kernel/primitives/ward.zig`): concurrent `search`/`pack` overlap under a
+    /// (`kernel/math/lease.zig`): concurrent `search`/`pack` overlap under a
     /// shared lease on the watcher-clean fast path, while a recompute runs alone
     /// under the exclusive lease. `Ward.readReconciled` owns the double-checked
     /// upgrade dance — this session just supplies `seqlock.skip()` + `reconcile`.

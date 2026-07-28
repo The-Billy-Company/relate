@@ -98,7 +98,7 @@ cannot give.
 `quote` needs the persisted shelf (`relate index --shelf`); query cost is
 O(|text|), corpus size never appears. Measured separation: known text
 ~0.15 bits/byte vs foreign ~15 (~90×) — tables in
-[`src/corpus/index/codex/README.md`](../../src/corpus/index/codex/README.md).
+[`src/kernel/codex/README.md`](../../src/kernel/codex/README.md).
 
 ---
 
@@ -108,7 +108,7 @@ Relate's `patterns` verb deliberately **does not** follow Hyperscan-style
 fused multi-pattern DFAs. Those win throughput by collapsing attribution.
 The agent loop needs _which_ of N intents hit. Contract: one walk, N
 patterns, answer ≡ N independent single-pattern runs (prefilter forced on
-and off). Engine: `src/kernel/batch/`. Race harness:
+and off). Engine: `src/kernel/slate/`. Race harness:
 `bench/races/multipattern.sh` (~6× vs sequential `gist -l` on a 10-pattern
 slate, with attribution preserved).
 
@@ -118,7 +118,7 @@ slate, with attribution preserved).
 
 ### Embeddings / semantic retrieval
 
-Honest race: `zig build relate-knn` (`bench/relate/knn.zig`) runs the real
+Honest race: `zig build relate-knn` (`bench/knn/knn.zig`) runs the real
 zipper / sketch / pivot lanes as a k-NN classifier against gzip-kNN and a
 static embedding model. **Verdict (KILL for semantic retrieval):**
 embeddings win accuracy and amortized query speed; compression's edge is

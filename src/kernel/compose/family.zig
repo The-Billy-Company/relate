@@ -1,12 +1,14 @@
 //! irregex compose — `family`: fork families inside the exact filter.
 //!
-//! The composed answer to "of the files that match this symbol, which are forks
-//! or structural twins of each other?" — reached from the surface as `relate
-//! echoes --matching PAT`. A bare `relate echoes` answers over the whole corpus;
-//! running the exact `PatternSet` first (`candidates.select`) and building the
-//! kinship graph over ONLY the matching docs turns a whole-tree dedup sweep into
-//! a scoped one — the fixture farm behind one handler, the mirrored
-//! implementations of one trait.
+//! Pure-kernel answer to "of the files that match this symbol, which are forks
+//! or structural twins of each other?" The CLI's `relate echoes --matching PAT`
+//! is a different composition (narrow-then-echoes on the relate face); this
+//! module is the analytic FFI's `.family` op awaiting ADR-377 graduation
+//! (`surface/ffi/analytic.zig` still declines it). Running the exact
+//! `PatternSet` first (`candidates.select`) and building the kinship graph
+//! over ONLY the matching docs turns a whole-tree dedup sweep into a scoped
+//! one — the fixture farm behind one handler, the mirrored implementations of
+//! one trait.
 //!
 //! Two edge sources, one component pass (`families.zig` union-find):
 //!   • `.dup{T}`  — the verified near-duplicate graph (byte kinship ≤ T), the

@@ -5,7 +5,7 @@ doc_radar:
       file: libs/kernels/irregex/build.zig
       contains: '.step("relate-knn"'
     - description: "the three faithful lanes the harness runs"
-      file: libs/kernels/irregex/bench/relate/knn.zig
+      file: libs/kernels/irregex/bench/knn/knn.zig
       contains: 'const Method = enum { zipper, sketch, pivot };'
 ---
 

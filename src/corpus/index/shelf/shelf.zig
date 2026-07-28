@@ -17,22 +17,23 @@
 //! exactly which snapshot an answer is true of.
 
 const std = @import("std");
-const codexmod = @import("codex.zig");
+const codexmod = @import("../../../kernel/codex/codex.zig");
 const fault = @import("../../../fault.zig");
 const frame = @import("../frame/frame.zig");
-const fresh = @import("../trigrams/fresh.zig");
+const fresh = @import("../../fresh/fresh.zig");
 const corpus_mod = @import("../../tree/corpus.zig");
 
 const Codex = codexmod.Codex;
 const Cursor = frame.Cursor;
 const putInt = frame.putInt;
-const signet = @import("../../../kernel/primitives/signet.zig");
+const signet = @import("../frame/signet.zig");
+const home = @import("../frame/home.zig");
 
 const MAGIC = "SHLF";
 // v2 sealed the outer frame and re-sealed the codex it embeds.
 const VERSION: u32 = 2;
 
-const shelf_path = corpus_mod.ArtifactPath("codex.shelf");
+const shelf_path = home.ArtifactPath("codex.shelf");
 
 /// Where the persisted shelf lives — the one name every reader and writer
 /// resolves, so no face can build one artifact and query another.

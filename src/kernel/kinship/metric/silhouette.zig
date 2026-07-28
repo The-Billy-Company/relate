@@ -39,6 +39,7 @@
 
 const std = @import("std");
 const sketch = @import("sketch.zig");
+const mix = @import("../../math/mix.zig");
 
 /// Sketch width. Structure fingerprints are sparser than LZ78 phrases and
 /// renamed-twin ranking measurably degrades at 128 (twin@1 0.83 → 0.67 on
@@ -107,12 +108,11 @@ const keywords = std.StaticStringMap(void).initComptime(.{
     .{"where"},      .{"while"},    .{"with"},           .{"yield"},
 });
 
-fn isIdentStart(c: u8) bool {
-    return (c >= 'a' and c <= 'z') or (c >= 'A' and c <= 'Z') or c == '_';
-}
-fn isIdentCont(c: u8) bool {
-    return isIdentStart(c) or (c >= '0' and c <= '9');
-}
+// Identifier byte classes come from `anatomy/token.zig` — one definition
+// shared with the dependency scanner, so the two planes cannot drift.
+const token = @import("../../anatomy/token.zig");
+const isIdentStart = token.isIdentStart;
+const isIdentCont = token.isIdentByte;
 fn isNumCont(c: u8) bool {
     // Digits, radix/exponent letters, separators, and the decimal point —
     // one class token N regardless of base or width suffix.
@@ -132,8 +132,8 @@ const Shingler = struct {
     gpa: std.mem.Allocator,
 
     fn tokenHash(text: []const u8) u64 {
-        var h: u64 = sketch.fnv_offset;
-        for (text) |b| h = (h ^ b) *% sketch.fnv_prime;
+        var h: u64 = mix.fnv_offset;
+        for (text) |b| h = (h ^ b) *% mix.fnv_prime;
         return h;
     }
 
@@ -142,11 +142,11 @@ const Shingler = struct {
         self.n += 1;
         if (self.n < gram) return;
         // Hash the last `gram` token hashes oldest → newest.
-        var h: u64 = sketch.fnv_offset;
+        var h: u64 = mix.fnv_offset;
         var i: usize = self.n - gram;
         while (i < self.n) : (i += 1) {
             const w = self.ring[i % gram];
-            inline for (0..8) |byte| h = (h ^ @as(u8, @truncate(w >> (8 * byte)))) *% sketch.fnv_prime;
+            inline for (0..8) |byte| h = (h ^ @as(u8, @truncate(w >> (8 * byte)))) *% mix.fnv_prime;
         }
         try self.grams.append(self.gpa, h);
     }
@@ -240,7 +240,7 @@ pub fn build(gpa: std.mem.Allocator, bytes: []const u8) !Silhouette {
     defer fps.deinit(gpa);
     try fps.ensureTotalCapacityPrecise(gpa, picks.count());
     var it = picks.keyIterator();
-    while (it.next()) |key| fps.appendAssumeCapacity(sketch.finalize(key.*));
+    while (it.next()) |key| fps.appendAssumeCapacity(mix.finalize(key.*));
     std.mem.sort(u64, fps.items, {}, comptime std.sort.asc(u64));
 
     var out = Silhouette.empty;

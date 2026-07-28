@@ -12,7 +12,7 @@ doc_radar:
 # Vendored libsais 2.10.2
 
 The pinned, hermetically-built suffix-array constructor behind the codex
-FM-index. `src/corpus/index/codex/sais.zig` is a thin sentinel adapter over
+FM-index. `src/kernel/math/succinct/sais.zig` is a thin sentinel adapter over
 `libsais()`; there is no fallback implementation and no system `liblibsais` is
 ever consulted. `build.zig` compiles this single translation unit from source,
 so the build is byte-reproducible on any machine.
@@ -60,7 +60,7 @@ saturates at 8 threads, and beyond that adds threads without adding speed. That
 is the whole offer, and the price is a `libomp`/`libgomp` runtime that is in
 neither the toolchain nor the ledger and that every build host, cross-compile
 target, and CI image would have to carry. Codex declined it and sharded the
-phases it owns instead (`kernel/primitives/parallel.zig`, pure `std.Thread`,
+phases it owns instead (`kernel/math/parallel.zig`, pure `std.Thread`,
 zero dependencies), which is why the sort is now a *third* of a build that used
 to be seven eighths. The pin keeps the code available for the day a second
 1.65× is worth a link-time dependency; the harness that priced it is

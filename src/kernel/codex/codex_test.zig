@@ -8,13 +8,12 @@
 //! repetitive corpora, plus a seeded property-fuzz loop.
 
 const std = @import("std");
-const fault = @import("../../../fault.zig");
-const sais = @import("sais.zig");
-const rrr = @import("rrr.zig");
-const wavelet = @import("wavelet.zig");
+const fault = @import("../../fault.zig");
+const sais = @import("../math/succinct/sais.zig");
+const rrr = @import("../math/succinct/rrr.zig");
+const wavelet = @import("../math/succinct/wavelet.zig");
 const codex = @import("codex.zig");
 const cento = @import("cento.zig");
-const shelf_mod = @import("shelf.zig");
 
 const testing = std.testing;
 
@@ -542,90 +541,6 @@ test "codex: load fails closed on truncation, bit rot, and wrong magic" {
     try testing.expectError(error.Corrupt, codex.Codex.load(gpa, bad_magic));
 }
 
-// ── shelf (multi-document tier) ──
-
-test "shelf: count and tally match per-document oracles, through save/load" {
-    const gpa = testing.allocator;
-    const docs = [_][]const u8{
-        "the quick brown fox",
-        "fox fox fox",
-        "no relation at all",
-        "quick quick",
-        "", // empty document is legal
-    };
-    const paths = [_][]const u8{ "a/one.txt", "b/two.txt", "c/three.txt", "d/four.txt", "e/empty.txt" };
-    var built = try shelf_mod.Shelf.build(gpa, &docs, &paths, 42, .{ .sample_rate = 4 });
-    defer built.deinit(gpa);
-    const blob = try built.save(gpa);
-    defer gpa.free(blob);
-    var shelf = try shelf_mod.Shelf.load(gpa, blob);
-    defer shelf.deinit(gpa);
-
-    try testing.expectEqual(@as(i64, 42), shelf.built_ns);
-    try testing.expectEqual(paths.len, shelf.paths.len);
-    for (paths, shelf.paths) |want, got| try testing.expectEqualStrings(want, got);
-
-    for ([_][]const u8{ "fox", "quick", "o", "zebra", " " }) |pat| {
-        // corpus-wide count == Σ per-doc oracle counts (patterns carry no '\n',
-        // so the sentinel guarantees no cross-document match)
-        var want_total: usize = 0;
-        for (&docs) |d| want_total += oracleCount(d, pat);
-        try testing.expectEqual(want_total, shelf.count(pat));
-
-        const t = (try shelf.tally(gpa, pat)).got;
-        defer gpa.free(t);
-        var tallied: usize = 0;
-        for (t, 0..) |dc, i| {
-            try testing.expectEqual(oracleCount(docs[dc.doc], pat), dc.count);
-            try testing.expect(dc.count > 0); // only matching docs appear
-            if (i > 0) try testing.expect(t[i - 1].count >= dc.count); // heaviest first
-            tallied += dc.count;
-        }
-        try testing.expectEqual(want_total, tallied);
-    }
-}
-
-test "shelf: docOf maps every corpus position to its document" {
-    const gpa = testing.allocator;
-    const docs = [_][]const u8{ "aa", "b", "cccc" };
-    const paths = [_][]const u8{ "one", "two", "three" };
-    var shelf = try shelf_mod.Shelf.build(gpa, &docs, &paths, 0, .{ .sample_rate = 1 });
-    defer shelf.deinit(gpa);
-    // layout: aa\n b\n cccc\n → doc starts 0, 3, 5
-    var pos: u64 = 0;
-    for (&docs, 0..) |d, i| {
-        for (0..d.len + 1) |_| { // body + its sentinel both belong to doc i
-            try testing.expectEqual(@as(u32, @intCast(i)), shelf.docOf(pos));
-            pos += 1;
-        }
-    }
-}
-
-test "shelf: load fails closed on framing corruption" {
-    const gpa = testing.allocator;
-    const docs = [_][]const u8{ "alpha", "beta" };
-    const paths = [_][]const u8{ "a", "b" };
-    var built = try shelf_mod.Shelf.build(gpa, &docs, &paths, 7, .{});
-    defer built.deinit(gpa);
-    const blob = try built.save(gpa);
-    defer gpa.free(blob);
-
-    var bad = try gpa.dupe(u8, blob);
-    defer gpa.free(bad);
-    bad[0] = 'X'; // magic
-    try testing.expectError(error.Corrupt, shelf_mod.Shelf.load(gpa, bad));
-    var cut: usize = 0;
-    while (cut < blob.len) : (cut += @max(blob.len / 23, 1)) {
-        try testing.expectError(error.Corrupt, shelf_mod.Shelf.load(gpa, blob[0..cut]));
-    }
-    // bit rot inside the embedded codex blob trips its checksum
-    bad[0] = blob[0];
-    bad[bad.len - 20] ^= 0x40;
-    try testing.expectError(error.Corrupt, shelf_mod.Shelf.load(gpa, bad));
-}
-
-// ── cento (cross-parse) ──
-
 /// Longest suffix of `q[0..end)` occurring in `text`, by brute force.
 fn oracleLongestSuffix(text: []const u8, q: []const u8, end: usize) usize {
     var l: usize = @min(end, text.len);
@@ -636,6 +551,7 @@ fn oracleLongestSuffix(text: []const u8, q: []const u8, end: usize) usize {
 }
 
 /// The greedy right-to-left maximal parse, straight off the definition.
+
 fn expectCentoMatchesOracle(gpa: std.mem.Allocator, cx: *const codex.Codex, text: []const u8, q: []const u8) !void {
     var got = try cento.parse(cx, gpa, q);
     defer got.deinit(gpa);

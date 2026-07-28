@@ -14,7 +14,7 @@
 //! caller with more intents is running a `relate patterns` sweep, not this.
 
 const std = @import("std");
-const patterns_mod = @import("../batch/patterns.zig");
+const patterns_mod = @import("../slate/patterns.zig");
 
 /// The mask is one `u64`, one bit per pattern — the composed verbs take a
 /// handful of intents, never a lint-slate's worth.

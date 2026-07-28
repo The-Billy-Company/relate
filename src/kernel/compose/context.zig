@@ -112,7 +112,7 @@ pub fn pack(
 }
 
 /// The floor a pick must clear to earn a place in the reading set — see
-/// `surface/exec/cold/engine/retrieval.zig`, which applies the same policy to
+/// `exec/cold/engine/retrieval.zig`, which applies the same policy to
 /// the warm rung so all three rungs stop at the same kind of pick.
 pub fn minGain(total_bits: f64) f64 {
     return @max(0.02 * total_bits, 0.25);

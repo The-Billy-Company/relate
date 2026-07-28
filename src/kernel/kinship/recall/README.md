@@ -22,7 +22,7 @@ relate pack   →  lexicon prices query chunks → coverage picks marginal-novel
 The persisted codebook these read lives under
 [`../../../corpus/index/trigrams/`](../../../corpus/index/trigrams/); the cold
 read engine that folds it against live bytes is
-[`../../../surface/exec/cold/engine/retrieval.zig`](../../../surface/exec/cold/engine/retrieval.zig).
+[`../../../exec/retrieval/retrieval.zig`](../../../exec/retrieval/retrieval.zig).
 
 ## When to edit
 

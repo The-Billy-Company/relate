@@ -35,7 +35,7 @@
 
 const std = @import("std");
 const zipper = @import("zipper.zig");
-const sketch = @import("../metric/sketch.zig");
+const mix = @import("../../math/mix.zig");
 
 /// Fingerprint window: one hash per `gram` consecutive bytes. Eight bytes —
 /// past the trigram floor where style begins, short enough that a one-line
@@ -57,9 +57,9 @@ comptime {
 
 /// splitmix64 finalizer — same spreader the sketch uses; gram-hash values
 /// must look uniform for min-selection to sample content-independently.
-const finalize = sketch.finalize;
-const fnv_offset = sketch.fnv_offset;
-const fnv_prime = sketch.fnv_prime;
+const finalize = mix.finalize;
+const fnv_offset = mix.fnv_offset;
+const fnv_prime = mix.fnv_prime;
 
 /// One ranked recall answer: `bits` of the query's description this doc
 /// already paid for (higher = closer).

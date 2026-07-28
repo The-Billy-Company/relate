@@ -66,17 +66,13 @@ pub const Sketch = struct {
     }
 };
 
-pub const fnv_offset: u64 = 0xcbf29ce484222325;
-pub const fnv_prime: u64 = 0x100000001b3;
-
-/// splitmix64 finalizer — spreads the FNV accumulator so bottom-k selection
-/// sees uniform keys (FNV alone clusters short phrases in the low bits).
-pub inline fn finalize(x: u64) u64 {
-    var z = x +% 0x9e3779b97f4a7c15;
-    z = (z ^ (z >> 30)) *% 0xbf58476d1ce4e5b9;
-    z = (z ^ (z >> 27)) *% 0x94d049bb133111eb;
-    return z ^ (z >> 31);
-}
+// The FNV constants and splitmix64 finalizer live in `math/mix.zig` —
+// generic bit-spreading, not kinship. Bound privately so the parse below
+// reads unchanged.
+const mix = @import("../../math/mix.zig");
+const fnv_offset = mix.fnv_offset;
+const fnv_prime = mix.fnv_prime;
+const finalize = mix.finalize;
 
 /// Open-addressed u64 set for the seen-phrase dictionary — the only scratch
 /// the parse needs. Power-of-two capacity, linear probing, grow at 7/8 load.

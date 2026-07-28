@@ -45,13 +45,13 @@ const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
 const fingerprint = @import("../../../kernel/kinship/metric/fingerprint.zig");
 const corpus_mod = @import("../../tree/corpus.zig");
 const fault = @import("../../../fault.zig");
-const fresh = @import("../trigrams/fresh.zig");
+const fresh = @import("../../fresh/fresh.zig");
 
 const Sketch = sketch.Sketch;
 const Silhouette = silhouette_mod.Silhouette;
 const Dir = std.Io.Dir;
 
-const atlas_path = corpus_mod.ArtifactPath("kinship.atlas");
+const atlas_path = home.ArtifactPath("kinship.atlas");
 pub fn atlasFile() []const u8 {
     return atlas_path.get();
 }
@@ -71,7 +71,8 @@ const putInt = frame.putInt;
 const Cursor = frame.Cursor;
 // The seal. A 64 MB atlas behind a 64-bit non-cryptographic trailer was the
 // weakest integrity claim of any artifact here; `signet` makes it a real one.
-const signet = @import("../../../kernel/primitives/signet.zig");
+const signet = @import("../frame/signet.zig");
+const home = @import("../frame/home.zig");
 
 /// Serialize `paths` + their `sketches` and `silhouettes` (same order) under
 /// the `built_ns` anchor, plus the `roots` the corpus was built over (so a

@@ -19,7 +19,7 @@
 //! 0 pins the window to the phrase's own line(s).
 
 const std = @import("std");
-const simd = @import("../match/scan/simd.zig");
+const simd = @import("../scan/simd.zig");
 
 /// A phrase re-found in the current bytes of its exemplar file: the live byte
 /// offset, the 1-based line the phrase starts on, and the byte window

@@ -26,6 +26,7 @@
 
 const std = @import("std");
 const sketch = @import("sketch.zig");
+const mix = @import("../../math/mix.zig");
 const flate = std.compress.flate;
 const Writer = std.Io.Writer;
 
@@ -44,14 +45,14 @@ fn exactSet(a: std.mem.Allocator, bytes: []const u8) !HashSet {
     defer dict.deinit();
     var out = HashSet.init(a);
     errdefer out.deinit();
-    var h: u64 = sketch.fnv_offset;
+    var h: u64 = mix.fnv_offset;
     var plen: usize = 0;
     for (bytes) |b| {
-        h = (h ^ b) *% sketch.fnv_prime;
+        h = (h ^ b) *% mix.fnv_prime;
         plen += 1;
         if ((try dict.getOrPut(h)).found_existing) continue; // extend the phrase
-        if (plen >= sketch.min_phrase) try out.put(sketch.finalize(h), {});
-        h = sketch.fnv_offset; // phrase complete — start the next one
+        if (plen >= sketch.min_phrase) try out.put(mix.finalize(h), {});
+        h = mix.fnv_offset; // phrase complete — start the next one
         plen = 0;
     }
     return out;

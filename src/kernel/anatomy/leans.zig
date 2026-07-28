@@ -41,7 +41,7 @@
 const std = @import("std");
 const lexspan = @import("lexspan.zig");
 const spans = @import("spans.zig");
-const patterns = @import("../batch/patterns.zig");
+const patterns = @import("../slate/patterns.zig");
 const signals = @import("../rank/signals.zig");
 
 /// An identifier the seed's body leans on, resolved to its own definition
@@ -952,21 +952,12 @@ fn docAt(paths: []const []const u8, want: []const u8) ?u32 {
 
 // ── byte helpers ─────────────────────────────────────────────────────────────
 
-fn isIdentStart(c: u8) bool {
-    return std.ascii.isAlphabetic(c) or c == '_';
-}
-fn isIdentByte(c: u8) bool {
-    return std.ascii.isAlphanumeric(c) or c == '_';
-}
-
-/// The next maximal identifier in `text` at/after `i`, advancing `i` past it.
-fn nextIdent(text: []const u8, i: *usize) ?[]const u8 {
-    while (i.* < text.len and !isIdentStart(text[i.*])) i.* += 1;
-    if (i.* >= text.len) return null;
-    const start = i.*;
-    while (i.* < text.len and isIdentByte(text[i.*])) i.* += 1;
-    return text[start..i.*];
-}
+// The identifier vocabulary is `anatomy/token.zig` — shared with kinship's
+// structure fingerprints so token boundaries cannot drift between planes.
+const token = @import("token.zig");
+const isIdentStart = token.isIdentStart;
+const isIdentByte = token.isIdentByte;
+const nextIdent = token.nextIdent;
 
 fn seen(items: []const Lean, name: []const u8, qual: []const u8) bool {
     for (items) |x| if (std.mem.eql(u8, x.name, name) and std.mem.eql(u8, x.qual, qual)) return true;

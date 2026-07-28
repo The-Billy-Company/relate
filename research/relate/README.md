@@ -4,7 +4,7 @@ doc_radar:
     - libs/kernels/irregex/src/surface/face/relate/main.zig
     - libs/kernels/irregex/src/kernel/kinship/recall/zipper.zig
     - libs/kernels/irregex/src/kernel/kinship/recall/lexicon.zig
-    - libs/kernels/irregex/bench/relate/knn.zig
+    - libs/kernels/irregex/bench/knn/knn.zig
   sentinels:
     - file: libs/kernels/irregex/src/kernel/kinship/metric/sketch.zig
       contains:
@@ -50,10 +50,10 @@ stronger novel-math claim lives on the Gist side in the Crest sieve
 | -------------------------- | ------------------------------------------------------------------------------ |
 | `src/surface/face/relate/` | product face (nine query verbs + lifecycle + schema)                           |
 | `src/kernel/kinship/`      | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
-| `src/kernel/batch/`        | `patterns` / loom (N-pattern exact attribution)                                |
+| `src/kernel/slate/`        | `patterns` / loom (N-pattern exact attribution)                                |
 | `src/corpus/index/atlas/`  | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
-| `src/corpus/index/codex/`  | FM-index shelf behind `quote` (shared with `gist codex`)                       |
-| `bench/relate/`            | compression-vs-embeddings knn harness (`zig build relate-knn`)                 |
+| `src/kernel/codex/` + `src/corpus/index/shelf/` | FM-index math + persisted SHLF behind `quote` (shared with `gist codex`) |
+| `bench/knn/`            | compression-vs-embeddings knn harness (`zig build relate-knn`)                 |
 
 ## Run
 

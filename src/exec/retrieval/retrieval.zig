@@ -9,12 +9,12 @@
 //! state returns `null`, so the caller can use the live lexicon oracle.
 
 const std = @import("std");
-const scope = @import("../../../../corpus/scope/glob.zig");
-const corpus = @import("../../../../corpus/tree/corpus.zig");
-const fresh = @import("../../../../corpus/index/trigrams/fresh.zig");
-const persist = @import("../../../../corpus/index/trigrams/persist.zig");
-const coverage = @import("../../../../kernel/kinship/recall/coverage.zig");
-const zipper = @import("../../../../kernel/kinship/recall/zipper.zig");
+const scope = @import("../../corpus/scope/filter.zig");
+const corpus = @import("../../corpus/tree/corpus.zig");
+const fresh = @import("../../corpus/fresh/fresh.zig");
+const persist = @import("../../corpus/index/trigrams/persist.zig");
+const coverage = @import("../../kernel/kinship/recall/coverage.zig");
+const zipper = @import("../../kernel/kinship/recall/zipper.zig");
 
 const Dir = std.Io.Dir;
 
