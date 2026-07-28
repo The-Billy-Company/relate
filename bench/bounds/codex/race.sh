@@ -13,7 +13,7 @@
 #                         (the certificate builds it once via `zig build lab`)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-KERNEL="$(cd "${HERE}/../.." && pwd)"
+KERNEL="$(cd "${HERE}/../../.." && pwd)"
 REPO="$(cd "${KERNEL}/../../.." && pwd)"
 OUT="${CODEX_OUT:-${REPO}/.local/codex-bench}"
 SIZES="${1:-1,4,16,64,128}"
