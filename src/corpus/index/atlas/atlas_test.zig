@@ -16,6 +16,7 @@ const sketch = @import("../../../kernel/kinship/metric/sketch.zig");
 const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
 const corpus_mod = @import("../../tree/corpus.zig");
 const fault = @import("../../../fault.zig");
+const portal = @import("../../../portal.zig");
 const Dir = std.Io.Dir;
 
 /// A throwaway on-disk tree (absolute root — no cwd dependence).
@@ -28,7 +29,7 @@ const Tree = struct {
         // One tree per test tag, process-unique so concurrent `zig build test`
         // runs (CI + the ~10 coworker agents) never share this mutable fixture
         // dir; init clears any stale run's leftovers.
-        const root = try std.fmt.allocPrint(a, "/tmp/relate_atlas_{s}_{d}", .{ tag, std.c.getpid() });
+        const root = try std.fmt.allocPrint(a, "/tmp/relate_atlas_{s}_{d}", .{ tag, portal.processId() });
         fault.spare("clear leftover fixture", Dir.cwd().deleteTree(io, root));
         try Dir.cwd().createDirPath(io, root);
         return .{ .root = root, .io = io, .a = a };
