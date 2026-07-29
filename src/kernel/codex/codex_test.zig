@@ -551,7 +551,6 @@ fn oracleLongestSuffix(text: []const u8, q: []const u8, end: usize) usize {
 }
 
 /// The greedy right-to-left maximal parse, straight off the definition.
-
 fn expectCentoMatchesOracle(gpa: std.mem.Allocator, cx: *const codex.Codex, text: []const u8, q: []const u8) !void {
     var got = try cento.parse(cx, gpa, q);
     defer got.deinit(gpa);
