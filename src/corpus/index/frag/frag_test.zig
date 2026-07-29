@@ -126,7 +126,7 @@ test "frag: a torn, tampered, or alien blob never parses" {
 /// Independent live fragment build over the current tree — the "what a live
 /// rebuild sees" oracle a folded view must match (set-wise).
 fn liveBuild(gpa: std.mem.Allocator, io: std.Io, roots: []const []const u8) !struct { corpus: corpus_mod.Corpus, build: frag.Build } {
-    var corpus = try corpus_mod.load(gpa, io, roots);
+    var corpus = try corpus_mod.load(gpa, io, roots, .contiguous);
     errdefer corpus.deinit();
     const build = try frag.buildAll(gpa, &corpus);
     return .{ .corpus = corpus, .build = build };
@@ -149,7 +149,7 @@ test "frag: fold re-derives changed, new, and emptied fragments exactly" {
 
     const built_ns: i64 = @intCast(std.Io.Clock.now(.real, io).nanoseconds);
     const roots = [_][]const u8{tree.root};
-    var corpus = try corpus_mod.load(gpa, io, &roots);
+    var corpus = try corpus_mod.load(gpa, io, &roots, .contiguous);
     defer corpus.deinit();
     try t.expectEqual(@as(usize, 3), corpus.docs.len);
     var b = try frag.buildAll(gpa, &corpus);

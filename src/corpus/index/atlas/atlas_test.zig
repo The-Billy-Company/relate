@@ -140,7 +140,7 @@ test "atlas: fold re-derives changed, new, and emptied files exactly" {
     // Build the atlas the way `relate index` does: anchor BEFORE the read.
     const built_ns: i64 = @intCast(std.Io.Clock.now(.real, io).nanoseconds);
     const roots = [_][]const u8{tree.root};
-    var corpus = try corpus_mod.load(gpa, io, &roots);
+    var corpus = try corpus_mod.load(gpa, io, &roots, .contiguous);
     defer corpus.deinit();
     try t.expectEqual(@as(usize, 3), corpus.docs.len);
     const built = try gpa.alloc(sketch.Sketch, corpus.docs.len);
