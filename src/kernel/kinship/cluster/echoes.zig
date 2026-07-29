@@ -38,6 +38,7 @@
 //! renders; this nominates, admits, groups, ranks, and prices.
 
 const std = @import("std");
+const portal = @import("../../../portal.zig");
 const sketch_mod = @import("../metric/sketch.zig");
 const silhouette_mod = @import("../metric/silhouette.zig");
 const channel_mod = @import("../metric/channel.zig");
@@ -625,7 +626,7 @@ const MissShard = struct {
 /// that actually scales.
 fn shardCount(sweeps: usize, population: usize) usize {
     if (sweeps *| population < min_comparisons) return 1;
-    const cores = std.Thread.getCpuCount() catch 1;
+    const cores = portal.cpuCount() catch 1;
     return @min(@min(cores, sweeps), parallel.max_shards);
 }
 
