@@ -1,0 +1,25 @@
+.{
+    .name = .relate,
+    .version = "0.1.0",
+    .minimum_zig_version = "0.16.0",
+    .dependencies = .{
+        // Sibling-checkout path dep (dev). Releases pin url+hash via the
+        // publish script — see the ecosystem split plan.
+        .irregex = .{ .path = "../irregex" },
+        // libsais 2.10.2 — the suffix sort under the codex FM-index. The bytes
+        // that build live under vendor/libsais/; this `.lazy` entry only pins
+        // the upstream release by URL + content hash.
+        .libsais = .{
+            .url = "https://github.com/IlyaGrebnov/libsais/archive/refs/tags/v2.10.2.tar.gz",
+            .hash = "N-V-__8AAPB0GQBIBogUbM-MgZJ-IjjoKFw9PBg0zJ5IHbVV",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "vendor",
+        "README.md",
+    },
+}

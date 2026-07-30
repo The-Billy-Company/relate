@@ -4,7 +4,7 @@ doc_radar:
     - libs/kernels/irregex/src/surface/face/relate/main.zig
     - libs/kernels/irregex/src/kernel/kinship/recall/zipper.zig
     - libs/kernels/irregex/src/kernel/kinship/recall/lexicon.zig
-    - libs/kernels/irregex/bench/knn/knn.zig
+    - libs/kernels/irregex/bench/conformance/relate/knn.zig
   sentinels:
     - file: libs/kernels/irregex/src/kernel/kinship/metric/sketch.zig
       contains:
