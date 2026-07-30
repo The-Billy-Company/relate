@@ -43,9 +43,9 @@ const std = @import("std");
 const sketch = @import("../../../kernel/kinship/metric/sketch.zig");
 const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
 const fingerprint = @import("../../../kernel/kinship/metric/fingerprint.zig");
-const corpus_mod = @import("../../tree/corpus.zig");
-const fault = @import("../../../fault.zig");
-const fresh = @import("../../fresh/fresh.zig");
+const corpus_mod = @import("irregex").corpus;
+const fault = @import("irregex").fault;
+const fresh = @import("irregex").fresh;
 
 const Sketch = sketch.Sketch;
 const Silhouette = silhouette_mod.Silhouette;
@@ -66,13 +66,13 @@ const VERSION: u32 = 4;
 
 // Little-endian serializer + fail-closed cursor + NUL catalog codec shared by
 // every persisted irregex artifact.
-const frame = @import("../frame/frame.zig");
+const frame = @import("irregex").inner.corpus.frame;
 const putInt = frame.putInt;
 const Cursor = frame.Cursor;
 // The seal. A 64 MB atlas behind a 64-bit non-cryptographic trailer was the
 // weakest integrity claim of any artifact here; `signet` makes it a real one.
-const signet = @import("../frame/signet.zig");
-const home = @import("../frame/home.zig");
+const signet = @import("irregex").signet;
+const home = @import("irregex").home;
 
 /// Serialize `paths` + their `sketches` and `silhouettes` (same order) under
 /// the `built_ns` anchor, plus the `roots` the corpus was built over (so a

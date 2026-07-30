@@ -39,7 +39,7 @@
 
 const std = @import("std");
 const sketch = @import("sketch.zig");
-const mix = @import("../../math/mix.zig");
+const mix = @import("irregex").inner.math.mix;
 
 /// Sketch width. Structure fingerprints are sparser than LZ78 phrases and
 /// renamed-twin ranking measurably degrades at 128 (twin@1 0.83 → 0.67 on

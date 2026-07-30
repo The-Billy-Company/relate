@@ -38,14 +38,14 @@
 //! renders; this nominates, admits, groups, ranks, and prices.
 
 const std = @import("std");
-const portal = @import("../../../portal.zig");
+const portal = @import("irregex").portal;
 const sketch_mod = @import("../metric/sketch.zig");
 const silhouette_mod = @import("../metric/silhouette.zig");
 const channel_mod = @import("../metric/channel.zig");
 const pairs_mod = @import("pairs.zig");
 const families_mod = @import("families.zig");
-const signals = @import("../../rank/signals.zig");
-const parallel = @import("../../math/parallel.zig");
+const signals = @import("irregex").signals;
+const parallel = @import("irregex").parallel;
 
 const Sketch = sketch_mod.Sketch;
 const Silhouette = silhouette_mod.Silhouette;

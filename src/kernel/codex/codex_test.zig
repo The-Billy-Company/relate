@@ -8,10 +8,10 @@
 //! repetitive corpora, plus a seeded property-fuzz loop.
 
 const std = @import("std");
-const fault = @import("../../fault.zig");
-const sais = @import("../math/succinct/sais.zig");
-const rrr = @import("../math/succinct/rrr.zig");
-const wavelet = @import("../math/succinct/wavelet.zig");
+const fault = @import("irregex").fault;
+const sais = @import("irregex").codex.sais;
+const rrr = @import("irregex").codex.rrr;
+const wavelet = @import("irregex").codex.wavelet;
 const codex = @import("codex.zig");
 const cento = @import("cento.zig");
 

@@ -35,7 +35,7 @@
 
 const std = @import("std");
 const zipper = @import("zipper.zig");
-const mix = @import("../../math/mix.zig");
+const mix = @import("irregex").inner.math.mix;
 
 /// Fingerprint window: one hash per `gram` consecutive bytes. Eight bytes —
 /// past the trigram floor where style begins, short enough that a one-line

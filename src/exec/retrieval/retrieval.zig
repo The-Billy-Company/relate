@@ -9,10 +9,10 @@
 //! state returns `null`, so the caller can use the live lexicon oracle.
 
 const std = @import("std");
-const scope = @import("../../corpus/scope/filter.zig");
-const corpus = @import("../../corpus/tree/corpus.zig");
-const fresh = @import("../../corpus/fresh/fresh.zig");
-const persist = @import("../../corpus/index/trigrams/persist.zig");
+const scope = @import("irregex").commands.scope.filter;
+const corpus = @import("irregex").corpus;
+const fresh = @import("irregex").fresh;
+const persist = @import("irregex").persist;
 const coverage = @import("../../kernel/kinship/recall/coverage.zig");
 const zipper = @import("../../kernel/kinship/recall/zipper.zig");
 

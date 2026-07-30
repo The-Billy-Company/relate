@@ -23,14 +23,14 @@
 //! allocation lands in the returned `Report`'s arena, freed by `deinit`.
 
 const std = @import("std");
-const patterns = @import("../slate/patterns.zig");
+const patterns = @import("irregex").irregex.patterns;
 const regions = @import("regions.zig");
 const spans = @import("../anatomy/spans.zig");
-const lexspan = @import("../anatomy/lexspan.zig");
+const lexspan = @import("irregex").inner.lexspan;
 const leans = @import("../anatomy/leans.zig");
-const signals = @import("../rank/signals.zig");
+const signals = @import("irregex").signals;
 const sketch = @import("../kinship/metric/sketch.zig");
-const query = @import("../query/query.zig");
+const query = @import("irregex").engine.query;
 
 /// Output caps — the report is bounded by construction so an agent's context is
 /// never flooded. The driver may trim further with a token `--budget`.

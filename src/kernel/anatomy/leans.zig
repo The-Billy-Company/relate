@@ -39,10 +39,10 @@
 //! every allocation lands in the caller's arena.
 
 const std = @import("std");
-const lexspan = @import("lexspan.zig");
+const lexspan = @import("irregex").inner.lexspan;
 const spans = @import("spans.zig");
-const patterns = @import("../slate/patterns.zig");
-const signals = @import("../rank/signals.zig");
+const patterns = @import("irregex").irregex.patterns;
+const signals = @import("irregex").signals;
 
 /// An identifier the seed's body leans on, resolved to its own definition
 /// site. `symbol` keeps the qualifier when the lean was reached through an

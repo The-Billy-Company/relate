@@ -25,7 +25,7 @@ const sketch = @import("../kinship/metric/sketch.zig");
 const silhouette_mod = @import("../kinship/metric/silhouette.zig");
 const pairs = @import("../kinship/cluster/pairs.zig");
 const families_mod = @import("../kinship/cluster/families.zig");
-const signals = @import("../rank/signals.zig");
+const signals = @import("irregex").signals;
 const candidates = @import("candidates.zig");
 
 /// A file needs this many structural fingerprints for an echo claim to rest on

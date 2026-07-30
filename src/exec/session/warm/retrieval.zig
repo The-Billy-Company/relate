@@ -37,13 +37,13 @@
 //! lock-free seqlock over a ward-guarded overlay.
 
 const std = @import("std");
-const assay = @import("../../../assay/assay.zig");
-const fault = @import("../../../fault.zig");
-const fresh = @import("../../../corpus/fresh/fresh.zig");
-const persist = @import("../../../corpus/index/trigrams/persist.zig");
-const dirtylog = @import("../reconcile/dirty.zig");
-const Seqlock = @import("../reconcile/seqlock.zig").Seqlock;
-const Ward = @import("../../../kernel/math/lease.zig").Ward;
+const assay = @import("irregex").assay;
+const fault = @import("irregex").fault;
+const fresh = @import("irregex").fresh;
+const persist = @import("irregex").persist;
+const dirtylog = @import("irregex").inner.session.dirty;
+const Seqlock = @import("irregex").inner.session.seqlock.Seqlock;
+const Ward = @import("irregex").ward.Ward;
 const retrieval = @import("../../retrieval/retrieval.zig");
 const Dir = std.Io.Dir;
 
@@ -323,6 +323,6 @@ test "resident session satisfies the shared freshness watcher contract" {
     // change-tracking surface (`roots`, `armWatcher`, `disarmWatcher`,
     // `markDirty`, `markDoubtForever`, `dirty_log.{armExact,disarmExact,note,
     // noteDoubt}`). Missing or mis-typed any of them and this would not compile.
-    const watch = @import("../watch/watch.zig");
+    const watch = @import("irregex").session.watch;
     std.testing.refAllDecls(watch.Watcher(RetrievalSession));
 }

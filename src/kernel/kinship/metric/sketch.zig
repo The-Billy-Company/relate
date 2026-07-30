@@ -69,7 +69,7 @@ pub const Sketch = struct {
 // The FNV constants and splitmix64 finalizer live in `math/mix.zig` —
 // generic bit-spreading, not kinship. Bound privately so the parse below
 // reads unchanged.
-const mix = @import("../../math/mix.zig");
+const mix = @import("irregex").inner.math.mix;
 const fnv_offset = mix.fnv_offset;
 const fnv_prime = mix.fnv_prime;
 const finalize = mix.finalize;

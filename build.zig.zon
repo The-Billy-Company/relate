@@ -1,11 +1,13 @@
 .{
     .name = .relate,
     .version = "0.1.0",
+    .fingerprint = 0xe89435dd16b21037,
     .minimum_zig_version = "0.16.0",
     .dependencies = .{
         // Sibling-checkout path dep (dev). Releases pin url+hash via the
         // publish script — see the ecosystem split plan.
         .irregex = .{ .path = "../irregex" },
+        .kernelkit = .{ .path = "../_buildkit" },
         // libsais 2.10.2 — the suffix sort under the codex FM-index. The bytes
         // that build live under vendor/libsais/; this `.lazy` entry only pins
         // the upstream release by URL + content hash.

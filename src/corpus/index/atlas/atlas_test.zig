@@ -14,9 +14,9 @@ const std = @import("std");
 const atlas = @import("atlas.zig");
 const sketch = @import("../../../kernel/kinship/metric/sketch.zig");
 const silhouette_mod = @import("../../../kernel/kinship/metric/silhouette.zig");
-const corpus_mod = @import("../../tree/corpus.zig");
-const fault = @import("../../../fault.zig");
-const portal = @import("../../../portal.zig");
+const corpus_mod = @import("irregex").corpus;
+const fault = @import("irregex").fault;
+const portal = @import("irregex").portal;
 const Dir = std.Io.Dir;
 
 /// A throwaway on-disk tree (absolute root — no cwd dependence).

@@ -9,8 +9,8 @@
 //! the exact selection and the dedup/merge that keeps one region per unit.
 
 const std = @import("std");
-const patterns = @import("../slate/patterns.zig");
-const lexspan = @import("../anatomy/lexspan.zig");
+const patterns = @import("irregex").irregex.patterns;
+const lexspan = @import("irregex").inner.lexspan;
 const spans = @import("../anatomy/spans.zig");
 
 pub const Unit = enum { file, function, match };

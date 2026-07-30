@@ -26,7 +26,7 @@
 
 const std = @import("std");
 const sketch = @import("sketch.zig");
-const mix = @import("../../math/mix.zig");
+const mix = @import("irregex").inner.math.mix;
 const flate = std.compress.flate;
 const Writer = std.Io.Writer;
 

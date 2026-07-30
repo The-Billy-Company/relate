@@ -18,16 +18,16 @@
 
 const std = @import("std");
 const codexmod = @import("../../../kernel/codex/codex.zig");
-const fault = @import("../../../fault.zig");
-const frame = @import("../frame/frame.zig");
-const fresh = @import("../../fresh/fresh.zig");
-const corpus_mod = @import("../../tree/corpus.zig");
+const fault = @import("irregex").fault;
+const frame = @import("irregex").inner.corpus.frame;
+const fresh = @import("irregex").fresh;
+const corpus_mod = @import("irregex").corpus;
 
 const Codex = codexmod.Codex;
 const Cursor = frame.Cursor;
 const putInt = frame.putInt;
-const signet = @import("../frame/signet.zig");
-const home = @import("../frame/home.zig");
+const signet = @import("irregex").signet;
+const home = @import("irregex").home;
 
 const MAGIC = "SHLF";
 // v2 sealed the outer frame and re-sealed the codex it embeds.

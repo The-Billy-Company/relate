@@ -9,7 +9,7 @@
 //! parse, the same covenant the silhouette scanner keeps.
 
 const std = @import("std");
-const lexspan = @import("lexspan.zig");
+const lexspan = @import("irregex").inner.lexspan;
 
 pub const Range = struct { start: usize, end: usize };
 

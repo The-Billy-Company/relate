@@ -29,12 +29,12 @@
 //! oracles over random, degenerate, and binary corpora.
 
 const std = @import("std");
-const fault = @import("../../fault.zig");
-const sais = @import("../math/succinct/sais.zig");
-const rrr = @import("../math/succinct/rrr.zig");
-const wavelet = @import("../math/succinct/wavelet.zig");
+const fault = @import("irregex").fault;
+const sais = @import("irregex").codex.sais;
+const rrr = @import("irregex").codex.rrr;
+const wavelet = @import("irregex").codex.wavelet;
 
-const parallel = @import("../math/parallel.zig");
+const parallel = @import("irregex").parallel;
 
 const Oom = std.mem.Allocator.Error;
 const SIGMA: usize = 257; // 256 byte symbols shifted +1, sentinel 0
@@ -452,11 +452,11 @@ pub const Codex = struct {
 // `shelf.zig`, the atlas, and the trigram pair loader frame their catalogs
 // with the same primitives so the formats can't drift on conventions.
 
-const frame = @import("../../corpus/index/frame/frame.zig");
+const frame = @import("irregex").inner.corpus.frame;
 const putInt = frame.putInt;
 const putWords = frame.putWords;
 const Cursor = frame.Cursor;
-const signet = @import("../../corpus/index/frame/signet.zig");
+const signet = @import("irregex").signet;
 
 fn putBits(gpa: std.mem.Allocator, out: *std.ArrayList(u8), bits: *const rrr.Bits) !void {
     try out.append(gpa, @intFromEnum(std.meta.activeTag(bits.*)));

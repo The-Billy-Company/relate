@@ -8,7 +8,7 @@
 
 const std = @import("std");
 
-pub const Forest = @import("../../math/forest.zig").Forest;
+pub const Forest = @import("irregex").inner.math.forest.Forest;
 
 /// One admitted kinship edge over member indices, weighted by the channel
 /// signal (byte/structure distance, or an echo gap) — the raw material the
