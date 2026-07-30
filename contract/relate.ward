@@ -1,0 +1,63 @@
+// relate — import topology.
+//
+// The compression-as-search engine of the irregex ecosystem: kinship metrics,
+// unit anatomy, the compression codebook, the persisted kinship artifacts,
+// and the retrieval path over them. The exact-search library beneath is the
+// `irregex` module (reached only through `@import("irregex")` — a file import
+// cannot cross the package boundary); the faces that ship the `relate` binary
+// live in `gist`. Judged by `ward verify`.
+
+package relate {
+    // root.zig is the module's public face: it re-exports every tier for the
+    // product packages and aggregates the test step, so it alone may reach
+    // anywhere.
+    root   src
+    facade root.zig
+}
+
+// Tiers, low to high. An import may only point back up the page.
+tiers {
+    // Source anatomy — comment spans, identifier tokens, structural leans:
+    // how a file decomposes into comparison units. Pure compute.
+    anatomy     kernel/anatomy/**
+
+    // Compression-as-similarity: sketches, silhouettes, recall, clustering —
+    // the metrics and their calibration (grade bands, noise floors).
+    kinship     kernel/kinship/**
+
+    // The compression codebook (FM-index, wavelet, RRR, SA-IS over libsais) —
+    // seals its persisted payload with irregex's wire floor.
+    codex       kernel/codex/**
+
+    // Set algebra over candidate sets — the composition tier (exact ∩
+    // compression, the blast/provenance kernels), so it is the only kernel
+    // tier allowed to know all the others.
+    compose     kernel/compose/**
+
+    // The persisted kinship artifacts — the atlas, the fragment atlas, the
+    // codex shelf. Built by the metrics below, trusted through irregex's
+    // freshness fold.
+    artifacts   corpus/index/**
+
+    // Kinship retrieval over the persisted artifacts — the path `relate
+    // similar`/`pack` ride, shared by cold and warm transports.
+    retrieval   exec/retrieval/**
+
+    // The warm-session leg of retrieval — the fingerprint lexicon the
+    // resident tier keeps hot, riding the cold retrieval path above.
+    warm        exec/session/**
+}
+
+// Tests are consumers of the architecture, never load-bearing in it.
+keep **/*_test.zig to root.zig
+
+// The kinship atlas is a persisted format — callers get the reader, never the
+// on-disk layout.
+seal corpus/index/atlas through atlas.zig
+
+// The fragment atlas, same contract as its sibling atlas.
+seal corpus/index/frag through frag.zig
+
+// Structural laws.
+limit  reach to 5 hops
+forbid cycles across directories
