@@ -60,4 +60,5 @@ Architecture is machine-checked by `contract/relate.ward`.
 Extracted from `billy/libs/kernels/irregex` (cut at billy@ce430bbaab,
 PLAN v5 split). The engine was born as the kernel's kinship/codex tiers
 and split out along the tuning boundary: everything priced against the
-same corpus statistics stays here, together.
+same corpus statistics stays here, together. Apache-2.0; `NOTICE`
+attributes the vendored libsais.
