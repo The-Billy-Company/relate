@@ -1263,9 +1263,9 @@ test "a markup scrub survives a template literal in an attribute" {
 }
 
 test "only markup-weaving extensions open text regions" {
-    try t.expect(weaves("clients/web/surfaces/admin/src/components/HelpTip.tsx"));
+    try t.expect(weaves("web/app/src/components/HelpTip.tsx"));
     try t.expect(weaves("a/b/page.vue"));
-    try t.expect(!weaves("clients/web/surfaces/atrium/src/lib/taskboard/store.ts"));
+    try t.expect(!weaves("web/app/src/lib/taskboard/store.ts"));
     try t.expect(!weaves("pkg/alpha/src/kernel/compose/leans.zig"));
 }
 

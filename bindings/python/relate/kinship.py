@@ -170,8 +170,8 @@ def similar(
     The probe's **shape** decides how it is priced, so a caller never has to make
     a flag agree with an argument:
 
-      * `"libs/…/scan.py"` — a file: kinship over whole units.
-      * `"libs/…/scan.py#L120"` — the function containing line 120: kinship over
+      * `"lib/…/scan.py"` — a file: kinship over whole units.
+      * `"lib/…/scan.py#L120"` — the function containing line 120: kinship over
         function fragments (the unit follows the probe automatically).
       * `"how leases expire"` — text with no `channel`: the corpus prices it by
         coding gain, and rows arrive on `Channel.RECALL`. `retrieval.recall` is
@@ -186,7 +186,7 @@ def similar(
     spellings (`bytes`/`structure`/`echo`/`fused`) parse too.
 
     `matching` narrows the population to units an exact pattern admitted first —
-    "among the files that mention `WalletService`, which resembles this one?".
+    "among the files that mention `SessionStore`, which resembles this one?".
 
     Generated units stay in the population here (unlike the repetition verbs): a
     hand-written file's generated twin is a legitimate, often wanted answer. Units

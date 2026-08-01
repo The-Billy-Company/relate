@@ -10,7 +10,7 @@
 //!
 //!   | probe | scored as | the question |
 //!   |---|---|---|
-//!   | `libs/…/scan.py` | kinship (`copies`) | what resembles this file? |
+//!   | `lib/…/scan.py` | kinship (`copies`) | what resembles this file? |
 //!   | `scan.py#L120` | kinship over fragments | where else is this function? |
 //!   | `"how leases expire"` | `recall` (coding gain) | which files explain this? |
 //!   | `"for (x) \|i\| sum += w(i)"` + `--as` | kinship against the text | what is shaped like this snippet? |

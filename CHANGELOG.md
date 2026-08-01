@@ -13,7 +13,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions track
 - A persisted **kinship atlas** (`src/index/atlas/`) gives `relate` its own
   warm tier: `relate index` snapshots every corpus file's LZJD sketch (plus
   path table, wall-clock anchor, FNV-1a checksum) atomically to
-  `.local/gist-verify/kinship.atlas`, and `relate status` reports readiness,
+  `.gist/kinship.atlas`, and `relate status` reports readiness,
   freshness, and staleness for both the atlas and the optional codex shelf
   (`relate index --shelf` now builds the quote shelf without shelling out to
   gist). The sketch verbs (`similar`/`dups`/`clusters`) load the atlas and fold
@@ -25,7 +25,7 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions track
 - Add research/relate/ dossier (CLAIM + PRIOR_ART + TESTING) matching
   crest/gist: Language Trees and Zipping lineage, 3Blue1Brown cross-entropy
   video, and every citation the shipped engines actually use.
-- New `irregex` binary — the composed third face (ADR-367) over the one kernel:
+- New `irregex` binary — the composed third face over the one kernel:
   the exact engine narrows a typed `CandidateSet`, then the compression engine
   reasons only inside that subset, so an exact intent scopes the statistical
   one
@@ -42,21 +42,20 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions track
   (`ROOT…` or `--all`); results on stdout (`--json` = NDJSON), diagnostics on
   stderr, unknown verbs exit 2. The pure composition kernels live under
   `src/search/compose/`; `gist` and `relate` stay the direct faces and forward
-  none of their verbs. Installed alongside them by `make install-gist`.
-- The `compose` tier (ADR-367) gains a sibling contract differential for its
+  none of their verbs. Installed alongside them.
+- The `compose` tier gains a sibling contract differential for its
   typed `CandidateSet`: `candidates_test.zig` proves `select` equals the plain
   set-algebra of N independent single-pattern substring runs — union under
   `.any`, intersection under `.all`, with exact per-pattern masks — against an
   engine-independent `std.mem.indexOf` oracle over a randomized 260-doc corpus,
   plus overlapping-literal attribution, the 64-pattern bit-63 boundary, and the
   empty / over-cap error paths. The kernel is now wired into the merge-blocking
-  CI test fan-out as `TestGist` (an internal `TestResultsAll` leg beside
-  `TestBillog`/`TestPrincipia`/`TestLamina`), running `zig build test` + `zig
+  CI test fan-out, running `zig build test` + `zig
   build -Doptimize=ReleaseFast` in the shared Go-cgo + pinned-Zig base, so a
   regression in the search kernel now fails a PR rather than only a local run.
   The twelve remaining 500+ line modules
   (json/query/classrun/shadow/analysis/persist/fresh/protocol/watch/render/blast/regions)
-  carry honest `MONOLITHIC` markers + registry rows, closing the
+  carry honest file-length markers with recorded reasons, closing the
   shape-discipline debt.
 - `relate search <text>` — compression-as-search retrieval, hand-rolled. The
   relate engine gained two modules under `src/search/similarity/`:

@@ -275,7 +275,7 @@ test "a fingerprint every doc knows carries zero information" {
     // boilerplate-content fingerprint spuriously rare). That noise is
     // bounded by construction: at most window−1 straddling windows, each
     // worth at most log2 N bits.
-    const boiler = "// SPDX-License-Identifier: MIT\n// Copyright Billy Co.\n";
+    const boiler = "// SPDX-License-Identifier: MIT\n// Copyright Acme Inc.\n";
     const docs = [_][]const u8{
         boiler ++ "alpha body one with its own words",
         boiler ++ "bravo body two speaking differently",

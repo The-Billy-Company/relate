@@ -6,7 +6,7 @@ composed blast/provenance face.
 
     import relate
 
-    for kin in relate.similar("services/backend/api/main.go", min_grade="strong"):
+    for kin in relate.similar("src/server/api/main.go", min_grade="strong"):
         print(kin.unit, kin.grade)
     reading_set = relate.pack("how does wallet crediting settle").paths
 """
