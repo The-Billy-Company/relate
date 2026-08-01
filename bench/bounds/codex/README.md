@@ -1,12 +1,15 @@
 ---
 doc_radar:
   paths_exist:
-    - libs/kernels/irregex/bench/bounds/codex/scale.zig
-    - libs/kernels/irregex/bench/bounds/codex/race.sh
+    - bench/bounds/codex/scale.zig
+    - bench/bounds/codex/race.sh
   sentinels:
-    - description: "the codex-scale build step is wired"
-      file: libs/kernels/irregex/build.zig
-      contains: 'b.step("codex-scale"'
+    - description: "the scale harness lives in this package (wire via zig build once the step lands)"
+      file: bench/bounds/codex/scale.zig
+      contains: 'codex-scale — the self-index proof harness'
+    - description: "libsais (the SA constructor the harness exercises) is compiled here"
+      file: build.zig
+      contains: 'vendor/libsais/src'
 ---
 
 # bench/codex — the self-index at-scale proof

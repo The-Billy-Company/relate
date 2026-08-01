@@ -1,11 +1,14 @@
 // relate — import topology.
 //
-// The compression-as-search engine of the irregex ecosystem: kinship metrics,
-// unit anatomy, the compression codebook, the persisted kinship artifacts,
-// and the retrieval path over them. The exact-search library beneath is the
-// `irregex` module (reached only through `@import("irregex")` — a file import
-// cannot cross the package boundary); the faces that ship the `relate` binary
-// live in `gist`. Judged by `ward verify`.
+// The compression-as-search engine of the irregex ecosystem, plus the
+// `relate` binary that ships it: kinship metrics, unit anatomy, the cento
+// quoter over irregex's FM-index, the persisted kinship artifacts, the
+// retrieval path over them, the face/CLI vocabulary that turns those into a
+// product, and the C-ABI producer (`librelate` / `relate_run`). The
+// exact-search library beneath (including the FM-index and its shelf) is the
+// `irregex` module; the resident daemon and answer keep the face dials are
+// the `gist` module — both reached only through `@import(...)` (a file
+// import cannot cross a package boundary). Judged by `ward verify`.
 
 package relate {
     // root.zig is the module's public face: it re-exports every tier for the
@@ -25,8 +28,9 @@ tiers {
     // the metrics and their calibration (grade bands, noise floors).
     kinship     kernel/kinship/**
 
-    // The compression codebook (FM-index, wavelet, RRR, SA-IS over libsais) —
-    // seals its persisted payload with irregex's wire floor.
+    // The Ziv–Merhav corpus-quotation parse (cento) over the library's
+    // FM-index. The index itself and its shelf moved into `irregex` — this
+    // tier is only the parse that turns that index into a quotation.
     codex       kernel/codex/**
 
     // Set algebra over candidate sets — the composition tier (exact ∩
@@ -34,9 +38,9 @@ tiers {
     // tier allowed to know all the others.
     compose     kernel/compose/**
 
-    // The persisted kinship artifacts — the atlas, the fragment atlas, the
-    // codex shelf. Built by the metrics below, trusted through irregex's
-    // freshness fold.
+    // The persisted kinship artifacts — the atlas and the fragment atlas.
+    // Built by the metrics below, trusted through irregex's freshness fold.
+    // (The codex shelf moved into `irregex` with the FM-index it wraps.)
     artifacts   corpus/index/**
 
     // Kinship retrieval over the persisted artifacts — the path `relate
@@ -46,7 +50,38 @@ tiers {
     // The warm-session leg of retrieval — the fingerprint lexicon the
     // resident tier keeps hot, riding the cold retrieval path above.
     warm        exec/session/**
+
+    // Shared flag, grade, manifest and answer-keep vocabulary — the floor the
+    // face stands on. (`reprise.zig` is the answer keep's CLI half; it dials
+    // gist's daemon through `@import("gist")`, never a file import across
+    // the package boundary.)
+    cli         surface/cli/**
+
+    // C-ABI producer — `relate_run` over kinship / retrieval / sweep. Sits
+    // above the engine tiers it dispatches into and beside the face: Zig
+    // callers take the face or the kernels; non-Zig callers take this. The
+    // export shims (`exports.zig`) are the artifact root, not a consumer of
+    // this tier from inside the package — only root may import it, so the
+    // module never re-emits the C symbols into dependents.
+    ffi         surface/ffi/**
+
+    // The thin product face. A face imports the CLI vocabulary and the
+    // engine; the engine never imports a face except through root's
+    // re-export shelf.
+    face        surface/face/**
 }
+
+// Guest lists: regions only the named importers may reach at all.
+
+// The face is this package's one product surface. Nothing else in the tree
+// reaches into it; a helper both the face and the engine need belongs under
+// them, not in the face.
+keep surface/face/** to root.zig
+
+// The C-ABI plane is the package's other public face — for callers outside
+// Zig. Nothing inside the package consumes its own FFI shims; a Zig caller
+// that wants kinship takes the kernels, which is what ffi does.
+keep surface/ffi/** to root.zig
 
 // Tests are consumers of the architecture, never load-bearing in it.
 keep **/*_test.zig to root.zig

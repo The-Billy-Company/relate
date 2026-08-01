@@ -26,7 +26,7 @@ const std = @import("std");
 const irregex = @import("irregex");
 
 const codex = irregex.codex.index;
-const cento = irregex.codex.cento;
+const cento = @import("../../../src/kernel/codex/cento.zig");
 const Span = irregex.assay.Span; // package instrumentation floor: monotonic Span
 
 fn die(comptime msg: []const u8, args: anytype) noreturn {

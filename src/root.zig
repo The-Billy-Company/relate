@@ -12,14 +12,15 @@
 //!   kinship/   — the metrics (sketch · silhouette · channel · fingerprint),
 //!                the cluster machinery (pairs · families · echoes), and the
 //!                recall tier (lexicon · zipper · coverage)
-//!   codex/     — the compressed self-index (FM-index over SA-IS + wavelet +
-//!                RRR, the math floors re-exported by irregex), its cento
-//!                quoter, and the persisted shelf / atlas / frag artifacts
-//!   compose/   — the exact ∩ compression kernels (ADR-367): a compiled
+//!   codex/     — the Ziv–Merhav cento quoter over the library's FM-index
+//!                (the index itself and its shelf live in `irregex`); plus
+//!                the persisted atlas / frag kinship artifacts
+//!   compose/   — the exact ∩ compression kernels (exact narrows, then kinship): a compiled
 //!                PatternSet narrows, kinship reasons inside the subset
 //!
-//! The `relate` BINARY ships from the `gist` package (the product chassis);
-//! this package is the engine it and `blast` import.
+//! The `relate` binary ships from this package too — its face and CLI
+//! vocabulary live under `surface/`. The face imports `@import("gist")` for
+//! the resident daemon and the answer keep; the engine below does not.
 
 const std = @import("std");
 
@@ -47,16 +48,13 @@ pub const anatomy = struct {
     pub const token = @import("kernel/anatomy/token.zig");
 };
 
-// ── codex: the compressed self-index (the book that IS its own index) ──
-// FM-index over SA-IS + Huffman-shaped wavelet tree + RRR bitvectors: holds a
-// corpus at entropy-bound size while answering count(P) in O(|P|), plus
-// locate (sampled) and byte-exact restore. The succinct math floors live in
-// the irregex library (`@import("irregex").codex`); the index built on them
-// lives here with the engine that consumes it.
+// ── codex: the corpus-quotation parse over the library's FM-index ──
+// The FM-index itself and its persisted shelf live in the irregex library
+// now (`@import("irregex").codex`) — an index tier among the others. What
+// stays here is the Ziv–Merhav cross-parse that turns that index into a
+// quotation.
 pub const codex = struct {
-    pub const index = @import("kernel/codex/codex.zig");
     pub const cento = @import("kernel/codex/cento.zig");
-    pub const shelf = @import("corpus/index/shelf/shelf.zig");
 };
 
 // ── the persisted warm tier: kinship atlas + fragment atlas ──
@@ -69,10 +67,10 @@ pub const retrieval = @import("exec/retrieval/retrieval.zig");
 /// riding the irregex library's watch/reconcile machinery.
 pub const resident = @import("exec/session/warm/retrieval.zig");
 
-// ── compose: the exact-before-statistical kernels (ADR-367) ──
+// ── compose: the exact-before-statistical kernels ──
 // A compiled PatternSet (the library's match half) narrows the corpus to a
 // typed CandidateSet, and kinship runs ONLY inside that exact subset. Pure
-// kernels — no I/O, no argv; the faces (in `gist` and `blast`) load the
+// kernels — no I/O, no argv; the faces (here and in `blast`) load the
 // corpus and render.
 pub const compose = struct {
     pub const candidates = @import("kernel/compose/candidates.zig");
@@ -81,6 +79,30 @@ pub const compose = struct {
     pub const provenance = @import("kernel/compose/provenance.zig");
     pub const regions = @import("kernel/compose/regions.zig");
     pub const blast = @import("kernel/compose/blast.zig");
+};
+
+// ── the CLI vocabulary the face (and `blast`) speak ──
+// Flag parsing, verb-table rendering, kinship grades, and the answer-keep
+// passenger. The keep dials gist's resident daemon; everything else is local.
+pub const cli = struct {
+    pub const flags = @import("surface/cli/flags.zig");
+    pub const manifest = @import("surface/cli/manifest.zig");
+    pub const grade = @import("surface/cli/grade.zig");
+    pub const reprise = @import("surface/cli/reprise.zig");
+};
+
+// ── the face drivers, reached through the module ──
+pub const faces = struct {
+    /// relate's verb table — the single source its help/schema/dispatch read.
+    pub const repertoire = @import("surface/face/repertoire.zig");
+};
+
+// ── in-process C-ABI producer ──
+// Kinship / retrieval / sweep, exposed to non-Zig hosts as `relate_run`. The
+// `export fn` lives in `surface/ffi/exports.zig` (the artifact root), not here —
+// so a dependent that imports this module does not re-emit the symbol.
+pub const ffi = struct {
+    pub const analytic = @import("surface/ffi/analytic.zig");
 };
 
 test {
@@ -92,8 +114,17 @@ test {
     _ = @import("kernel/kinship/metric/silhouette_test.zig"); // structure channel: normalization invariance + winnow guarantee
     _ = @import("kernel/kinship/recall/lexicon_test.zig"); // retrieval proof (short-query recall, ΔAb sidedness, zero-bit boilerplate)
     _ = @import("kernel/compose/candidates_test.zig"); // CandidateSet ≡ substring set-algebra (any/all masks, 64-cap, error paths)
-    _ = @import("kernel/codex/codex_test.zig"); // SA-IS/RRR/wavelet/index differential vs naive oracles
-    _ = @import("corpus/index/shelf/shelf_test.zig"); // count/tally vs per-doc oracles through save/load, fail-closed framing
+    _ = @import("kernel/codex/cento_test.zig"); // Ziv–Merhav cross-parse vs greedy oracle over a live Codex
     _ = @import("corpus/index/atlas/atlas_test.zig"); // atlas round-trip, fail-closed parse, freshness-fold semantics
     _ = @import("corpus/index/frag/frag_test.zig"); // frag round-trip, fail-closed parse, freshness-fold + deletion gate
+    _ = @import("surface/face/repertoire.zig"); // relate's verb table (schema validity + both registers)
+    _ = @import("surface/face/kinship.zig"); // relate shared plumbing: view resolver + verified-pair machinery
+    _ = @import("surface/face/units.zig"); // the unit view: file|function|match × warm/live × exact narrowing
+    _ = @import("surface/face/options.zig"); // the one query option surface (flag loop + unit-scaled floors)
+    _ = @import("surface/face/similar.zig"); // the neighbor verb: probe classification, self-exclusion, both polarities
+    _ = @import("surface/face/echoes.zig"); // the repetition verb: unit × channel × shape rendering
+    _ = @import("surface/face/patterns.zig"); // `relate patterns` driver body (one walk, N patterns)
+    _ = @import("surface/face/pack.zig"); // `relate pack` driver body (greedy coverage semantics tested here)
+    _ = @import("surface/face/lifecycle.zig"); // `relate index`/`status` driver bodies
+    _ = @import("surface/ffi/analytic.zig"); // relate_run dispatch: ownership + sweep fail closed
 }

@@ -13,8 +13,10 @@
 #                         (the certificate builds it once via `zig build lab`)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-KERNEL="$(cd "${HERE}/../../.." && pwd)"
-REPO="$(cd "${KERNEL}/../../.." && pwd)"
+# bench/bounds/codex → package root (three hops). Formerly climbed into a
+# parent monorepo; this package is the repo.
+REPO="$(cd "${HERE}/../../.." && pwd)"
+KERNEL="${REPO}"
 OUT="${CODEX_OUT:-${REPO}/.local/codex-bench}"
 SIZES="${1:-1,4,16,64,128}"
 mkdir -p "${OUT}"
@@ -28,10 +30,10 @@ from pathlib import Path
 
 repo, out = Path(sys.argv[1]), Path(sys.argv[2])
 CAP = 192 << 20
-# Corpus scope: $GIST_ROOTS override, else the historical published-corpus
-# roots that exist here, else the whole tree (mirrors corpus.resolveRoots).
+# Corpus scope: $GIST_ROOTS override (product env — same name the CLIs read),
+# else this package's source trees, else the whole checkout.
 ROOTS = os.environ.get("GIST_ROOTS", "").replace(":", " ").replace(",", " ").split() or [
-    "libs", "services", "scripts", "quality", "clients", "contracts", "docs", "infra"]
+    "src", "bench", "research"]
 ROOTS = [r for r in ROOTS if (repo / r).is_dir()] or ["."]
 EXTS = {".zig", ".py", ".go", ".ts", ".tsx", ".rs", ".swift", ".sql", ".sh",
         ".md", ".toml", ".proto", ".ex", ".exs", ".css", ".yaml", ".yml", ".json"}

@@ -29,7 +29,7 @@
 //! the codex needs to reproduce the query exactly.
 
 const std = @import("std");
-const codexmod = @import("codex.zig");
+const codexmod = @import("irregex").codex.index;
 
 const Codex = codexmod.Codex;
 
