@@ -26,7 +26,11 @@ const std = @import("std");
 const irregex = @import("irregex");
 
 const codex = irregex.codex.index;
-const cento = @import("../../../src/kernel/codex/cento.zig");
+// The FM-index this times lives in the engine package now; the Ziv–Merhav
+// cross-parse that prices a quotation against it stayed here. So the lane
+// reaches across both roots — and reaches `cento` by namespace rather than by
+// relative path, which Zig rejects outside a module's own root directory.
+const cento = @import("relate").codex.cento;
 const Span = irregex.assay.Span; // package instrumentation floor: monotonic Span
 
 fn die(comptime msg: []const u8, args: anytype) noreturn {

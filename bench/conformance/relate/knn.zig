@@ -25,9 +25,15 @@
 
 const std = @import("std");
 const irregex = @import("irregex");
+const relate = @import("relate");
 
-const zipper = irregex.relate.zipper;
-const sketch = irregex.api.relate.sketch;
+// Both kinship handles come from this package now. Before the ecosystem split
+// they were reachable as `irregex.relate.zipper` and `irregex.api.relate.sketch`
+// — one engine held everything, and the `api` facade re-exported the second.
+// The kinship plane is its own package today, so the facade is gone and these
+// name the modules directly.
+const zipper = relate.kinship.zipper;
+const sketch = relate.kinship.sketch;
 const Span = irregex.assay.Span; // package instrumentation floor: monotonic Span
 const Duration = irregex.assay.Duration;
 

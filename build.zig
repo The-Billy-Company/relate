@@ -122,6 +122,49 @@ pub fn build(b: *std.Build) void {
     }
     b.installArtifact(irregex_lib);
 
+    // ── the measurement lab ──
+    // Off the default install step, like the sibling packages': a bare
+    // `zig build` pays only for the product surface. Both lanes below run at
+    // the CLI's ReleaseFast posture, because both are timing tools and a
+    // debug-built number is a claim about the build mode.
+    const lab_step = b.step("lab", "Build + install the measurement-lab executables (relate-knn, codex-scale) → zig-out/bin");
+
+    for ([_]struct {
+        step: []const u8,
+        root: []const u8,
+        blurb: []const u8,
+    }{
+        .{
+            .step = "relate-knn",
+            .root = "bench/conformance/relate/knn.zig",
+            .blurb = "Run the relate engine as a k-NN classifier over a labeled manifest",
+        },
+        .{
+            .step = "codex-scale",
+            .root = "bench/bounds/codex/scale.zig",
+            .blurb = "Prove the codex self-index at scale: entropy-bound space, flat-in-n count, exact restore",
+        },
+    }) |lane| {
+        const mod = b.createModule(.{
+            .root_source_file = b.path(lane.root),
+            .target = target,
+            .optimize = cli_optimize,
+            .imports = &cli_deps,
+        });
+        // Both lanes straddle the two packages: the FM-index and the assay floor
+        // are the engine's, the kinship kernels and the cento quoter are ours.
+        mod.addImport("relate", cli_engine);
+        const lab_exe = b.addExecutable(.{ .name = lane.step, .root_module = mod });
+        const install = &b.addInstallArtifact(lab_exe, .{}).step;
+        lab_step.dependOn(install);
+        const run = b.addRunArtifact(lab_exe);
+        run.setCwd(b.path("."));
+        if (b.args) |args| run.addArgs(args);
+        const step = b.step(lane.step, lane.blurb);
+        step.dependOn(&run.step);
+        step.dependOn(install);
+    }
+
     // ReleaseSafe test binary (differential suites exist to trip safety
     // checks); `-Dtest-optimize=Debug` still yields a steppable binary.
     const test_optimize = b.option(
