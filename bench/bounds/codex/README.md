@@ -4,20 +4,19 @@ doc_radar:
     - bench/bounds/codex/scale.zig
     - bench/bounds/codex/race.sh
   sentinels:
-    - description: "the scale harness lives in this package (wire via zig build once the step lands)"
+    - description: "the scale harness lives in this package, wired as a lab lane"
       file: bench/bounds/codex/scale.zig
       contains: 'codex-scale — the self-index proof harness'
-    - description: "libsais (the SA constructor the harness exercises) is compiled here"
+    - description: "the lane is built off the default install, not by a bare `zig build`"
       file: build.zig
-      contains: 'vendor/libsais/src'
+      contains: '.step = "codex-scale"'
 ---
 
 # bench/codex — the self-index at-scale proof
 
 Harness + driver proving `src/kernel/codex/` (the compressed self-index) on real
-repo bytes at scale. This is the graduation of the
-`.local/spikes/shannon-self-index/` rung-1 prototype into the production
-module, measured honestly.
+repo bytes at scale. This is the graduation of an early rung-1 prototype into
+the production module, measured honestly.
 
 | piece       | what                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

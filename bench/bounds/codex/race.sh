@@ -6,7 +6,7 @@
 # 2. runs the codex-scale harness (build/count/find/restore across slices),
 # 3. sizes identical slices with gzip/bzip2/zstd/xz for the space table.
 #
-# Usage: bench/codex/race.sh [sizes-mb-csv]   (default 1,4,16,64,128)
+# Usage: bench/bounds/codex/race.sh [sizes-mb-csv]   (default 1,4,16,64,128)
 # Results: $CODEX_OUT/{scale.jsonl,compressors.jsonl}   (default .local/codex-bench)
 # Env:   CODEX_OUT=DIR    output dir (the certificate points this at its own dir)
 #        CODEX_BIN=PATH   run a prebuilt codex-scale instead of `zig build codex-scale`
@@ -40,7 +40,7 @@ EXTS = {".zig", ".py", ".go", ".ts", ".tsx", ".rs", ".swift", ".sql", ".sh",
 SKIP = {".git", ".local", "node_modules", "target", "dist", "dist-types", "build",
         ".build", "out", ".next", "coverage", ".venv", "venv", "__pycache__",
         ".zig-cache", "zig-out", "vendor", ".swiftpm", "Pods", "DerivedData",
-        ".turbo", ".pnpm-store", "graphify-out"}
+        ".turbo", ".pnpm-store", "derived-out"}
 
 total = files = 0
 with out.open("wb") as fh:

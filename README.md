@@ -377,20 +377,22 @@ under the name that now carries it:
 
 The proof strength is intentionally uneven and visible:
 
-| claim                                   | authority                                  | status                                |
-| --------------------------------------- | ------------------------------------------ | ------------------------------------- |
-| `patterns` equals N solo Gist runs      | `patterns_test.zig` with prefilter on/off  | gated                                 |
-| both prefilter tiers equal that oracle  | `trawl_test.zig` + arm 1 forcing each tier | gated (dragnet and trawl, at every N) |
-| `patterns` answers the `gist -l` corpus | `bench/gates/patterns_corpus_parity.sh`    | gated (index armed and stripped)      |
-| warm atlas equals `--no-index`          | atlas fold/deletion tests                  | gated                                 |
-| quote scale and bit separation          | `zig build codex-scale` + codex tables     | committed measurement                 |
-| compression versus semantic embeddings  | `zig build relate-knn`                     | rerunnable comparative harness        |
-| warm latency                            | local comparison only                      | no committed timing artifact          |
-| echo ranking quality                    | heuristic + unit properties                | no checked-in labeled evaluation      |
+| claim                                   | authority                                                     | status                                |
+| --------------------------------------- | ------------------------------------------------------------- | ------------------------------------- |
+| `patterns` equals N solo Gist runs      | irregex `src/kernel/slate/patterns_test.zig`, prefilter on/off | gated (in the library)                |
+| both prefilter tiers equal that oracle  | irregex `src/kernel/slate/trawl_test.zig`, each tier forced    | gated (dragnet and trawl, at every N) |
+| `patterns` answers the `gist -l` corpus | gist `bench/conformance/gates/parity/patterns_corpus_parity.sh` | gated (index armed and stripped)      |
+| warm atlas equals `--no-index`          | atlas fold/deletion tests                                     | gated                                 |
+| quote scale and bit separation          | `zig build codex-scale` + codex tables                        | committed measurement                 |
+| compression versus semantic embeddings  | `bench/conformance/relate/knn.zig`                            | harness only — no labeled corpus here |
+| warm latency                            | local comparison only                                         | no committed timing artifact          |
+| echo ranking quality                    | heuristic + unit properties                                   | no checked-in labeled evaluation      |
 
-The durable test inventory is
-`relate/research/relate/TESTING.md`. Numbers
-without a committed artifact do not become product guarantees.
+The first three rows are gated in the packages that own that code — the
+N-pattern slate is the library's and the corpus-parity gate is the product
+chassis's — so a clone of this repo alone does not run them. The durable test
+inventory is [`research/relate/TESTING.md`](research/relate/TESTING.md).
+Numbers without a committed artifact do not become product guarantees.
 
 ## Corpus policy: read this before comparing to `gist`
 
@@ -469,8 +471,8 @@ Architecture is machine-checked by `contract/relate.ward`.
 
 ## Provenance
 
-Extracted from a private monorepo package path (formerly `libs/kernels/irregex`)
-(cut at ce430bbaab, PLAN v5 split). The engine was born as the kernel's
+Extracted from a package path inside a private monorepo
+(cut at ce430bbaab). The engine was born as the kernel's
 kinship/codex tiers and split out along the tuning boundary: everything
 priced against the same corpus statistics stays here, together.
 Apache-2.0; `NOTICE` attributes the vendored libsais.

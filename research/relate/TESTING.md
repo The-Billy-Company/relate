@@ -63,7 +63,7 @@ positive, a descriptive query, a scoped query, and a multi-file pack.
 
 ---
 
-## 4. Compression vs embeddings — `bench/knn/` (`zig build relate-knn`)
+## 4. Compression vs embeddings — `bench/conformance/relate/` (`zig build relate-knn`)
 
 Runs the **real** engine as a k-NN classifier over a labeled manifest:
 
@@ -75,16 +75,19 @@ Runs the **real** engine as a k-NN classifier over a labeled manifest:
 
 Head-to-head vs gzip-kNN and a static embedding model. Documented finding:
 embeddings win semantic retrieval; compression keeps model-free cold-start
-plus the kinship/dup/pack/quote jobs. Full write-up:
-`.local/spikes/compression-vs-embeddings/SPIKE.md` (machine-local spike;
-this TESTING file is the durable pointer).
+plus the kinship/dup/pack/quote jobs. That verdict came out of an early
+prototype race whose write-up never shipped with this repo; the summary above
+is what survived it, and the harness below is how you measure it again.
 
 ```bash
-# knn harness lives under the gist product chassis (sibling checkout)
-cd ../gist
-zig build -Doptimize=ReleaseFast relate-knn
+zig build lab -Doptimize=ReleaseFast          # the measurement lanes are off the default install
 zig-out/bin/relate-knn <dataset> --method zipper --k 3
 ```
+
+`<dataset>` is a directory holding a `manifest.tsv` of `<split>\t<label_id>\t<relpath>`
+rows, with every doc pre-truncated to one byte cap so all lanes price identical
+bytes. The harness ships; the driver that built that manifest did not, so
+re-running the race means writing the driver and picking a labeled corpus first.
 
 ---
 

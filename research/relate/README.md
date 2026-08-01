@@ -1,7 +1,7 @@
 ---
 doc_radar:
   paths_exist:
-    - ../gist/src/surface/face/relate/main.zig
+    - src/surface/face/main.zig
     - src/kernel/kinship/recall/zipper.zig
     - src/kernel/kinship/recall/lexicon.zig
     - bench/conformance/relate/knn.zig
@@ -10,7 +10,7 @@ doc_radar:
       contains:
         - "Language Trees and Zipping"
         - "LZJD"
-    - file: ../gist/src/surface/face/relate/repertoire.zig
+    - file: src/surface/face/repertoire.zig
       contains: ["\"search\"", "\"pack\"", "\"quote\"", "\"similar\"", "\"dups\"", "\"clusters\"", "\"echoes\"", "\"concepts\"", "\"patterns\""]
     - file: contract/kinship.toml
       contains: "[verbs]"
@@ -48,25 +48,24 @@ stronger novel-math claim lives on the Gist side in the Crest sieve
 
 | where                      | what                                                                           |
 | -------------------------- | ------------------------------------------------------------------------------ |
-| `../gist/src/surface/face/relate/` | product face (query verbs + lifecycle + schema; ships the `relate` binary) |
+| `src/surface/face/`        | product face (query verbs + lifecycle + schema; ships the `relate` binary)     |
 | `src/kernel/kinship/`      | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
 | `../irregex/src/kernel/slate/` | `patterns` / loom (N-pattern exact attribution; lives in the library)       |
 | `src/corpus/index/atlas/`  | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
 | `src/kernel/codex/` + `src/corpus/index/shelf/` | FM-index math + persisted SHLF behind `quote` (shared with `gist codex`) |
-| `bench/conformance/relate/` | compression-vs-embeddings knn harness (built via gist: `zig build relate-knn`) |
+| `bench/conformance/relate/` | compression-vs-embeddings knn harness (`zig build lab`)                       |
 
 ## Run
 
 ```bash
-# product CLIs ship from the gist sibling: `zig build` there installs
-# `relate` beside `gist` onto zig-out/bin/
+# this package ships its own CLI: `zig build` installs `relate` onto zig-out/bin/
 relate similar path/to/file --top 5
 relate pack "how does CDC recover?" --top 8
 relate quote 'a pasted snippet'
 relate index --shelf                   # kinship atlas + codex shelf
 relate status --json
 zig build test                         # this package's engine suite
-# knn harness: see TESTING.md (built from the gist sibling)
+zig build lab                          # the measurement lanes — see TESTING.md
 ```
 
 ## Status
@@ -76,4 +75,4 @@ provenance. Start with the positive case in
 [`CLAIM.md`](CLAIM.md), audit its ancestry in
 [`PRIOR_ART.md`](PRIOR_ART.md), then test every assertion against
 [`TESTING.md`](TESTING.md). The operational product face lives in
-`gist/src/surface/face/relate/README.md`.
+[`src/surface/face/README.md`](../../src/surface/face/README.md).

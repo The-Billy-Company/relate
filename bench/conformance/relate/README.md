@@ -34,13 +34,20 @@ lanes (this one, gzip, embeddings) price identical bytes. Result is one JSON
 object on stdout; the timing line on stderr.
 
 ```bash
-zig build -Doptimize=ReleaseFast                         # builds zig-out/bin/relate-knn
+zig build lab -Doptimize=ReleaseFast                     # builds zig-out/bin/relate-knn
 zig-out/bin/relate-knn <dataset> --method zipper --k 3   # from the repo root
 ```
 
+`lab`, not a bare `zig build`: the measurement lanes sit off the default
+install step, so a plain build installs only the `relate` binary. The
+`zig build relate-knn` step *runs* the harness, so it wants the dataset —
+`zig build relate-knn -- <dataset> --method zipper` is the one-shot form.
+
 ## Finding
 
-The full head-to-head (vs gzip-kNN ACL 2023 + a static-embedding model) and the
-**KILL verdict** — embeddings win on both accuracy and amortized query speed for
-semantic retrieval; compression's only edge is model-free cold-start — live in
-the spike dossier `.local/spikes/compression-vs-embeddings/SPIKE.md`.
+The **KILL verdict** for semantic retrieval: embeddings win on both accuracy
+and amortized query speed; compression's only edge is model-free cold-start.
+That came out of an early head-to-head (vs gzip-kNN ACL 2023 + a
+static-embedding model) whose write-up never shipped here, so the numbers
+behind the verdict are not in this repo. The harness that produced them is;
+point it at a labeled manifest and the race runs again.

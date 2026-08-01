@@ -118,12 +118,14 @@ slate, with attribution preserved).
 
 ### Embeddings / semantic retrieval
 
-Honest race: `zig build relate-knn` (`bench/knn/knn.zig`) runs the real
+Honest race: `zig build relate-knn` (`bench/conformance/relate/knn.zig`) runs the real
 zipper / sketch / pivot lanes as a k-NN classifier against gzip-kNN and a
 static embedding model. **Verdict (KILL for semantic retrieval):**
 embeddings win accuracy and amortized query speed; compression's edge is
 model-free cold-start, kinship, duplication, attribution, and anti-redundant
-packing. Spike trail: `.local/spikes/compression-vs-embeddings/SPIKE.md`.
+packing. That verdict came out of an early prototype race whose write-up is
+not part of this repo; the harness is, so the verdict can be re-earned rather
+than merely asserted — supply a labeled manifest and the race runs again.
 
 Relate does not claim to replace vector search. It claims the lane
 embeddings are a poor fit for.
