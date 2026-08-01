@@ -16,6 +16,12 @@ dist/
 .pytest_cache/
 .ruff_cache/
 
+# Search artifact home (index · atlas · shelf), shared with the sibling CLIs
+.gist/
+
+# Upstream clones kept for study
+upstream/
+
 # Machine-local scratch
 .local/
 .DS_Store
