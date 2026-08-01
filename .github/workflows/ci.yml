@@ -1,0 +1,287 @@
+# What has to be true before a change lands.
+#
+# Four faces plus a formatter gate, five jobs, deliberately not one: a Zig
+# engine regression and a Rust clippy nit are different news, and a single job
+# would report them as the same red X.
+#
+# Absent here on purpose: `lab`, `relate-knn`, and `codex-scale`. They are
+# measurement instruments, and a timing number produced on a shared runner is
+# noise wearing a decimal point. CI's question is "is it correct", which is
+# `check` then `test`; "is it fast" is a question for a quiet machine.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# A force-push mid-run should cancel the run it obsoleted, not race it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Matches `minimum_zig_version` in build.zig.zon.
+  ZIG_VERSION: 0.16.0
+
+# ── Why the four build jobs below start with three checkouts ─────────────────
+#
+# relate sits in the middle of an ecosystem rather than at the bottom of one,
+# and every face says so in its own dialect: build.zig.zon resolves `irregex`
+# and `gist` as `.path = "../<sibling>"`, bindings/go/go.mod replaces the
+# irregex module with ../../../irregex/bindings/go, bindings/rust/Cargo.toml
+# paths to ../../../irregex/bindings/rust, and bindings/python/pyproject.toml
+# sources both siblings editably. Every one of those paths is relative to the
+# directory *containing* this repository, so a bare clone of relate on its own
+# resolves none of them.
+#
+# So make the workspace that containing directory. `actions/checkout` refuses a
+# `path:` that escapes $GITHUB_WORKSPACE, which rules out placing the siblings
+# above a default checkout; instead this repo is checked out one level down,
+# into $GITHUB_WORKSPACE/relate, and the siblings land beside it as
+# $GITHUB_WORKSPACE/irregex and $GITHUB_WORKSPACE/gist. Every relative path
+# above then means on a runner exactly what it means on a developer's machine.
+# That is the whole reason to prefer this over a CI-only dependency override:
+# there is no second spelling of the dependency graph to keep in sync, and the
+# thing CI builds is the thing a contributor builds.
+#
+# Two standing conditions. The siblings are public repositories, which is what
+# lets the default GITHUB_TOKEN read them; if either is ever made private these
+# steps need a PAT with read access to it. And they track their default branch,
+# which is what a dev path dependency already means - a release pins url+hash
+# through the publish script instead, and that is the day these checkouts can go
+# away.
+#
+# `fmt` is the one job that opts out of all of this, and the reason is worth
+# saying: it reads this repository's files and never configures a build, so it
+# needs no sibling to resolve and no subdirectory to sit in. Giving it the
+# three-checkout preamble anyway would spend two clones to make a job look like
+# its neighbours.
+
+jobs:
+  engine:
+    # Both host families, because the build branches on them: macOS re-archives
+    # the static library through `libtool` for ld64's alignment rules, and the
+    # loader-relative rpath is `@loader_path` there against `$ORIGIN` elsewhere.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: relate
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: relate
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/irregex
+          path: irregex
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/gist
+          path: gist
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      # Compile-only first: when this fails, the test log below is noise, and
+      # the failure is one line rather than a suite's worth of scrollback.
+      - run: zig build check
+      - run: zig build test
+
+  python:
+    # 3.12 is the declared floor and is load-bearing (PEP 695 `type` aliases in
+    # corpus.py, and the irregex substrate's own floor), so it is tested rather
+    # than assumed. There is no upper pin: a published library has no business
+    # refusing next year's interpreter, and the way to keep that true is to
+    # notice when it breaks.
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12", "3.13", "3.14"]
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relate/bindings/python
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: relate
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/irregex
+          path: irregex
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/gist
+          path: gist
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - uses: astral-sh/setup-uv@v5
+      # Every binding suite drives the real `relate` binary and skips when it
+      # cannot find one, and a suite that skipped everything still exits 0. The
+      # `go` job below carries the full note on why this step asserts the
+      # artifact exists rather than trusting an exit code.
+      - name: Build the relate binary the suite drives
+        working-directory: relate
+        run: |
+          zig build
+          test -x zig-out/bin/relate
+          echo "$PWD/zig-out/bin" >> "$GITHUB_PATH"
+      - run: uv run --python ${{ matrix.python }} pytest -q
+
+  go:
+    # Unlike the substrate's Go module, this one vendors no prebuilt archive -
+    # relate links no native archive of its own, and the default build is pure
+    # Go that answers by shelling the `relate` binary. So the toolchain step
+    # that would be wrong there is required here: without it every test in the
+    # suite hits `t.Skipf("no relate binary")` and the job passes having
+    # checked nothing.
+    #
+    # That failure mode is why the build step asserts the artifact exists
+    # instead of trusting the exit code, and why the binary goes on $PATH
+    # rather than being left to each binding's own resolution order. The Rust
+    # suite now refuses to run without a reachable binary rather than returning
+    # early, so a missing one is loud on both sides of the seam; this rung keeps
+    # the failure at the step that caused it instead of five tests down.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relate/bindings/go
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: relate
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/irregex
+          path: irregex
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/gist
+          path: gist
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - uses: actions/setup-go@v5
+        with:
+          # Workspace-relative, not working-directory-relative.
+          go-version-file: relate/bindings/go/go.mod
+          # This module's one requirement is the sibling, satisfied by a
+          # `replace` to a path on disk, so it downloads nothing and carries no
+          # go.sum to key a module cache on. Left on, the default cache would
+          # spend every run warning about a dependency file that correctly does
+          # not exist, to restore a cache that could never hold anything.
+          cache: false
+      - name: Build the relate binary the suite drives
+        working-directory: relate
+        run: |
+          zig build
+          test -x zig-out/bin/relate
+          echo "$PWD/zig-out/bin" >> "$GITHUB_PATH"
+      - run: go vet ./...
+      - run: go test ./...
+
+  rust:
+    # Same reasoning as Go, and for the same reason: vendor/ here holds a README
+    # explaining that relate ships no archive of its own, so there is no
+    # link-only rung to exercise. The integration suite shells the binary.
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: relate/bindings/rust
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: relate
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/irregex
+          path: irregex
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/gist
+          path: gist
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      # rust-toolchain.toml pins the channel; installing it explicitly would
+      # override the pin the repository already made.
+      - run: rustup show
+      - name: Build the relate binary the suite drives
+        working-directory: relate
+        run: |
+          zig build
+          test -x zig-out/bin/relate
+          echo "$PWD/zig-out/bin" >> "$GITHUB_PATH"
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  fmt:
+    # Zig was the one language here whose formatter nothing checked, while Rust
+    # got `cargo fmt --check` in the job above. That gap is not academic: `zig
+    # fmt` pads a column-aligned multiline literal into a grid, so a rename that
+    # shrinks the widest cell leaves every row beneath it one space too wide, in
+    # files nobody touched. Drift like that wants a red X that says "formatting",
+    # not one buried in a build log.
+    #
+    # Its own job for the same reason the other four are separate. Folding it
+    # into `engine` would run it twice for a verdict that cannot differ by host;
+    # folding it into `rust` would hide a Zig result inside a Rust job.
+    #
+    # A bare checkout, alone among the jobs here: this reads files, it does not
+    # configure a build, so none of the sibling path dependencies apply. That is
+    # also why there is no `working-directory` — the repository is the workspace.
+    #
+    # Pinned to the ZIG_VERSION everything else builds with, because the
+    # formatter's output is a property of the compiler release — checking against
+    # a different Zig would be checking against a different grid.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: ${{ env.ZIG_VERSION }}
+      - name: zig fmt --check
+        run: |
+          set -euo pipefail
+          # Enumerated rather than spelled out as a path list, because a path
+          # list drifts the same silent way the formatting does — it goes stale
+          # the moment a directory is added or renamed, and stale in the
+          # direction that checks less.
+          #
+          # Tracked plus untracked-not-ignored is every Zig file this repository
+          # owns. What that leaves out is exactly the ignored trees — `.zig-cache`
+          # and the fetched `zig-pkg/` — so the exclusions are named in
+          # `.gitignore` and reviewable there, rather than being whatever
+          # happened to fall outside an argument list.
+          #
+          # The existence test is for a working tree mid-edit, where the index
+          # can still name a file someone has deleted; CI's checkout never has
+          # one, and a stale index should not read as a formatting failure.
+          files=()
+          while IFS= read -r f; do
+            if [ -f "$f" ]; then files+=("$f"); fi
+          done < <(git ls-files -co --exclude-standard '*.zig')
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::found no .zig files — the enumeration is broken, not the tree" >&2
+            exit 1
+          fi
+          echo "checking ${#files[@]} files"
+          zig fmt --check "${files[@]}"
