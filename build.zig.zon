@@ -8,7 +8,6 @@
         // publish script — see the ecosystem split plan.
         .irregex = .{ .path = "../irregex" },
         .gist = .{ .path = "../gist" },
-        .kernelkit = .{ .path = "../_buildkit" },
     },
     .paths = .{
         "build.zig",

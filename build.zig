@@ -8,7 +8,7 @@
 //! own. `librelate` dynamically links `libirregex` for the substrate symbols
 //! it does not redefine.
 //!
-//! Test chassis mirrors the library's (kernelkit's shape): a ReleaseSafe
+//! Test chassis mirrors the engine's: a ReleaseSafe
 //! brigade-sharded unit-test binary, `check` for the --watch/ZLS loop, and a
 //! kcov `coverage` step.
 
@@ -142,7 +142,7 @@ pub fn build(b: *std.Build) void {
         "test-shards",
         "how many parallel processes `zig build test` splits the unit-test binary across (default: 2x CPU count; 1 restores a single-process run)",
     ) orelse @min(@max(std.Thread.getCpuCount() catch 1, 1) * 2, 64);
-    const brigade = b.dependency("kernelkit", .{}).path("brigade.zig");
+    const brigade = irregex_dep.path("brigade.zig");
     const tests = b.addTest(.{
         .root_module = test_module,
         .test_runner = .{ .path = brigade, .mode = .simple },
@@ -189,8 +189,9 @@ fn engines(
     };
 }
 
-/// kernelkit's shard fan-out, restated because this build declares no C-ABI
-/// kernel (see _buildkit/build.zig `addShards`).
+/// The shard fan-out, restated here rather than shared: `brigade.zig` comes
+/// from the `irregex` dependency, but the steps that hang off it are this
+/// build's own.
 fn addShards(
     b: *std.Build,
     tests: *std.Build.Step.Compile,
