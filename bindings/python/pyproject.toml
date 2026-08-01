@@ -1,0 +1,44 @@
+# Importable Python face of relate. Depends on the shared `irregex` substrate
+# (row protocol, grades, shell transport). Local checkouts resolve the path
+# editably; a published wheel depends on the PyPI `irregex` distribution.
+
+[project]
+name = "relate"
+version = "0.1.0"
+description = "Importable Python API for relate compression-as-search."
+requires-python = ">=3.14,<3.15"
+license = "Apache-2.0"
+dependencies = [
+  "irregex",
+]
+
+[build-system]
+requires = [ "hatchling" ]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = [ "relate" ]
+
+[tool.uv.sources]
+irregex = { path = "../../../irregex/bindings/python", editable = true }
+gist = { path = "../../../gist/bindings/python", editable = true }
+
+[dependency-groups]
+dev = [
+  "pytest>=9.0",
+  "ruff>=0.15",
+  "gist",  # oracle face for exact-search checks in behavioral tests
+]
+
+[tool.pytest.ini_options]
+testpaths = [ "tests" ]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["relate", "irregex", "gist"]
