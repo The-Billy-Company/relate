@@ -2,19 +2,19 @@
 doc_radar:
   counts:
     - description: "compose tier after anatomy split — candidates + regions + context + four kernels + candidates test"
-      glob: libs/kernels/irregex/src/kernel/compose/*.zig
+      glob: src/kernel/compose/*.zig
       unit: files
       equals: 7
   sentinels:
     - description: "candidates.zig caps the pattern mask at one u64 word"
-      file: libs/kernels/irregex/src/kernel/compose/candidates.zig
+      file: src/kernel/compose/candidates.zig
       contains: "max_patterns = 64"
 ---
 
 # `src/kernel/compose/` — the exact-before-statistical tier
 
 The pure composition kernels the `irregex` binary drives
-([ADR-367](../../../../../../docs/architecture/3-decisions/367-composed-irregex-cli.md)).
+(exact ∩ compression over current bytes).
 A loaded corpus plus a compiled `PatternSet` (the MATCH primitive) yields a
 typed **`CandidateSet`**: the subset of docs the exact selector admits, each
 carrying the per-pattern mask that admitted it. The compression kernels then
@@ -33,8 +33,8 @@ whole-corpus noise.
 
 ## Invariants
 
-- **Pure kernels.** No I/O, no argv, no stdout. The [`surface/face/irregex/`](../../surface/face/irregex/README.md)
-  face loads the corpus / codex shelf and renders; these compute.
+- **Pure kernels.** No I/O, no argv, no stdout. The `blast` face (`blast/src/surface/face/irregex/`)
+  loads the corpus / codex shelf and renders; these compute.
 - **The mask is one `u64`.** `candidates` caps at 64 patterns — well past any
   composed workflow's ask; a caller with more intents is running a `relate
 patterns` sweep, not this.
@@ -51,6 +51,6 @@ patterns` sweep, not this.
   verify is not located — the driver reports drift instead of a stale line.
 
 These kernels reuse the existing floor directly — the `PatternSet` from
-[`../slate/`](../slate/README.md), the lexicon + coverage + kinship machinery
-from [`../kinship/`](../kinship/README.md) — and add no matcher of their
-own.
+the irregex library's `irregex/src/kernel/slate/`, the
+lexicon + coverage + kinship machinery from [`../kinship/`](../kinship/README.md)
+— and add no matcher of their own.

@@ -145,7 +145,7 @@ self-index for literal quotation/count, not fuzzy path search.
 
 [Semgrep](#r-semgrep), [ast-grep](#r-astgrep), and language-specific Type-2
 clone detectors parse. Relate's silhouette is intentionally not a parse —
-so it works across Billy's polyglot tree without a language registry, at
+so it works across a polyglot tree without a language registry, at
 the cost of never being a syntax-aware rewriter.
 
 ### "Language modeling is compression"

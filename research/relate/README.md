@@ -1,19 +1,19 @@
 ---
 doc_radar:
   paths_exist:
-    - libs/kernels/irregex/src/surface/face/relate/main.zig
-    - libs/kernels/irregex/src/kernel/kinship/recall/zipper.zig
-    - libs/kernels/irregex/src/kernel/kinship/recall/lexicon.zig
-    - libs/kernels/irregex/bench/conformance/relate/knn.zig
+    - ../gist/src/surface/face/relate/main.zig
+    - src/kernel/kinship/recall/zipper.zig
+    - src/kernel/kinship/recall/lexicon.zig
+    - bench/conformance/relate/knn.zig
   sentinels:
-    - file: libs/kernels/irregex/src/kernel/kinship/metric/sketch.zig
+    - file: src/kernel/kinship/metric/sketch.zig
       contains:
         - "Language Trees and Zipping"
         - "LZJD"
-    - file: libs/kernels/irregex/src/surface/face/relate/repertoire.zig
+    - file: ../gist/src/surface/face/relate/repertoire.zig
       contains: ["\"search\"", "\"pack\"", "\"quote\"", "\"similar\"", "\"dups\"", "\"clusters\"", "\"echoes\"", "\"concepts\"", "\"patterns\""]
-    - file: libs/kernels/irregex/contract/search_api.toml
-      contains: "[irregex.verbs]"
+    - file: contract/kinship.toml
+      contains: "[verbs]"
 ---
 
 # Relate — research map for compression-as-search
@@ -34,7 +34,7 @@ The research claim is the resulting **systems/workload composition**, not
 ownership of compression mathematics. Product thesis, ancestry, and evidence
 remain separate so each can be challenged on its own terms. The kernel's
 stronger novel-math claim lives on the Gist side in the Crest sieve
-([`../crest/`](../crest/PROOF.md)).
+(`irregex/research/crest/`).
 
 ## This folder (research: writing + scope only)
 
@@ -48,31 +48,32 @@ stronger novel-math claim lives on the Gist side in the Crest sieve
 
 | where                      | what                                                                           |
 | -------------------------- | ------------------------------------------------------------------------------ |
-| `src/surface/face/relate/` | product face (nine query verbs + lifecycle + schema)                           |
+| `../gist/src/surface/face/relate/` | product face (query verbs + lifecycle + schema; ships the `relate` binary) |
 | `src/kernel/kinship/`      | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
-| `src/kernel/slate/`        | `patterns` / loom (N-pattern exact attribution)                                |
+| `../irregex/src/kernel/slate/` | `patterns` / loom (N-pattern exact attribution; lives in the library)       |
 | `src/corpus/index/atlas/`  | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
 | `src/kernel/codex/` + `src/corpus/index/shelf/` | FM-index math + persisted SHLF behind `quote` (shared with `gist codex`) |
-| `bench/knn/`            | compression-vs-embeddings knn harness (`zig build relate-knn`)                 |
+| `bench/conformance/relate/` | compression-vs-embeddings knn harness (built via gist: `zig build relate-knn`) |
 
 ## Run
 
 ```bash
-make install-gist                      # installs relate beside gist
+# product CLIs ship from the gist sibling: `zig build` there installs
+# `relate` beside `gist` onto zig-out/bin/
 relate similar path/to/file --top 5
 relate pack "how does CDC recover?" --top 8
 relate quote 'a pasted snippet'
 relate index --shelf                   # kinship atlas + codex shelf
 relate status --json
-cd libs/kernels/irregex && zig build test
-zig build relate-knn                   # see TESTING.md
+zig build test                         # this package's engine suite
+# knn harness: see TESTING.md (built from the gist sibling)
 ```
 
 ## Status
 
 **Shipped.** Dogfooded for similarity, duplication, context packing, and
-provenance (`irregex.mdc`). Start with the positive case in
+provenance. Start with the positive case in
 [`CLAIM.md`](CLAIM.md), audit its ancestry in
 [`PRIOR_ART.md`](PRIOR_ART.md), then test every assertion against
 [`TESTING.md`](TESTING.md). The operational product face lives in
-[`src/surface/face/relate/README.md`](../../src/surface/face/relate/README.md).
+`gist/src/surface/face/relate/README.md`.

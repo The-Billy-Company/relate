@@ -2,7 +2,7 @@
 doc_radar:
   sentinels:
     - description: "retrieval is the fingerprint-lexicon path shared by similar/pack"
-      file: libs/kernels/irregex/src/exec/retrieval/retrieval.zig
+      file: src/exec/retrieval/retrieval.zig
       contains: ["pub fn retrieve", "pub fn pack", "pub const Hit"]
 ---
 

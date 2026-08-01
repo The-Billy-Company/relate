@@ -29,7 +29,7 @@
 //! The scanner is language-agnostic on purpose (relate's covenant: no
 //! parsers, no language list): quote/comment openers and identifier shapes
 //! are recognized generically, and the keyword set is the UNION of the
-//! structural words across Billy's languages. Misclassifying a `#` inside a
+//! structural words across the supported languages. Misclassifying a `#` inside a
 //! C string or a keyword-named identifier merely perturbs a few shingles —
 //! the estimator absorbs it; it can never crash or reorder a parse.
 //!
@@ -86,7 +86,7 @@ pub fn within(a: *const Silhouette, b: *const Silhouette, ceiling: f64) ?f64 {
 }
 
 // ── the pan-language keyword shelf ──
-// One closed union of the structural words across Billy's seven languages
+// One closed union of the structural words across seven languages
 // (no per-file language detection). Keywords survive normalization verbatim;
 // every other identifier-shaped run becomes the class token I.
 const keywords = std.StaticStringMap(void).initComptime(.{

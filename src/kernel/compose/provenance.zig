@@ -9,7 +9,7 @@
 //! exactly (the MATCH primitive — a literal substring scan, not the shelf's
 //! stale row), returning the live offset, line, and a context window.
 //!
-//! The invariant that makes it honest (ADR-367): a phrase the current bytes
+//! The invariant that makes it honest: a phrase the current bytes
 //! cannot verify is NOT located — `verify` returns null, and the driver reports
 //! drift instead of a stale line number. Provenance never points at a line that
 //! no longer holds the quote.

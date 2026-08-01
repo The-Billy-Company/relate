@@ -1,11 +1,11 @@
 ---
 doc_radar:
   sentinels:
-    - description: "the relate-knn harness is a wired build step + exposes all three lanes"
-      file: libs/kernels/irregex/build.zig
-      contains: '.step("relate-knn"'
+    - description: "the knn harness lives in this package (product chassis wires the zig build step)"
+      file: bench/conformance/relate/knn.zig
+      contains: 'relate-knn'
     - description: "the three faithful lanes the harness runs"
-      file: libs/kernels/irregex/bench/conformance/relate/knn.zig
+      file: bench/conformance/relate/knn.zig
       contains: 'const Method = enum { zipper, sketch, pivot };'
 ---
 

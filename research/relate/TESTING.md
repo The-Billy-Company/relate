@@ -2,7 +2,7 @@
 
 Every layer is tested where its failure would be invisible elsewhere.
 Soundness gates are **fail-closed**: a violation exits non-zero, and the
-fix is the engine, never the assertion (sins.mdc Sin #2).
+fix is the engine, never the assertion (never weaken an assertion to go green).
 
 The properties that matter:
 
@@ -29,7 +29,7 @@ The properties that matter:
 | atlas / codex suites               | round-trip, stale/missing fallback, restore/count oracles                                                   |
 
 ```bash
-cd libs/kernels/irregex && zig build test
+zig build test
 ```
 
 ---
@@ -38,7 +38,7 @@ cd libs/kernels/irregex && zig build test
 
 Contract: a `PatternSet` answer equals N independent runs bit-for-bit, with
 the prefilter gate forced **both** on and off. Throughput claim (~6× vs
-sequential `gist -l` on a relocator-shaped 10-pattern slate) is subordinate
+sequential `gist -l` on a 10-pattern slate) is subordinate
 to that equality.
 
 ---
@@ -80,8 +80,9 @@ plus the kinship/dup/pack/quote jobs. Full write-up:
 this TESTING file is the durable pointer).
 
 ```bash
-cd libs/kernels/irregex
-zig build -Doptimize=ReleaseFast
+# knn harness lives under the gist product chassis (sibling checkout)
+cd ../gist
+zig build -Doptimize=ReleaseFast relate-knn
 zig-out/bin/relate-knn <dataset> --method zipper --k 3
 ```
 

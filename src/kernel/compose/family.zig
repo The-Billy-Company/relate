@@ -3,7 +3,7 @@
 //! Pure-kernel answer to "of the files that match this symbol, which are forks
 //! or structural twins of each other?" The CLI's `relate echoes --matching PAT`
 //! is a different composition (narrow-then-echoes on the relate face); this
-//! module is the analytic FFI's `.family` op awaiting ADR-377 graduation
+//! module is the analytic FFI's `.family` op, not yet on the analytic dispatch
 //! (`surface/ffi/analytic.zig` still declines it). Running the exact
 //! `PatternSet` first (`candidates.select`) and building the kinship graph
 //! over ONLY the matching docs turns a whole-tree dedup sweep into a scoped

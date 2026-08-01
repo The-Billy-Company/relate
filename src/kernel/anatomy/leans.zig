@@ -1169,11 +1169,11 @@ test "resolution never crosses a package boundary" {
 test "packageRoot picks the deepest manifest above the seed" {
     const paths = [_][]const u8{
         "pyproject.toml",
-        "libs/kernels/irregex/build.zig",
-        "libs/kernels/other/build.zig",
-        "libs/kernels/irregex/src/deep/file.zig",
+        "pkg/alpha/build.zig",
+        "pkg/other/build.zig",
+        "pkg/alpha/src/deep/file.zig",
     };
-    try t.expectEqualStrings("libs/kernels/irregex/", packageRoot(&paths, paths[3]));
+    try t.expectEqualStrings("pkg/alpha/", packageRoot(&paths, paths[3]));
     try t.expectEqualStrings("", packageRoot(&paths, "README.md"));
 }
 
@@ -1266,7 +1266,7 @@ test "only markup-weaving extensions open text regions" {
     try t.expect(weaves("clients/web/surfaces/admin/src/components/HelpTip.tsx"));
     try t.expect(weaves("a/b/page.vue"));
     try t.expect(!weaves("clients/web/surfaces/atrium/src/lib/taskboard/store.ts"));
-    try t.expect(!weaves("libs/kernels/irregex/src/kernel/compose/leans.zig"));
+    try t.expect(!weaves("pkg/alpha/src/kernel/compose/leans.zig"));
 }
 
 test "a markup scrub leaves comparisons and generics alone" {

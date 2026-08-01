@@ -1,6 +1,6 @@
 //! irregex compose/candidates — contract differential for the typed CandidateSet.
 //!
-//! The ADR-367 exact-before-statistical seam in concrete terms: `select` over a
+//! The exact-before-statistical seam in concrete terms: `select` over a
 //! compiled `PatternSet` must equal the plain set-algebra of N independent
 //! single-pattern substring runs — the union under `.any`, the intersection
 //! under `.all` — and every surviving doc must carry the EXACT per-pattern mask.

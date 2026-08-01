@@ -13,7 +13,7 @@
 //! even though the whole corpus may be full of it — that is the entire point
 //! of having narrowed first.
 //!
-//! Two scores stay honest and separate (ADR-367): each pick carries the exact
+//! Two scores stay honest and separate: each pick carries the exact
 //! `mask` of patterns that admitted its file AND the compression `marginal_bits`
 //! it adds beyond earlier picks — no fused relevance number. Pure kernel: the
 //! driver loads the corpus and renders; this measures and packs.

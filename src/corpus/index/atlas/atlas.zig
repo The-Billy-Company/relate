@@ -297,7 +297,7 @@ pub fn fold(gpa: std.mem.Allocator, io: std.Io, atl: *const Atlas, roots: []cons
     // an `empty` here would be a silently wrong fingerprint, not a missing one.
     const lost = try fingerprint.fill(sketch.Sketch, sketch.build, gpa, bodies.items, fresh_sketches) +
         try fingerprint.fill(silhouette_mod.Silhouette, silhouette_mod.build, gpa, bodies.items, fresh_sils);
-    // `Corrupt`, not a `FingerprintFailed` of its own (ADR-373 law 2): the
+    // `Corrupt`, not a `FingerprintFailed` of its own (one flat fault taxonomy): the
     // persist domain is exactly "an artifact's bytes are untrustworthy — the
     // kinship atlas among them — so it fails CLOSED to the live path, costing
     // speed and never answers", which is what a record we could not rebuild

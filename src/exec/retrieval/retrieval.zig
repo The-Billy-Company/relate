@@ -119,7 +119,7 @@ fn referenceFor(gpa: std.mem.Allocator, body: []const u8, needles: []const []con
 
 /// Where a `WarmQuery`'s warm state comes from. `.load` is the one-shot CLI
 /// lane: mmap the index and walk the tree for freshness, both discarded when
-/// the query ends. `.resident` is the daemon lane (ADR-352 rung 2.5): the
+/// the query ends. `.resident` is the daemon/resident-session lane: the
 /// session holds the mmap'd index warm across queries and hands a freshness
 /// overlay it recomputes only when its watcher reports the tree dirty — so an
 /// eligible query skips both the per-call index map AND the O(tree) stat walk,

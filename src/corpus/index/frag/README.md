@@ -2,18 +2,18 @@
 doc_radar:
   counts:
     - description: "the fragment index — engine + round-trip/corruption/fold suite"
-      glob: libs/kernels/irregex/src/corpus/index/frag/*.zig
+      glob: src/corpus/index/frag/*.zig
       unit: files
       equals: 2
   sentinels:
     - description: "the persisted artifact rides the shared GIST_DIR-relocatable artifact home"
-      file: libs/kernels/irregex/src/corpus/index/frag/frag.zig
+      file: src/corpus/index/frag/frag.zig
       contains: 'const frag_path = home.ArtifactPath("concepts.frag");'
     - description: "freshness folds through the same conservative T3 stat walk"
-      file: libs/kernels/irregex/src/corpus/index/frag/frag.zig
+      file: src/corpus/index/frag/frag.zig
       contains: "try fresh.changedSince(gpa, io, roots, f.built_ns, a, &changed);"
     - description: "the lifecycle verb that builds it is relate's own"
-      file: libs/kernels/irregex/src/surface/face/relate/lifecycle.zig
+      file: ../gist/src/surface/face/relate/lifecycle.zig
       contains: "try frame.writeAtomic(io, frag_mod.fragFile(), fblob);"
 ---
 

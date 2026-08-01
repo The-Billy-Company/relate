@@ -2,13 +2,13 @@
 doc_radar:
   sentinels:
     - description: "the byte channel is LZJD over LZ78 phrase sketches"
-      file: libs/kernels/irregex/src/kernel/kinship/metric/sketch.zig
+      file: src/kernel/kinship/metric/sketch.zig
       contains: "LZJD"
     - description: "the structure channel winnows a normalized token stream"
-      file: libs/kernels/irregex/src/kernel/kinship/metric/silhouette.zig
+      file: src/kernel/kinship/metric/silhouette.zig
       contains: "Winnowing"
     - description: "lexicon nominates; zipper decides via Ziv–Merhav cross-parse"
-      file: libs/kernels/irregex/src/kernel/kinship/recall/zipper.zig
+      file: src/kernel/kinship/recall/zipper.zig
       contains: "Ziv"
 ---
 
@@ -17,7 +17,7 @@ doc_radar:
 The `relate` engine's math: measure how alike two byte bodies are by how
 cheaply one describes the other — no parsers, no language list, no embeddings.
 Pure kernel math; verb dispatch and rendering live in
-[`../../surface/face/relate/`](../../surface/face/relate/).
+`gist/src/surface/face/relate/`.
 
 The floor splits by the **question** each group answers:
 
@@ -45,7 +45,7 @@ Persisted sketches for the warm atlas live in
 silhouettes for `--unit function` in
 [`../../corpus/index/frag/`](../../corpus/index/frag/). The retrieval path shares
 the compact trigram codebook under
-[`../../corpus/index/trigrams/`](../../corpus/index/trigrams/) rather than
+`irregex/src/corpus/index/trigrams/` rather than
 persisting a second dense fingerprint index.
 
 ## Distance intuition

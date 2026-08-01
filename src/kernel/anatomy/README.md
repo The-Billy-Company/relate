@@ -2,12 +2,12 @@
 doc_radar:
   counts:
     - description: "anatomy keeps its four source-geometry modules"
-      glob: libs/kernels/irregex/src/kernel/anatomy/*.zig
+      glob: src/kernel/anatomy/*.zig
       unit: files
       equals: 4
   sentinels:
     - description: "token owns the shared identifier vocabulary kinship silhouettes import"
-      file: libs/kernels/irregex/src/kernel/anatomy/token.zig
+      file: src/kernel/anatomy/token.zig
       contains: ["pub fn isIdentStart", "pub fn isIdentByte", "pub fn nextIdent"]
 ---
 
@@ -15,7 +15,7 @@ doc_radar:
 
 Source-structure geometry with no product opinion. Not set algebra (that is
 [`../compose/`](../compose/)) and not ranking policy (that is
-[`../rank/`](../rank/)) — this package answers _"where are the comments,
+`irregex/src/kernel/rank/`) — this package answers _"where are the comments,
 identifiers, and function extents?"_ so every face can agree.
 
 Extracted from the old `compose/` grab-bag because none of these files was

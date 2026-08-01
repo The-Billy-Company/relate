@@ -1,19 +1,19 @@
 ---
 doc_radar:
   sentinels:
-    - file: libs/kernels/irregex/src/kernel/kinship/recall/lexicon.zig
+    - file: src/kernel/kinship/recall/lexicon.zig
       contains: ["pub fn fingerprintBits", "pub fn retrieve"]
-    - file: libs/kernels/irregex/src/kernel/kinship/recall/zipper.zig
+    - file: src/kernel/kinship/recall/zipper.zig
       contains: ["pub fn coldBits", "pub const Automaton"]
-    - file: libs/kernels/irregex/src/kernel/kinship/recall/coverage.zig
+    - file: src/kernel/kinship/recall/coverage.zig
       contains: ["pub fn greedy", "marginal_bits"]
-    - file: libs/kernels/irregex/src/kernel/kinship/metric/channel.zig
+    - file: src/kernel/kinship/metric/channel.zig
       contains: [".twins => bytes - structure", ".any => @min(bytes, structure)"]
       description: each channel composes the two measured distances in exactly one place
-    - file: libs/kernels/irregex/src/kernel/kinship/cluster/echoes.zig
+    - file: src/kernel/kinship/cluster/echoes.zig
       contains: ["pub fn survey", "pub fn massFloor"]
       description: one repetition survey over unit × channel × shape, with the channel's own mass floor
-    - file: libs/kernels/irregex/contract/search_api.toml
+    - file: contract/kinship.toml
       contains:
         - "similar = { argv ="
         - "pack = { argv ="
@@ -26,7 +26,7 @@ doc_radar:
 **Status:** shipped product + measured evidence. CLI face:
 `src/surface/face/relate/`. Engines: `src/kernel/kinship/` + `src/kernel/slate/` +
 `src/corpus/index/{atlas,codex}/`. Public contract: `relate --schema` /
-[`contract/search_api.toml`](../../contract/search_api.toml). Prior art:
+[`contract/kinship.toml`](../../contract/kinship.toml). Prior art:
 `PRIOR_ART.md`; evidence: `TESTING.md`.
 
 **Relate finds relationships exact search cannot name.** It discovers files

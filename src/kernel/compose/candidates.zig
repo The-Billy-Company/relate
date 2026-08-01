@@ -1,6 +1,6 @@
 //! irregex compose — the typed candidate set the composed verbs narrow through.
 //!
-//! The exact-before-statistical seam of the third face (ADR-367). A loaded
+//! The exact-before-statistical seam. A loaded
 //! corpus plus a compiled `PatternSet` (the MATCH primitive) yields a
 //! `CandidateSet`: the subset of docs the exact selector admits, each carrying
 //! the per-pattern mask that admitted it. `context` and `family` then run their
@@ -44,7 +44,7 @@ pub const CandidateSet = struct {
 
 /// Select the docs matching `set` under `match`. One `docMask` pass per doc:
 /// the fused gate rejects all-miss docs cheaply, then per-pattern attribution
-/// fills the mask (bit-identical to N single-pattern runs — ADR-363). Caller
+/// fills the mask (bit-identical to N single-pattern runs). Caller
 /// owns the returned set.
 pub fn select(
     gpa: std.mem.Allocator,

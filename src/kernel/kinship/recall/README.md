@@ -19,12 +19,13 @@ relate similar TEXT → lexicon nominates → bounded zipper decides → rank by
 relate pack   →  lexicon prices query chunks → coverage picks marginal-novel files
 ```
 
-The persisted codebook these read lives under
-[`../../../corpus/index/trigrams/`](../../../corpus/index/trigrams/); the cold
+The persisted codebook these read lives in the irregex library under
+`irregex/src/corpus/index/trigrams/`; the cold
 read engine that folds it against live bytes is
 [`../../../exec/retrieval/retrieval.zig`](../../../exec/retrieval/retrieval.zig).
 
 ## When to edit
 
 Pricing model, candidate nomination, or coverage marginals. Verb dispatch stays
-in [`../../../surface/face/relate/`](../../../surface/face/relate/).
+in the gist product chassis
+(`gist/src/surface/face/relate/`).

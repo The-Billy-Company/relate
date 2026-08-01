@@ -1,5 +1,5 @@
 //! relate resident retrieval session — the warm compression-search engine
-//! (ADR-352 rung 2.5).
+//! (resident daemon session).
 //!
 //! A `RetrievalSession` holds one repository's mmap'd trigram index + doc→path
 //! table warm across many retrieval queries — a `relate similar <text>` probe or
@@ -57,7 +57,7 @@ const QueryError = error{OutOfMemory};
 /// a fault — it is the one failure re-running cold cannot fix.
 ///
 /// `anyerror` is deliberate here, and the opposite of `notice.pathErrNote`'s
-/// named `WalkFault` (ADR-373 law 2): nothing downstream renders this error, so
+/// named `WalkFault` (declared flat fault taxonomy): nothing downstream renders this error, so
 /// a widened std set cannot become a mystery string. It can only ever mean
 /// "freshness unprovable" — which is already the safe answer. Naming the union
 /// of four inferred sets would buy a compile error where the fold is total by
@@ -262,7 +262,7 @@ pub const RetrievalSession = struct {
     // ── the queries ──
 
     /// Answer a text-probe retrieval over the warm index — the warm→cold seam for
-    /// relate (ADR-373 law 1). `roots` scopes the query (must be covered by the
+    /// relate (declinature rides the success position, not the error channel). `roots` scopes the query (must be covered by the
     /// index); the caller owns the returned `Result`.
     ///
     /// The two negatives are DIFFERENT facts and the type says so: a `declined`

@@ -90,7 +90,7 @@ pub fn fill(
 const t = std.testing;
 
 /// The fake builder's refusal. File-private and deliberately NOT a taxonomy
-/// member (ADR-373 law 2): `fill` must propagate whatever a record builder
+/// member (declared flat fault taxonomy): `fill` must propagate whatever a record builder
 /// hands back and count it, so what the harness proves is that SOME error
 /// degrades to `empty` and is tallied — naming a real fault here would imply
 /// the fan-out cares which one, and mint a product spelling from a test.
