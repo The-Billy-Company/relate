@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/The-Billy-Company/irregex/bindings/go/analytic"
-	"github.com/The-Billy-Company/irregex/bindings/go/runtime"
 )
 
 // planted is the corpus every kinship expectation below is derived from: alpha
@@ -44,18 +43,10 @@ func planted(t *testing.T) *Corpus {
 	return Over(root).In(root)
 }
 
-func requireEngine(t *testing.T) {
-	t.Helper()
-	if _, err := runtime.Binary(runtime.ToolRelate); err != nil {
-		t.Skipf("no relate binary: %v", err)
-	}
-}
-
 // TestDupsFindsThePlantedPair pins the copy-paste channel on a corpus whose one
 // true answer is known in advance, and pins the grade band with it: a pair this
 // close must not come back as background.
 func TestDupsFindsThePlantedPair(t *testing.T) {
-	requireEngine(t)
 	pairs, err := planted(t).Dups(t.Context(), analytic.Kinship{MaxDistance: ptr(0.6), Top: 10})
 	if err != nil {
 		t.Fatalf("dups: %v", err)
@@ -79,7 +70,6 @@ func TestDupsFindsThePlantedPair(t *testing.T) {
 // TestClustersGroupsThePair pins the family shape: the same evidence as a pair
 // list, already closed over, which is the unit a restructure acts on.
 func TestClustersGroupsThePair(t *testing.T) {
-	requireEngine(t)
 	clusters, err := planted(t).Clusters(t.Context(), analytic.Kinship{MaxDistance: ptr(0.6)})
 	if err != nil {
 		t.Fatalf("clusters: %v", err)
@@ -101,7 +91,6 @@ func TestClustersGroupsThePair(t *testing.T) {
 // weak rows in the engine rather than leaving the caller to filter, and an answer
 // made only of background is empty rather than misleading.
 func TestSimilarWithholdsBackground(t *testing.T) {
-	requireEngine(t)
 	c := planted(t)
 	near, err := c.Similar(t.Context(), analytic.Kinship{Target: "alpha.go", Top: 5})
 	if err != nil {
@@ -130,7 +119,6 @@ func TestSimilarWithholdsBackground(t *testing.T) {
 // family is real, its structure distance is a measured 0.0 (identical), and its
 // byte kinship was never measured at all. Those two must not read the same.
 func TestConceptsKeepUnmeasuredChannelsAbsent(t *testing.T) {
-	requireEngine(t)
 	concepts, err := planted(t).Concepts(t.Context(), analytic.Kinship{Top: 3})
 	if err != nil {
 		t.Fatalf("concepts: %v", err)
@@ -166,7 +154,6 @@ func TestConceptsKeepUnmeasuredChannelsAbsent(t *testing.T) {
 // pack pick's coverage must be monotone because each is priced against the picks
 // before it.
 func TestRecallAndPack(t *testing.T) {
-	requireEngine(t)
 	c := planted(t)
 	query := analytic.Retrieval{Query: "reticulation of splines, a matter of some delicacy", Top: 3}
 
@@ -209,7 +196,6 @@ func TestRecallAndPack(t *testing.T) {
 // Reticulate3 in exactly the two twin files, so both the hits and the engine-side
 // tally are known without running the sweep to find out.
 func TestPatternsAttributesEveryHit(t *testing.T) {
-	requireEngine(t)
 	c := planted(t)
 	hits, err := c.Patterns(t.Context(), analytic.Sweep{Patterns: []string{"Reticulate3", "tunnels"}})
 	if err != nil {
@@ -245,7 +231,6 @@ func TestPatternsAttributesEveryHit(t *testing.T) {
 // TestRowsEscapeHatchCarriesStats pins that the undecoded cursor is reachable and
 // reports the answer-level counters, which no typed row can carry.
 func TestRowsEscapeHatchCarriesStats(t *testing.T) {
-	requireEngine(t)
 	rows, err := planted(t).Rows(t.Context(), analytic.OpDups, analytic.Kinship{MaxDistance: ptr(0.6)})
 	if err != nil {
 		t.Fatalf("rows: %v", err)

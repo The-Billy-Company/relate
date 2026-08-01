@@ -16,15 +16,39 @@ use std::process::Command;
 
 use irregex::contract::schema::{SCHEMAS, VERBS};
 use irregex::contract::{Channel, Grade};
+use irregex::runtime::shell::binary_named;
 use irregex::runtime::{Row, Rows};
 
-/// Skip cleanly where the compression face is not installed
-/// (`zig build`) — the same convention the other suites use.
-fn have_relate() -> bool {
-    Command::new(std::env::var("RELATE_BIN").unwrap_or_else(|_| "relate".into()))
-        .arg("--schema")
-        .output()
-        .is_ok_and(|o| o.status.success())
+/// Stop the run unless the compression face this suite exists to exercise is
+/// actually reachable.
+///
+/// Deliberately a failure rather than a skip. Rust's stable harness has no
+/// conditional skip, so the early `return` this replaced reported `ok` — five
+/// tests finishing in 0.00s having asserted nothing, and nothing in the output
+/// to tell them apart from five that ran. A missing binary is a broken setup,
+/// not a passing one, and the honest report says so and says how to fix it.
+/// The exact face's suite already holds this line: "do not Skip (test-bandaid)".
+///
+/// The lookup is the crate's own [`binary_named`] rather than a bare `relate`
+/// on `PATH`. A guard that resolves differently from the library it guards can
+/// only report about a build the tests are not going to run — and this one did:
+/// with the binary in its own checkout and nothing on `PATH`, every test here
+/// failed at the guard while the library underneath resolved perfectly well.
+fn require_relate() {
+    let bin = match binary_named("relate", "RELATE_BIN") {
+        Ok(path) => path,
+        Err(err) => panic!("these tests run the real compression face, and none was found.\n{err}"),
+    };
+    let why = match Command::new(&bin).arg("--schema").output() {
+        Ok(out) if out.status.success() => return,
+        Ok(out) => format!("it {}", out.status),
+        Err(err) => err.to_string(),
+    };
+    panic!(
+        "these tests run the real compression face, and `{}` did not answer `--schema` ({why}). \
+         Build it with `zig build`, or point RELATE_BIN at one.",
+        bin.display()
+    );
 }
 
 /// Two identical files plus an unrelated one, so kinship has something true to
@@ -120,10 +144,7 @@ fn collect(rows: &Rows, verb: &str) -> usize {
 
 #[test]
 fn similar_finds_the_twin_and_grades_it_by_the_contract() {
-    if !have_relate() {
-        eprintln!("skip: no relate binary");
-        return;
-    }
+    require_relate();
     let dir = corpus();
     let rows = relate::similar(dir.path().join("pkg/a.py").display().to_string())
         .root(dir.path())
@@ -142,10 +163,7 @@ fn similar_finds_the_twin_and_grades_it_by_the_contract() {
 
 #[test]
 fn a_grade_floor_withholds_rather_than_reranks() {
-    if !have_relate() {
-        eprintln!("skip: no relate binary");
-        return;
-    }
+    require_relate();
     let dir = corpus();
     let probe = dir.path().join("pkg/a.py").display().to_string();
     let all = relate::similar(&probe)
@@ -174,10 +192,7 @@ fn a_grade_floor_withholds_rather_than_reranks() {
 
 #[test]
 fn clusters_answers_in_the_family_schema_not_the_pair_schema() {
-    if !have_relate() {
-        eprintln!("skip: no relate binary");
-        return;
-    }
+    require_relate();
     let dir = corpus();
     let rows = relate::clusters()
         .root(dir.path())
@@ -195,10 +210,7 @@ fn clusters_answers_in_the_family_schema_not_the_pair_schema() {
 
 #[test]
 fn a_sweep_attributes_each_pattern_in_one_walk() {
-    if !have_relate() {
-        eprintln!("skip: no relate binary");
-        return;
-    }
+    require_relate();
     let dir = corpus();
     let rows = relate::patterns(["widget", "json"])
         .root(dir.path())
@@ -225,10 +237,7 @@ fn a_sweep_attributes_each_pattern_in_one_walk() {
 
 #[test]
 fn pack_prices_a_query_the_corpus_has_never_seen_as_foreign() {
-    if !have_relate() {
-        eprintln!("skip: no relate binary");
-        return;
-    }
+    require_relate();
     let dir = corpus();
     // `foreign` is the fact that separates "your text isn't in this repo" from
     // "no results", so a query of pure nonsense is the case it exists for.
