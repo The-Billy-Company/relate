@@ -133,4 +133,3 @@ test "cento: price ranks the corpus's own prose below foreign bytes" {
     // foreign random bytes cannot beat the literal-escape floor by much
     try testing.expect(foreign_bits / 4000.0 > 6.0);
 }
-
