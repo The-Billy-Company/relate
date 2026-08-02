@@ -135,6 +135,26 @@ jobs:
         with:
           version: ${{ env.ZIG_VERSION }}
       - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      # Checking the substrate out is not enough to import it. `irgx._abi` loads
+      # `libirgx` at import time, and an in-tree checkout has no bundled copy —
+      # it resolves the one `zig build` leaves under `zig-out/lib`. Without this
+      # step every module here dies during collection on the very first
+      # `from irgx.contract import …`, which is what it did.
+      - name: Build the substrate the bindings import
+        working-directory: irregex
+        run: |
+          zig build
+          test -f zig-out/lib/libirgx.so
+      # `test_kinship` reaches the corpus through `gist.files` / `gist.search`,
+      # which shell the real binary. Its skip guard asks only whether `relate`
+      # resolves, so a missing gist is a failure rather than a skip — correct,
+      # and it means the binary has to be here.
+      - name: Build the gist binary the kinship suite reaches through
+        working-directory: gist
+        run: |
+          zig build
+          test -x zig-out/bin/gist
+          echo "$PWD/zig-out/bin" >> "$GITHUB_PATH"
       # Every binding suite drives the real `relate` binary and skips when it
       # cannot find one, and a suite that skipped everything still exits 0. The
       # `go` job below carries the full note on why this step asserts the
