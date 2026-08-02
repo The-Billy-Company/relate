@@ -1,0 +1,31 @@
+# Blank issues are off, not to be difficult, but because the forms beside this
+# file ask for the things that decide whether a report is actionable: the exact
+# command line, a corpus we can rebuild, and whether the atlas was warm. A
+# kinship answer without those is a number nobody can reproduce.
+blank_issues_enabled: false
+
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/The-Billy-Company/relate/security/advisories/new
+    about: >-
+      Never in a public issue. This opens a private thread only the maintainers
+      can read. SECURITY.md says what counts here - a hostile corpus is input,
+      not an edge case, and a false attribution is a security question.
+
+  - name: A pattern matched the wrong thing
+    url: https://github.com/The-Billy-Company/irregex/issues/new/choose
+    about: >-
+      Spans, anchors, Unicode, case folding, and engine semantics belong to the
+      engine repository - including the patterns you pass to `--matching`.
+
+  - name: Exact search, or the daemon and its answer keep
+    url: https://github.com/The-Billy-Company/gist/issues/new/choose
+    about: >-
+      `gist` is the exact-search face and the chassis this binary dials into:
+      argv, the resident session, the answer keep.
+
+  - name: Provenance re-verified, or a live blast radius
+    url: https://github.com/The-Billy-Company/blast/issues
+    about: >-
+      `blast provenance` and `blast blast` are the composed face, in its own
+      repository. This one owns kinship, repetition, packing, and quotation.

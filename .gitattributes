@@ -1,0 +1,51 @@
+# How git should treat the bytes in this repository.
+#
+# Three jobs: keep line endings from becoming a diff, keep resolver output out
+# of review and out of GitHub's language stats, and give git the hunk-header
+# rules that make a diff readable.
+#
+# NOT here on purpose: `export-ignore`. It would trim files out of the tarball
+# GitHub generates for a tag, and that tarball is what a downstream `zig fetch`
+# hashes - the url+hash pin in a consumer's `build.zig.zon` is a hash of those
+# bytes. Excluding `bench/` or `research/` to save someone a download would
+# invalidate every pin that already exists. What ships in the Zig package is
+# already decided, deliberately and reviewably, by `.paths` in build.zig.zon.
+
+# ── Line endings ────────────────────────────────────────────────────────────
+# Normalize on commit, LF in the working tree on every platform. Kinship here
+# is measured over bytes: an LZ78 sketch of a file checked out with CRLF is a
+# sketch of different bytes, so a platform-dependent checkout would move every
+# distance in the atlas for a reason that has nothing to do with the code.
+* text=auto eol=lf
+
+# ── Generated ───────────────────────────────────────────────────────────────
+# Lockfiles: resolver output. Reviewed as a fact ("this version moved"), never
+# read line by line.
+*.lock  linguist-generated -diff
+
+# Anything projected from contract/*.toml, should a generator ever land its
+# output in the tree rather than checking it. Nothing matches today; the rule
+# is here so that the day one does, the diff worth reading is still the
+# contract's.
+*.gen.zig      linguist-generated
+schema.gen.*   linguist-generated
+
+# ── Diff drivers ────────────────────────────────────────────────────────────
+# Git ships hunk-header patterns for these; naming them here is what makes
+# `@@ ... fn whatever` appear above a hunk instead of a bare line number.
+*.go  diff=golang
+*.py  diff=python
+*.rs  diff=rust
+*.h   diff=cpp
+*.md  diff=markdown
+
+# Zig has no built-in driver. The attribute is inert until the pattern exists
+# in your own git config; CONTRIBUTING.md has the one-line command, and without
+# it this line simply falls back to git's default behaviour.
+*.zig diff=zig
+
+# ── Merge ───────────────────────────────────────────────────────────────────
+# The changelog is append-at-the-top and assembled by towncrier. Two branches
+# adding release sections conflict textually while agreeing semantically; a
+# union merge keeps both and lets the next `towncrier build` sort it out.
+CHANGELOG.md merge=union

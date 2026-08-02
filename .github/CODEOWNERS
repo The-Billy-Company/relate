@@ -1,0 +1,31 @@
+# Who gets asked to review what.
+#
+# GitHub matches the LAST rule that applies to a file, so the specific rules
+# live below the catch-all. Ownership here is a routing table, not a fence: a
+# pull request from anyone is welcome on any of these paths.
+
+*                       @GriffinCanCode
+
+# The engine and the face over it - metrics, anatomy, the quotation parse, the
+# persisted artifacts, and the verbs that ship them.
+/src/                   @GriffinCanCode
+
+# The two contracts. `relate.ward` is the import topology; `kinship.toml` is the
+# vocabulary - record kinds, channels, grade bands, the closed verb set - and
+# the gist repository vendors a copy to check its bindings against, so a change
+# here reaches another repository.
+/contract/              @GriffinCanCode
+
+# The C ABI other packages link against.
+/include/               @GriffinCanCode
+
+# Measurement and the falsification record. A weakened gate is worse than an
+# absent one, because it looks like evidence.
+/bench/                 @GriffinCanCode
+/research/              @GriffinCanCode
+
+/NOTICE                 @GriffinCanCode
+/LICENSE                @GriffinCanCode
+
+# Anything that can change what CI proves, including this file.
+/.github/               @GriffinCanCode

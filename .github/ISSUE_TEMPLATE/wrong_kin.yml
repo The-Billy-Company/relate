@@ -1,0 +1,103 @@
+name: Wrong kinship answer
+description: similar, echoes, pack, or quote returned something that is not true.
+title: "kin: "
+labels: ["kinship"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        This is the form for an answer that is *wrong*, not merely surprising:
+        a fork family that split in two, a stranger ranked above a twin, a
+        quotation attributed to a file that never held it, a pack that picked
+        two copies of the same thing.
+
+
+        Kinship answers are statistical, so the report we can act on is one
+        where we can rebuild the corpus. Two files we can create beat a
+        description of a repository we cannot see.
+
+  - type: textarea
+    id: command
+    attributes:
+      label: The command
+      description: >-
+        Exactly as run, from the directory it was run in.
+      render: shell
+      placeholder: |
+        relate similar src/kernel/kinship/metric/sketch.zig --top 5
+    validations:
+      required: true
+
+  - type: textarea
+    id: corpus
+    attributes:
+      label: The corpus
+      description: >-
+        A few lines of shell that build a tree showing the problem, or the
+        public repository and commit you ran against. If the files are small,
+        paste them.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: outputs
+    attributes:
+      label: What it printed, and what you expected
+      description: >-
+        The rows, including their grades, and the stderr line. Then what you
+        expected instead and why - "these two are a rename of each other" is a
+        reason; "these feel related" is a different kind of report.
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: warm
+    attributes:
+      label: Does `--no-index` change the answer?
+      description: >-
+        The single most useful thing you can tell us. A warm answer is supposed
+        to be byte-identical to a cold one: if they disagree, the bug is in the
+        atlas or the freshness fold and is serious. If they agree, the bug is in
+        the metric, and is a different investigation entirely.
+      options:
+        - "No - `--no-index` gives the same (wrong) answer"
+        - "Yes - the cold answer is right and the warm one is not"
+        - "I have not tried it"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Which channel
+      description: What `--as` was in force, explicitly or by default.
+      options:
+        - "copies (bytes)"
+        - "twins (bytes minus structure - the echoes default)"
+        - "shapes (normalized structure)"
+        - "any"
+        - "text probe / coding gain"
+        - "quote or pack (attribution, not a channel)"
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: "`relate --version`."
+      placeholder: "relate 0.1.0"
+    validations:
+      required: true
+
+  - type: textarea
+    id: status
+    attributes:
+      label: "`relate status --json`"
+      description: >-
+        Only if the atlas or the shelf was involved. It says how fresh each
+        artifact is and which tree it was built over, which is often the whole
+        answer.
+      render: json

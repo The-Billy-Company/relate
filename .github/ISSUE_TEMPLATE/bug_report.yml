@@ -1,0 +1,94 @@
+name: Bug report
+description: A crash, a hang, a build failure, a broken flag or artifact.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        If the complaint is that an answer is *wrong* rather than broken - a
+        family that split, a stranger ranked as kin, a misattributed quotation -
+        the kinship form asks better questions than this one; use that instead.
+
+
+        If a hostile repository could trigger what you found - a crafted file
+        name, a committed `.irregex.toml`, a planted atlas - please treat it as
+        a security report and file it privately:
+        [SECURITY.md](https://github.com/The-Billy-Company/relate/blob/main/SECURITY.md).
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: How to reproduce it
+      description: >-
+        The command line exactly as run, and the shell that builds the corpus
+        if the tree matters. A reproduction we can paste into a terminal is
+        worth ten paragraphs of description.
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: output
+    attributes:
+      label: Output, error, or stack trace
+      description: >-
+        The whole thing, not the last line - stderr included. relate puts its
+        freshness note, its grade summary, and its coaching lines on stderr, and
+        they often name the cause.
+      render: text
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where does it happen?
+      options:
+        - the neighbor verb (`similar`)
+        - the repetition verb (`echoes`)
+        - context assembly (`pack`)
+        - quotation (`quote`)
+        - the multi-pattern walk (`patterns`)
+        - the persisted artifacts (`relate index`, `relate status`)
+        - exact narrowing (`--matching`)
+        - build or install (`zig build`)
+        - one of the bindings (Python / Rust / Go)
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: "`relate --version`"
+      description: Or the commit SHA if you built it yourself.
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: >-
+        OS, architecture, and how you built it. Releases are `ReleaseFast`,
+        where Zig's safety checks are off, so the optimize mode changes what a
+        bug looks like - say which you used.
+      placeholder: "macOS 15 arm64, built from source, Zig 0.16.0, ReleaseFast"
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: tried
+    attributes:
+      label: Worth trying first
+      description: Not required, but each one narrows the search considerably.
+      options:
+        - label: "`--no-index` changes nothing (so it is not the warm tier)"
+        - label: "`GIST_NO_KEEP=1` changes nothing (so it is not a recalled answer)"
+        - label: "The three sibling checkouts are present and current"

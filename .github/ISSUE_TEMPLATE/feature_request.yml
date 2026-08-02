@@ -1,0 +1,72 @@
+name: Feature request
+description: Something the engine should be able to answer and cannot.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: >
+        The surface here is deliberately small: two kinship questions - one
+        probe (`similar`), the corpus against itself (`echoes`) - plus `pack`,
+        `quote`, and `patterns`. Four earlier verbs turned out to be corners of
+        those two, reached by a flag, and folding them made the tool easier to
+        hold rather than smaller.
+
+
+        So the useful version of this request answers: is this a new **question**
+        or a new **axis** on a question we already ask?
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What you are trying to do
+      description: >-
+        The question you are asking of a codebase, not the flag you have in
+        mind. Half the good ideas here started as somebody describing a search
+        they gave up on.
+    validations:
+      required: true
+
+  - type: textarea
+    id: workaround
+    attributes:
+      label: What you do instead today
+      description: >-
+        The pipeline you assemble, the second tool you reach for, the loop you
+        write. This is the strongest evidence a request has - and if the answer
+        is "I pipe gist into relate", say so, because narrowing is already a
+        flag (`--matching`) and may cover it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you would like
+      description: >-
+        A flag, an axis, an output shape. Rough is fine. If you know what it
+        should do at the edges - no kin at all, an all-background answer, a
+        `--json` row, an empty corpus - say it, because that is where the design
+        work actually is.
+
+  - type: dropdown
+    id: shape
+    attributes:
+      label: Question or axis?
+      options:
+        - An axis on `similar` or `echoes` (a flag)
+        - A genuinely new question (a verb)
+        - Something about the persisted artifacts or their freshness
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: prior_art
+    attributes:
+      label: Who already does this?
+      description: >-
+        A paper, a clone detector, an embedding tool, another engine. Not a
+        disqualification - the opposite. Nearly everything here descends from
+        published work, and we would rather adopt a good idea with a citation
+        than reinvent a worse one.
