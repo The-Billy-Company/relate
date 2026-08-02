@@ -285,3 +285,57 @@ jobs:
           fi
           echo "checking ${#files[@]} files"
           zig fmt --check "${files[@]}"
+
+  version:
+    # One number lives in `build.zig.zon`; the publishing manifests that cannot
+    # import it — Cargo and PyPI — carry a marked copy the release bot rewrites.
+    # This asks whether those copies still agree, and whether the bot has been
+    # told about every one of them. A mirror the config forgot is the
+    # interesting failure: nothing breaks until a release ships a package
+    # claiming last version's number.
+    #
+    # Stdlib-only, no Zig and no build — it reads lines.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - run: uv run --no-project --python 3.12 python tools/version_parity.py
+
+  contract:
+    # `contract/kinship.toml` is this repository's, and irregex keeps a copy.
+    #
+    # It has to. irregex's bindings mirror the grade bands and the channel
+    # vocabulary, and a mirror is only worth anything if something asserts it
+    # still matches. The obvious place for that assertion is irregex's own CI —
+    # but irregex is public and this repository is not, so a job over there that
+    # clones this one to read a file is a job no outside contributor can run.
+    # Vendoring resolves that: the copy travels with the package that needs it.
+    #
+    # Which leaves the question this job answers. A copy nobody compares is a
+    # copy that goes stale, and the direction it goes stale in is the dangerous
+    # one — irregex keeps shipping the bands this file used to declare. The
+    # comparison can only live where both files are readable at once, and that
+    # is here: this repository can read the public one freely, in exactly the
+    # flat layout every other job already sets up. So the contract is authored
+    # here, mirrored there, and judged here, and editing the bands without
+    # refreshing the mirror turns this job red on the PR that did it.
+    #
+    # Stdlib-only and no build, like `version` above: it reads two files and
+    # diffs them. `--check` reports rather than repairs, because a CI runner
+    # silently rewriting a sibling checkout would make drift disappear from the
+    # logs instead of from the tree.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: relate
+      - uses: actions/checkout@v4
+        with:
+          repository: The-Billy-Company/irregex
+          path: irregex
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
+      # No `--root`: the script looks for siblings beside its own checkout, and
+      # the flat layout above puts them there. That is the same walk it performs
+      # on a developer's machine, so there is no CI-only path spelled anywhere.
+      - name: The vendored copy must still match what this repo authored
+        run: python3 irregex/tools/sync_contract.py --check
