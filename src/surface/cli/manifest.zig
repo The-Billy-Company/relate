@@ -157,6 +157,14 @@ pub const Face = struct {
     /// The manifest's `summary` — the whole face in one machine-read sentence.
     summary: []const u8,
     verbs: []const Verb,
+    /// The verb an argument-first invocation means, when this face has a
+    /// headline question worth spelling without a verb at all — `gist PATTERN`,
+    /// `blast SYMBOL`. Null keeps the face verb-only.
+    ///
+    /// Recognized only when the first token names no verb, live or retired, and
+    /// is not a flag, so adding a verb can never silently reinterpret an
+    /// invocation that already worked.
+    bare: ?[]const u8 = null,
     /// Names that were folded into a verb above. Reachable as coaching, not as
     /// aliases (see `Retired`).
     retired: []const Retired = &.{},
@@ -176,6 +184,17 @@ pub const Face = struct {
     pub fn folded(self: Face, name: []const u8) ?Retired {
         for (self.retired) |r| if (std.mem.eql(u8, r.name, name)) return r;
         return null;
+    }
+
+    /// The verb `token` runs as an argument rather than a verb name, or null
+    /// when it is a verb, a retired name, a flag, or this face has no bare
+    /// form. A live verb always wins, so `blast blast SYMBOL` keeps working and
+    /// a retired name keeps coaching instead of becoming a symbol.
+    pub fn bareFor(self: Face, token: []const u8) ?[]const u8 {
+        const name = self.bare orelse return null;
+        if (token.len == 0 or token[0] == '-') return null;
+        if (self.find(token) != null or self.folded(token) != null) return null;
+        return name;
     }
 };
 
@@ -253,7 +272,9 @@ pub fn usage(buf: *std.ArrayList(u8), gpa: std.mem.Allocator, face: Face) void {
             if (v.section != sec[0]) continue;
             if (first) buf.print(gpa, "\n{s}:\n", .{sec[1]}) catch oom();
             first = false;
-            form(buf, gpa, face.tool, v);
+            // The bare spelling leads, because it is the one a caller types.
+            if (face.bare) |b| if (std.mem.eql(u8, b, v.name)) form(buf, gpa, face.tool, v, .bare);
+            form(buf, gpa, face.tool, v, .verb);
             var lines = std.mem.splitScalar(u8, v.blurb, '\n');
             while (lines.next()) |l| if (l.len > 0) buf.print(gpa, "      {s}\n", .{l}) catch oom();
         }
@@ -275,13 +296,19 @@ pub fn usage(buf: *std.ArrayList(u8), gpa: std.mem.Allocator, face: Face) void {
 }
 
 /// `  relate similar <path> …`, continuation lines aligned under the args.
-fn form(buf: *std.ArrayList(u8), gpa: std.mem.Allocator, tool: []const u8, v: Verb) void {
-    const indent = 2 + tool.len + 1 + v.name.len + 1;
+/// `.bare` drops the verb name, spelling the face's headline invocation.
+fn form(buf: *std.ArrayList(u8), gpa: std.mem.Allocator, tool: []const u8, v: Verb, as: enum { verb, bare }) void {
+    const name = if (as == .bare) "" else v.name;
+    const indent = 2 + tool.len + 1 + name.len + @intFromBool(name.len > 0);
     var lines = std.mem.splitScalar(u8, v.form, '\n');
     var first = true;
     while (lines.next()) |l| {
         if (first) {
-            buf.print(gpa, "  {s} {s}{s}{s}\n", .{ tool, v.name, if (l.len > 0) " " else "", l }) catch oom();
+            buf.print(gpa, "  {s}{s}{s}{s}{s}\n", .{
+                tool, if (name.len > 0) " " else "",
+                name, if (l.len > 0) " " else "",
+                l,
+            }) catch oom();
             first = false;
         } else {
             buf.appendNTimes(gpa, ' ', indent) catch oom();
@@ -306,6 +333,10 @@ pub fn schema(buf: *std.ArrayList(u8), gpa: std.mem.Allocator, face: Face, versi
     emit.jsonStr(buf, gpa, version);
     buf.appendSlice(gpa, ",\"summary\":") catch oom();
     emit.jsonStr(buf, gpa, face.summary);
+    if (face.bare) |b| {
+        buf.appendSlice(gpa, ",\"bare\":") catch oom();
+        emit.jsonStr(buf, gpa, b);
+    }
 
     buf.appendSlice(gpa, ",\"verbs\":{") catch oom();
     for (face.verbs, 0..) |v, i| {
@@ -453,7 +484,12 @@ fn steer(face: Face, version: []const u8, init: std.process.Init) !void {
 
     var rest: std.ArrayList([]const u8) = .empty;
     defer rest.deinit(init.gpa);
+    // Resolve the bare form before argv is consumed: the token that would have
+    // been the verb becomes the first argument of the face's headline verb.
+    const bare = face.bareFor(mode);
+    if (bare != null) try rest.append(init.gpa, mode);
     while (nextArg(&it)) |arg| try rest.append(init.gpa, arg);
+    const verb = bare orelse mode;
     // Clickable rows for the two verb-shaped faces. Every row relate and
     // irregex print names a file the reader's next move is to open, so the
     // whole layer is worth one call here. They share no flag struct with gist,
@@ -466,10 +502,10 @@ fn steer(face: Face, version: []const u8, init: std.process.Init) !void {
     // answer and exits here, and a miss arms the stdout copy the verb's own
     // exit offers back (`reprise.zig`). Silent and fail-open — an unreachable
     // or stale daemon leaves the dispatch below exactly as it was.
-    if (face.find(mode)) |v| {
+    if (face.find(verb)) |v| {
         if (v.keeps) reprise.attempt(init.gpa, init.io, init.environ_map, face.tool, v.name, rest.items);
     }
-    if (!try dispatch(face, mode, init.gpa, init.io, rest.items)) unknown(face, mode);
+    if (!try dispatch(face, verb, init.gpa, init.io, rest.items)) unknown(face, mode);
 }
 
 fn spelled(mode: []const u8, long: []const u8, short: []const u8) bool {
