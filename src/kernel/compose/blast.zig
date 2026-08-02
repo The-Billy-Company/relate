@@ -53,12 +53,32 @@ pub const Options = struct {
 /// never a parse (the def/use classifier is already parser-free).
 pub const Kind = enum { function, type, value, unknown };
 
-pub const Site = struct { doc: u32, line: u32 };
+/// A definition site. `generated` marks a declaration emitted by codegen — a
+/// real declaration, but never the one an agent edits, so it sorts last.
+pub const Site = struct { doc: u32, line: u32, generated: bool = false };
 
-/// A function that references the seed. `enclosing` is its header headline
-/// (empty for a top-level reference); `defines` marks a reference that is
-/// itself a (re)definition of the seed rather than a use.
-pub const Dependent = struct { doc: u32, line: u32, enclosing: []const u8, defines: bool };
+/// A reference to the seed. `enclosing` is the header headline of the function
+/// holding it, empty when the reference sits at file scope — a registry row, an
+/// export list, a route table — which is where the edges that break a build
+/// most often live. `defines` marks a reference that is itself a (re)definition
+/// rather than a use; `literal` marks one wired by string rather than by code;
+/// `generated` marks one in codegen output.
+pub const Dependent = struct {
+    doc: u32,
+    line: u32,
+    enclosing: []const u8,
+    defines: bool,
+    literal: bool = false,
+    generated: bool = false,
+
+    /// Rank, lowest first: authored code, authored string, then the same two in
+    /// generated output. Applied BEFORE the cap, which is the whole point — a
+    /// symbol with six authored call sites and four hundred generated ones has
+    /// to report the six, not fill the budget with stubs.
+    pub fn tier(self: Dependent) u8 {
+        return (@as(u8, @intFromBool(self.generated)) << 1) | @intFromBool(self.literal);
+    }
+};
 
 /// An identifier the seed's body leans on, resolved to its own definition site
 /// — extracted and homed by `leans.zig`, which owns the precision discipline
@@ -147,39 +167,74 @@ pub fn compute(
 
     var def: std.ArrayList(Site) = .empty;
     var comments: std.ArrayList(Comment) = .empty;
+    var found: std.ArrayList(Dependent) = .empty;
 
-    // Pass A — one gated line scan: definition sites, comment mentions, and the
-    // total code-reference count, all classified by the parser-free confidence
-    // signal and the comment mask (so a mention in a string is neither).
+    // One walk per file answers all three exact questions at once: where the
+    // symbol is declared, which comments describe it, and every reference to
+    // it. The span lexer decides which of the three a hit is, so a name in a
+    // comment can never read as a call and a name in a string can never read
+    // as documentation.
     for (docs, paths, 0..) |doc, path, d| {
         if (std.mem.indexOf(u8, doc, symbol) == null) continue; // cheap literal gate
         stats.files_with_symbol += 1;
-        // Only a source file can declare anything: prose and data files are read
-        // for mentions alone, so a changelog sentence or a spec table cannot pose
-        // as the symbol's home the way a `name type` pair otherwise would.
+        // Only a source file can declare or reference anything: prose and data
+        // files are read for mentions alone, so a changelog sentence or a spec
+        // table cannot pose as the symbol's home the way a `name type` pair
+        // otherwise would, nor as a call site. Every one of their hits is a
+        // mention though — a README documenting the symbol goes stale on a
+        // rename exactly like a doc comment does.
         const declarable = isSourcePath(path);
-        const mask = try lexspan.commentMask(a, doc);
+        const emitted = signals.isGenerated(path, doc);
+        const span = try lexspan.spanMask(a, doc);
         var seen_comment_line: u32 = 0;
         var seen_def_line: u32 = 0;
+        var held: ?spans.Region = null; // the last region a row was emitted for
+        var seen_ref_line: u32 = 0;
         var pos: usize = 0;
         while (nextWord(doc, symbol, pos)) |p| : (pos = p + symbol.len) {
             const ls = lineStart(doc, p);
             const le = lineEnd(doc, p);
             const lineno = spans.lineAt(doc, p);
-            if (mask[p]) {
+            if (span[p] == .comment or !declarable) {
                 if (lineno != seen_comment_line and comments.items.len < opts.max_comments) {
                     try comments.append(a, .{ .doc = @intCast(d), .line = lineno, .text = trimDup(a, doc[ls..le]) });
                 }
                 seen_comment_line = lineno;
                 stats.comments_total += 1;
-            } else if (declarable and lineno != seen_def_line and
+                continue;
+            }
+            if (span[p] == .code and lineno != seen_def_line and
                 signals.declarationConfidence(defWindow(doc, ls, le), symbol) > 0)
             {
                 // One def row per line: repeated hits on a signature (a return
                 // type AND a parameter of the same name) are one definition.
-                try def.append(a, .{ .doc = @intCast(d), .line = lineno });
+                // The declaration is already the report's spine, so it is never
+                // also listed among the things that depend on it.
+                try def.append(a, .{ .doc = @intCast(d), .line = lineno, .generated = emitted });
                 seen_def_line = lineno;
+                continue;
             }
+            // A reference. Its unit is the enclosing function where there is
+            // one — repeated hits in a body collapse to a single row — and the
+            // line itself at file scope, which is the case a function-shaped
+            // search drops entirely.
+            if (held) |r| if (p >= r.start and p < r.end) continue;
+            if (lineno == seen_ref_line) continue;
+            seen_ref_line = lineno;
+            var enclosing: []const u8 = "";
+            if (spans.enclosing(a, doc, ls)) |range| {
+                const r = spans.region(@intCast(d), doc, range, ls);
+                held = r;
+                enclosing = funcName(headline(a, doc, r) catch "");
+            } else held = null;
+            try found.append(a, .{
+                .doc = @intCast(d),
+                .line = lineno,
+                .enclosing = enclosing,
+                .defines = signals.declarationConfidence(doc[ls..le], symbol) > 0,
+                .literal = span[p] == .literal,
+                .generated = emitted,
+            });
         }
     }
 
@@ -187,28 +242,23 @@ pub fn compute(
     // struct {` outranks an incidental `const X = other.X` alias in a test, so
     // the guess reflects the real declaration wherever it sits in corpus order.
     const kind = strongestKind(docs, def.items);
+    // Authored declarations first, so the seed names the file to edit rather
+    // than whichever generated stub happens to sort earliest.
+    std.mem.sort(Site, def.items, {}, struct {
+        fn less(_: void, x: Site, y: Site) bool {
+            return @intFromBool(x.generated) < @intFromBool(y.generated);
+        }
+    }.less);
 
-    // Pass B — dependents at function granularity. A word-bounded PatternSet
-    // drives `regions.select`, so each row is a whole function that references
-    // the seed (repeated hits in one function collapse to one row); its hit
-    // line is classified def-vs-use by the same confidence signal.
-    var wset = try patterns.wordSet(a, &.{symbol});
+    stats.dependents_total = found.items.len;
+    std.mem.sort(Dependent, found.items, {}, struct {
+        fn less(_: void, x: Dependent, y: Dependent) bool {
+            return x.tier() < y.tier();
+        }
+    }.less);
+    const dependents = found.items[0..@min(found.items.len, opts.max_dependents)];
+
     const source = try sourceView(a, docs, paths);
-    var picked = try regions.select(a, source, &wset, .function, 0);
-    defer picked.deinit();
-    stats.dependents_total = picked.items.len;
-
-    var dependents: std.ArrayList(Dependent) = .empty;
-    for (picked.items) |r| {
-        if (dependents.items.len >= opts.max_dependents) break;
-        const hit_line = docs[r.doc][lineStart(docs[r.doc], r.match_start)..lineEnd(docs[r.doc], r.match_start)];
-        try dependents.append(a, .{
-            .doc = r.doc,
-            .line = spans.lineAt(docs[r.doc], r.match_start),
-            .enclosing = funcName(headline(a, docs[r.doc], r) catch ""),
-            .defines = signals.declarationConfidence(hit_line, symbol) > 0,
-        });
-    }
 
     // Direct dependencies — identifiers used inside the seed's function body,
     // resolved to their own definition sites. Only meaningful when the seed is
@@ -217,33 +267,33 @@ pub fn compute(
     // and `dependencies_total` can never disagree). The `source` view is passed
     // rather than raw docs so a non-source file is never a resolution target.
     const dependencies: []const Dependency = if (kind == .function) deps: {
-        const seed = seedRegion(docs, symbol, picked.items, def.items) orelse break :deps &.{};
-        const found = try leans.resolve(a, source, paths, seed.doc, docs[seed.doc][seed.start..seed.end], symbol, opts.max_dependencies);
-        stats.dependencies_total = found.total;
-        break :deps found.items;
+        const seed = seedRegion(a, docs, symbol, def.items) orelse break :deps &.{};
+        const resolved = try leans.resolve(a, source, paths, seed.doc, docs[seed.doc][seed.start..seed.end], symbol, opts.max_dependencies);
+        stats.dependencies_total = resolved.total;
+        break :deps resolved.items;
     } else &.{};
 
     // Tangential twins — corpus-wide compression kin of the seed's file.
-    const twins = if (def.items.len == 0) &[_]Twin{} else try computeTwins(a, gpa, docs, def.items[0].doc, dependents.items, opts, &stats);
+    const twins = if (def.items.len == 0) &[_]Twin{} else try computeTwins(a, gpa, docs, def.items[0].doc, dependents, opts, &stats);
 
     // Tangential ripple — second-hop callers of the seed's dependents, confined
     // to the seed's own language (a Zig `compile` is not called from a .py doc).
-    const seed_path = if (def.items.len > 0) paths[def.items[0].doc] else if (dependents.items.len > 0) paths[dependents.items[0].doc] else "";
-    const ripple = try computeRipple(a, docs, paths, spans.extensionOf(seed_path), dependents.items, symbol, opts, &stats);
+    const seed_path = if (def.items.len > 0) paths[def.items[0].doc] else if (dependents.len > 0) paths[dependents[0].doc] else "";
+    const ripple = try computeRipple(a, docs, paths, spans.extensionOf(seed_path), dependents, symbol, opts, &stats);
 
-    stats.omitted = (stats.dependents_total -| dependents.items.len) +
+    stats.omitted = (stats.dependents_total -| dependents.len) +
         (stats.dependencies_total -| dependencies.len) +
         (stats.comments_total -| comments.items.len) +
         (stats.twins_total -| twins.len) +
         (stats.ripple_total -| ripple.len);
-    if (def.items.len == 0) try notes.append(a, "no definition site found — symbol may be external or a partial name");
+    if (def.items.len == 0) try notes.append(a, "no definition site found — the symbol may be external, declared outside the searched roots, or a partial name");
 
     return .{
         .arena = arena,
         .symbol = try a.dupe(u8, symbol),
         .kind = kind,
         .def = try def.toOwnedSlice(a),
-        .dependents = try dependents.toOwnedSlice(a),
+        .dependents = dependents,
         .dependencies = dependencies,
         .twins = twins,
         .ripple = ripple,
@@ -381,29 +431,32 @@ fn sourceView(a: std.mem.Allocator, docs: []const []const u8, paths: []const []c
     return out;
 }
 
-/// The seed's enclosing function region: the picked region holding the
-/// STRONGEST definition site, for the same reason `strongestKind` reads every
-/// line. Corpus order is alphabetical, so first-wins hands the body to whatever
-/// weak declaration shape sorts earliest — a component's `pgvector recall
-/// tester` reads as a bare `name type` pair and would outrank the real
-/// `def recall(…)` further down the tree. Ties keep corpus order.
+/// The function body belonging to the seed: the region enclosing the STRONGEST
+/// definition site, for the same reason `strongestKind` reads every line.
+/// Corpus order is alphabetical, so first-wins hands the body to whatever weak
+/// declaration shape sorts earliest — a component's `pgvector recall tester`
+/// reads as a bare `name type` pair and would outrank the real `def recall(…)`
+/// further down the tree. Ties keep corpus order.
+///
+/// The region is climbed from the definition site itself rather than looked up
+/// among the dependents, so the seed's own declaration never has to appear in
+/// the list of things that depend on it just to make this resolvable.
 fn seedRegion(
+    a: std.mem.Allocator,
     docs: []const []const u8,
     symbol: []const u8,
-    picked: []const regions.Region,
     def_sites: []const Site,
 ) ?regions.Region {
     var best: ?regions.Region = null;
     var strength: u8 = 0;
     for (def_sites) |s| {
-        for (picked) |r| {
-            if (r.doc != s.doc or s.line < r.line_start or s.line > r.line_end) continue;
-            const confidence = signals.declarationConfidence(defWindowAt(docs, s), symbol);
-            if (best == null or confidence > strength) {
-                best = r;
-                strength = confidence;
-            }
-            break;
+        const doc = docs[s.doc];
+        const at = lineStartOf(doc, s.line) orelse continue;
+        const range = spans.enclosing(a, doc, at) orelse continue;
+        const confidence = signals.declarationConfidence(defWindowAt(docs, s), symbol);
+        if (best == null or confidence > strength) {
+            best = spans.region(s.doc, doc, range, at);
+            strength = confidence;
         }
         if (strength == 3) break; // nothing outranks a body-bearing declaration
     }
@@ -599,12 +652,13 @@ test "blast finds def, dependents, dependencies, and comment mentions" {
     try std.testing.expect(report.def.len >= 1);
     try std.testing.expectEqual(@as(u32, 2), report.def[0].line);
 
-    // caller() is a dependent (references Target); the def function is too.
+    // caller() is a dependent; the definition line is not a dependent on itself.
     var saw_caller = false;
     for (report.dependents) |dep| if (dep.doc == 1) {
         saw_caller = true;
     };
     try std.testing.expect(saw_caller);
+    for (report.dependents) |dep| try std.testing.expect(!(dep.doc == 0 and dep.line == 2));
 
     // helper is a dependency (used inside Target's body, defined elsewhere).
     var saw_helper = false;
@@ -615,6 +669,87 @@ test "blast finds def, dependents, dependencies, and comment mentions" {
 
     // The doc comment mentioning Target is captured as a comment, not a dependent.
     try std.testing.expect(report.comments.len >= 1);
+}
+
+test "a prose mention is reported, not silently dropped" {
+    const gpa = std.testing.allocator;
+    const docs = [_][]const u8{
+        "pub fn Target() void {}",
+        "Run `blast Target` to see what it holds up.\n",
+    };
+    const paths = [_][]const u8{ "a.zig", "README.md" };
+    var report = try compute(gpa, &docs, &paths, "Target", .{});
+    defer report.deinit();
+
+    // A README cannot declare or call anything, so the mention is neither a
+    // definition nor a dependent — but a rename still falsifies it.
+    for (report.def) |s| try std.testing.expect(s.doc != 1);
+    for (report.dependents) |dep| try std.testing.expect(dep.doc != 1);
+    var saw_readme = false;
+    for (report.comments) |c| if (c.doc == 1) {
+        saw_readme = true;
+    };
+    try std.testing.expect(saw_readme);
+}
+
+test "a reference at file scope is a dependent, not a dropped hit" {
+    const gpa = std.testing.allocator;
+    // Registries, dispatch tables, and export lists wire a symbol up outside
+    // any function body. Those are the call sites an edit breaks first.
+    const docs = [_][]const u8{
+        "pub fn Target() void {}",
+        \\pub const table = .{
+        \\    .run = Target,
+        \\};
+    };
+    const paths = [_][]const u8{ "a.zig", "registry.zig" };
+    var report = try compute(gpa, &docs, &paths, "Target", .{});
+    defer report.deinit();
+
+    var saw_registry = false;
+    for (report.dependents) |dep| if (dep.doc == 1 and dep.line == 2) {
+        saw_registry = true;
+        try std.testing.expectEqual(@as(usize, 0), dep.enclosing.len);
+    };
+    try std.testing.expect(saw_registry);
+}
+
+test "a name inside a string literal is tagged, not read as a call site" {
+    const gpa = std.testing.allocator;
+    const docs = [_][]const u8{
+        "pub fn Target() void {}",
+        "fn log() void { print(\"Target failed\"); }",
+        "fn call() void { Target(); }",
+    };
+    const paths = [_][]const u8{ "a.zig", "log.zig", "call.zig" };
+    var report = try compute(gpa, &docs, &paths, "Target", .{});
+    defer report.deinit();
+
+    for (report.dependents) |dep| switch (dep.doc) {
+        1 => try std.testing.expect(dep.literal),
+        2 => try std.testing.expect(!dep.literal),
+        else => {},
+    };
+    // Authored code outranks an authored string mention.
+    try std.testing.expect(report.dependents.len >= 2);
+    try std.testing.expectEqual(@as(u32, 2), report.dependents[0].doc);
+}
+
+test "generated call sites rank below authored ones" {
+    const gpa = std.testing.allocator;
+    const docs = [_][]const u8{
+        "pub fn Target() void {}",
+        "// Code generated by tool. DO NOT EDIT.\nfn stub() void { Target(); }",
+        "fn authored() void { Target(); }",
+    };
+    const paths = [_][]const u8{ "a.zig", "wire.gen.zig", "hand.zig" };
+    var report = try compute(gpa, &docs, &paths, "Target", .{});
+    defer report.deinit();
+
+    try std.testing.expect(report.dependents.len >= 2);
+    try std.testing.expectEqual(@as(u32, 2), report.dependents[0].doc);
+    try std.testing.expect(!report.dependents[0].generated);
+    try std.testing.expect(report.dependents[report.dependents.len - 1].generated);
 }
 
 test "short-name guard flags common identifiers" {

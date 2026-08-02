@@ -1,0 +1,7 @@
+The blast kernel resolved every hit to its enclosing function and dropped the ones that had none. Registries, dispatch tables, export lists, struct literals, top-level `const` wiring - all invisible, and those are usually the first thing an edit breaks. Dogfooding it on its own dispatcher found the definition, missed the one line that actually calls it, and listed the definition as its own dependent.
+
+The pass is now a single walk that keeps every hit and says what each one is. A reference at file scope is a dependent with no enclosing name rather than a dropped row, the seed's own definition is excluded from its dependents, and each row carries whether it defines, whether it sits in a string literal, and whether its file is generated.
+
+A mention in a file that cannot declare anything - a README, a changelog, a spec table - used to vanish rather than report, because the lexer found no comment syntax to put it in. Those are now mentions like any other, since a rename falsifies a documented name exactly the way it falsifies a doc comment.
+
+Rows sort by what an agent should read first: authored code, then authored strings, then generated code, then generated strings. A budget that trims the tail now trims codegen, not the one hand-written call site. `no definition site found` also stops implying the symbol is external when the likelier answer is that you scoped the search past it.
