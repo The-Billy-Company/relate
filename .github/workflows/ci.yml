@@ -76,15 +76,15 @@ jobs:
       run:
         working-directory: relate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/gist
           path: gist
@@ -112,15 +112,15 @@ jobs:
       run:
         working-directory: relate/bindings/python
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/gist
           path: gist
@@ -128,7 +128,7 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@v7
       # Every binding suite drives the real `relate` binary and skips when it
       # cannot find one, and a suite that skipped everything still exits 0. The
       # `go` job below carries the full note on why this step asserts the
@@ -160,15 +160,15 @@ jobs:
       run:
         working-directory: relate/bindings/go
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/gist
           path: gist
@@ -176,7 +176,7 @@ jobs:
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v7
         with:
           # Workspace-relative, not working-directory-relative.
           go-version-file: relate/bindings/go/go.mod
@@ -204,15 +204,15 @@ jobs:
       run:
         working-directory: relate/bindings/rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/gist
           path: gist
@@ -254,7 +254,7 @@ jobs:
     # a different Zig would be checking against a different grid.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: mlugg/setup-zig@v2
         with:
           version: ${{ env.ZIG_VERSION }}
@@ -297,8 +297,8 @@ jobs:
     # Stdlib-only, no Zig and no build — it reads lines.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
       - run: uv run --no-project --python 3.12 python tools/version_parity.py
 
   contract:
@@ -326,10 +326,10 @@ jobs:
     # logs instead of from the tree.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           repository: The-Billy-Company/irregex
           path: irregex
