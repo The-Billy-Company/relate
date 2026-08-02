@@ -92,3 +92,13 @@ def test_it_still_imports_the_substrate_rather_than_carrying_one(installed: Path
     assert done.returncode != 0, (
         f"lib{PRODUCT} loaded with no substrate present — it is not importing the shared engine"
     )
+
+def test_the_package_declares_its_annotations_to_consumers():
+    """Every function in this package is annotated, and PEP 561 says a consumer's
+    type checker must ignore all of it unless the package ships this marker. So the
+    failure mode is silent in both directions: nothing here breaks, and everyone
+    downstream quietly gets `Any` for the whole API."""
+    package = Path(__file__).resolve().parents[1] / PRODUCT
+    assert (package / "py.typed").is_file(), (
+        f"{PRODUCT} annotates its public API and then hides it: no py.typed marker"
+    )
