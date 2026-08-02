@@ -17,12 +17,78 @@
 [project]
 name = "relate-search"
 version = "0.1.0" # x-release-please-version
-description = "Importable Python API for relate compression-as-search."
+description = "Code similarity search for Python - find near-duplicate files, clone families, and where a snippet came from, using compression instead of embeddings."
+readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0"
+authors = [ { name = "The Billy Company" } ]
+# Nobody searches PyPI for "compression-as-search" - that phrase is the answer,
+# not the question. These are the questions: duplicate code, clone detection,
+# code similarity, near-duplicate files. The mechanism words (lzjd, minhash,
+# ziv-merhav) are here for the smaller audience that arrives knowing the
+# literature, and the tool names (jscpd, cpd, simian, moss) for the audience
+# already using something else.
+keywords = [
+  "code-similarity",
+  "similarity-search",
+  "duplicate-code",
+  "duplicate-detection",
+  "near-duplicate",
+  "clone-detection",
+  "code-clones",
+  "copy-paste-detector",
+  "jscpd",
+  "cpd",
+  "simian",
+  "moss",
+  "plagiarism-detection",
+  "deduplication",
+  "compression",
+  "lzjd",
+  "ncd",
+  "compression-distance",
+  "minhash",
+  "jaccard",
+  "ziv-merhav",
+  "information-theory",
+  "code-search",
+  "retrieval",
+  "refactoring",
+  "static-analysis",
+  "developer-tools",
+  "agent-tools",
+]
 dependencies = [
   "irregex",
 ]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Zig",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Software Development :: Libraries",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: System :: Archiving :: Compression",
+  "Topic :: Text Processing",
+  "Topic :: Text Processing :: Indexing",
+  "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/The-Billy-Company/relate"
+Documentation = "https://github.com/The-Billy-Company/relate#readme"
+Repository = "https://github.com/The-Billy-Company/relate"
+Issues = "https://github.com/The-Billy-Company/relate/issues"
+Changelog = "https://github.com/The-Billy-Company/relate/blob/main/CHANGELOG.md"
 
 [build-system]
 requires = [ "hatchling" ]
@@ -40,7 +106,7 @@ dev = [
   "pytest>=9.0",
   "ruff>=0.15",
   # distribution `gist-search`, import `gist` — the bare name was taken on PyPI.
-  "gist-search",  # oracle face for exact-search checks in behavioral tests
+  "gist-search", # oracle face for exact-search checks in behavioral tests
 ]
 
 [tool.pytest.ini_options]
@@ -50,8 +116,8 @@ testpaths = [ "tests" ]
 line-length = 100
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "SIM"]
-ignore = ["E501"]
+select = [ "E", "F", "I", "UP", "B", "SIM" ]
+ignore = [ "E501" ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["relate", "irgx", "gist"]
+known-first-party = [ "relate", "irgx", "gist" ]

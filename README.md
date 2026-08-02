@@ -1,4 +1,7 @@
-# relate: compression-as-search
+# relate: code similarity search, by compression
+
+Near-duplicate files, clone families, and the source of a pasted snippet - no
+embeddings, no model, no vector database.
 
 ## What it is
 

@@ -8,7 +8,22 @@ version = "0.1.0" # x-release-please-version
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
-description = "Importable Rust face of the relate kinship / retrieval / sweep engine."
+description = "Code similarity search for Rust - find near-duplicate files, clone families, and where a snippet came from, using compression instead of embeddings."
+readme = "README.md"
+homepage = "https://github.com/The-Billy-Company/relate"
+repository = "https://github.com/The-Billy-Company/relate"
+documentation = "https://github.com/The-Billy-Company/relate/blob/main/bindings/rust/README.md"
+authors = [ "The Billy Company" ]
+# "kinship", "retrieval", and "sweep" are this crate's internal nouns; nobody
+# searches for them. These five are what the problem is called outside.
+keywords = [ "similarity", "duplicate-code", "clone-detection", "compression", "code-search" ]
+categories = [
+  "text-processing",
+  "development-tools",
+  "compression",
+  "algorithms",
+  "api-bindings",
+]
 publish = false
 
 exclude = [ "/target", "/.cargo" ]
