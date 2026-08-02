@@ -59,7 +59,13 @@ keywords = [
   "agent-tools",
 ]
 dependencies = [
-  "irregex",
+  # Bounded on both sides. `irgx` is the import this package opens with, and it
+  # only exists from 1.0.0 — the 0.1.0 on the index is the pre-rename placeholder,
+  # which an unbounded requirement resolves to happily and which cannot satisfy a
+  # single line here. The ceiling is the same fact from the other side: 1.0.0 is
+  # where the substrate froze the C ABI and the `irgx` surface, and a 2.0 is free
+  # to move both. This is a face over an ABI, not a consumer of a loose utility.
+  "irregex>=1.0.0,<2",
 ]
 classifiers = [
   "Development Status :: 4 - Beta",
