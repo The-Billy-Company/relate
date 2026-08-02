@@ -194,6 +194,38 @@ jobs:
           echo "$PWD/zig-out/bin" >> "$GITHUB_PATH"
       - run: go vet ./...
       - run: go test ./...
+      # gist's `index` suite, run here because only here can it run at all.
+      #
+      # `Corpus.Atlas` reads `relate status --json`, so relate produces both the
+      # artifacts under test and the readiness document reporting them. gist's own
+      # CI therefore skips that test — it cannot check out this repository — and a
+      # conceded assertion is one nobody is checking. Moving the test here instead
+      # was the alternative, and a worse one: gist's `index` package is the API
+      # under test, and relocating it would put gist's module in this one's go.mod,
+      # inverting the dependency edge permanently to serve a test.
+      #
+      # So the test stays where its subject lives and the *binary* comes to it.
+      # This costs one build and no module edge, and it is the run that decides
+      # whether the seam works. Sibling before gist: gist's install step copies
+      # `../irregex/zig-out/lib/libirgx.a`, so the order is load-bearing.
+      - name: gist reads this repo's artifacts correctly
+        working-directory: gist/bindings/go
+        run: |
+          ( cd "$GITHUB_WORKSPACE/irregex" && zig build --summary none )
+          ( cd "$GITHUB_WORKSPACE/gist" && zig build --summary none )
+          echo "::group::binaries this suite resolves"
+          command -v relate gist || true
+          echo "::endgroup::"
+          set -o pipefail
+          PATH="$GITHUB_WORKSPACE/gist/zig-out/bin:$PATH" \
+            go test ./index/... -run Atlas -v 2>&1 | tee "$RUNNER_TEMP/atlas.log"
+          # The whole point of the job is that this one does not skip here. If it
+          # does, relate went missing from PATH and the run proved nothing — the
+          # exact silence this step exists to break.
+          if grep -q -- '--- SKIP' "$RUNNER_TEMP/atlas.log"; then
+            echo "::error::the atlas suite skipped in the one place it must not"
+            exit 1
+          fi
 
   rust:
     # Same reasoning as Go, and for the same reason: vendor/ here holds a README
