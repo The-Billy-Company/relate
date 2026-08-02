@@ -17,7 +17,7 @@ exclude = [ "/target", "/.cargo" ]
 # Local path for in-tree development. Once `irregex` is on crates.io, consumers
 # resolve the same version range through the registry; the path override is
 # only for this checkout.
-irregex = { version = "0.1.0", path = "../../../irregex/bindings/rust" }
+irregex = { version = "1.0.0", path = "../../../irregex/bindings/rust" }
 
 [dev-dependencies]
 tempfile = "3"
