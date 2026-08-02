@@ -322,7 +322,7 @@ test "resident session satisfies the shared freshness watcher contract" {
     // the instantiation's method bodies to be analyzed against this session's
     // change-tracking surface (`roots`, `armWatcher`, `disarmWatcher`,
     // `markDirty`, `markDoubtForever`, `dirty_log.{armExact,disarmExact,note,
-    // noteDoubt}`). Missing or mis-typed any of them and this would not compile.
+    // noteDoubt}`). Missing or mistyping any of them would make this fail to compile.
     const watch = @import("irregex").session.watch;
     std.testing.refAllDecls(watch.Watcher(RetrievalSession));
 }

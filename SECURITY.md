@@ -18,7 +18,7 @@ missing search hit - it is an attribution, and someone may act on it.
 
 Use GitHub's private reporting - the **Security** tab on this repository,
 "Report a vulnerability" - which opens a thread only the maintainers can read.
-If that is unavailable to you, email **security@billylives.com**.
+If that is unavailable to you, email **<security@billylives.com>**.
 
 Please include:
 
@@ -46,7 +46,7 @@ Pre-1.0, and the version number says so. Fixes land on `main` and ship in the
 next release; there are no maintained release branches and no backports to
 earlier tags. Watch releases on this repository if you pin.
 
-Two neighbours carry their own policies. The engine underneath is
+Two neighbors carry their own policies. The engine underneath is
 [`irregex`][irregex]: the regex engines, the corpus walk, the FM-index the
 quotation parse runs over, and the freshness law are all its. The chassis is
 [`gist`][gist]: argv, the resident daemon, and the answer keep. A memory-safety
@@ -101,7 +101,7 @@ rather than bounce you.
   `--shape distinct` is a claim about every pair. A big tree costs more than a
   small one. That is arithmetic, and the answer keep exists because of it.
 - **A grade you disagree with.** The bands are calibrated and declared in
-  [`contract/kinship.toml`](contract/kinship.toml). A neighbour you expected to
+  [`contract/kinship.toml`](contract/kinship.toml). A neighbor you expected to
   see is a quality issue worth filing as a bug, with the corpus - not a security
   report.
 - **The daemon obeying the user who started it.** Same-user access is the

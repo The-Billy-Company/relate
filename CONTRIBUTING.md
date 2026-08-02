@@ -31,7 +31,7 @@ it wherever you like; we move it rather than bounce you.
 bindings path-depend on the siblings independently. Clone them beside each
 other:
 
-```
+```text
 Billy-Company/
 ├── irregex/     ← the engine, required to build this
 ├── gist/        ← the chassis, required to build this
@@ -52,6 +52,7 @@ actually clone.
 | the Python binding | [uv](https://docs.astral.sh/uv/) | `requires-python` floor 3.12 |
 | the Rust binding | rustup | `bindings/rust/rust-toolchain.toml` |
 | the Go binding | Go | `bindings/go/go.mod` |
+| the discipline gate | markdownlint-cli2, typos, shellcheck, golangci-lint | the actions in [`ci.yml`](.github/workflows/ci.yml), mirrored into `.mise.toml` |
 | coverage | kcov | only for `zig build coverage`, a local instrument |
 
 If you run [mise](https://mise.jdx.dev), that table is one command:
@@ -139,15 +140,17 @@ easier to break:
 
 ## What CI will check
 
-Five jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml), split on
-purpose - a Zig engine regression and a Rust clippy nit are different news and
-deserve different red Xs.
+Eight jobs in [`.github/workflows/ci.yml`](.github/workflows/ci.yml), split on
+purpose - a Zig engine regression, a Rust clippy nit, and a prose error are
+different news and deserve different red Xs.
 
 | Job | What it holds |
 | --- | --- |
 | `engine` | `zig build check` + `zig build test` on Linux and macOS |
-| `python` / `go` / `rust` | each binding's suite against a freshly built binary; Python across 3.12, 3.13, and 3.14 |
+| `python` / `go` / `rust` | each binding's suite against a freshly built binary; Ruff, golangci-lint, Clippy, and `cargo deny` hold their language surfaces |
 | `fmt` | `zig fmt --check` over every tracked and untracked-not-ignored `.zig` file |
+| `version` / `contract` | package versions agree, and irregex's vendored kinship contract still matches this one |
+| `discipline` | Markdown, spelling, YAML, TOML, EditorConfig, shell, Python format, and GitHub Actions security |
 
 Absent on purpose: `lab`, `relate-knn`, and `codex-scale`. They are measurement
 instruments, and a timing number produced on a shared runner is noise wearing a
@@ -224,7 +227,7 @@ onto the release branch - the tag and the notes should land together.
 Commit subjects here are a conventional prefix plus a lowercase sentence that
 says what changed, in the voice of the change rather than the ticket:
 
-```
+```text
 fix: a temp corpus needs temp artifacts
 feat: the kinship contract comes home
 ci: the workflow can read its own siblings

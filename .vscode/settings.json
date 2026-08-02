@@ -1,0 +1,41 @@
+{
+  // These trees are artifacts, not source. Rust's target can contain a full
+  // semver-checks copy of this repository; watching it turns one edit into a
+  // storm of filesystem events.
+  "files.watcherExclude": {
+    "**/.zig-cache/**": true,
+    "**/zig-out/**": true,
+    "**/zig-pkg/**": true,
+    "**/bindings/rust/target/**": true,
+    "**/.venv/**": true,
+    "**/__pycache__/**": true,
+    "**/.ruff_cache/**": true
+  },
+  "search.exclude": {
+    "**/.zig-cache": true,
+    "**/zig-out": true,
+    "**/zig-pkg": true,
+    "**/bindings/rust/target": true,
+    "**/.venv": true,
+    "**/__pycache__": true,
+    "**/.ruff_cache": true
+  },
+  "search.followSymlinks": false,
+
+  // .editorconfig wins. Content guessing must not quietly override it.
+  "editor.detectIndentation": false,
+  "files.eol": "\n",
+  "editor.formatOnSave": false,
+
+  // ZLS formatting is bit-for-bit `zig fmt` only against Zig 0.16.0, the
+  // version pinned by build.zig.zon and CI. Let mise resolve it; a stray
+  // Homebrew Zig can produce a different grid and fail the fmt job.
+  "[zig]": { "editor.defaultFormatter": "ziglang.vscode-zig" },
+  "[rust]": { "editor.defaultFormatter": "rust-lang.rust-analyzer" },
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.insertSpaces": false
+  },
+  "[python]": { "editor.defaultFormatter": "charliermarsh.ruff" },
+  "[toml]": { "editor.defaultFormatter": "tamasfe.even-better-toml" }
+}

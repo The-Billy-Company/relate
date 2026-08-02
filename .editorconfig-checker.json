@@ -1,0 +1,36 @@
+{
+  "_meta": [
+    "editorconfig-checker makes .editorconfig a gate instead of a suggestion.",
+    "Language formatters own exact indent width; this catches EOL, indentation kind, final newline, trailing whitespace, and charset across the long tail."
+  ],
+  "Verbose": false,
+  "Debug": false,
+  "IgnoreDefaults": false,
+  "SpacesAfterTabs": false,
+  "NoColor": false,
+  "Exclude": [
+    "/target/",
+    "/\\.venv/",
+    "/\\.zig-cache/",
+    "/zig-out/",
+    "/zig-pkg/",
+    "\\.DS_Store$"
+  ],
+  "AllowedContentTypes": [],
+  "PassedFiles": [],
+  "Disable": {
+    "EndOfLine": false,
+    "Indentation": false,
+    "_IndentSize_reason": [
+      "Continuation alignment is valid in Python and shell but is not always a multiple of the declared indent. Ruff, gofmt, rustfmt, zig fmt, and shfmt own exact width."
+    ],
+    "IndentSize": true,
+    "InsertFinalNewline": false,
+    "TrimTrailingWhitespace": false,
+    "_MaxLineLength_reason": [
+      "The repository declares no universal line cap; formatters understand URLs, literals, and aligned benchmark data better than one integer."
+    ],
+    "MaxLineLength": true,
+    "Charset": false
+  }
+}

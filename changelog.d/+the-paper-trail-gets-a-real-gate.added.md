@@ -1,0 +1,1 @@
+The paper trail is code now. CI checks Markdown, spelling, YAML, TOML, EditorConfig, shell, Python, Go, Rust, and the GitHub Actions perimeter; editor tasks and formatters run the same loop before a push.

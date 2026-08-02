@@ -1,0 +1,58 @@
+version: "2"
+
+# Six cgo-facing files need correctness, not a backend framework's policy.
+# Start from the compiler-shaped checks and add only rules this API can obey.
+run:
+  timeout: 5m
+  go: "1.24"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - errorlint
+    - govet
+    - ineffassign
+    - nilerr
+    - staticcheck
+    - unconvert
+    - unused
+    - usestdlibvars
+    - wastedassign
+    - nolintlint
+
+  settings:
+    errorlint:
+      errorf: true
+      errorf-multi: true
+      asserts: true
+      comparison: true
+    nolintlint:
+      require-explanation: true
+      require-specific: true
+      allow-no-explanation: []
+      allow-unused: false
+
+  exclusions:
+    generated: lax
+    rules:
+      # Test cleanup is best-effort; the assertion that follows carries the
+      # useful failure and these paths live under t.TempDir.
+      - linters: [errcheck]
+        path: _test\.go
+        source: os\.Remove
+      # Tests drain the cursor before cleanup; Collect reports the producer
+      # failure, while Close is only the idempotent release path afterward.
+      - linters: [errcheck]
+        path: _test\.go
+        source: rows\.Close
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofmt
+  exclusions:
+    generated: lax

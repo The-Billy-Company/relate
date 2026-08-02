@@ -274,7 +274,7 @@ pub fn strength(hits: usize, doc_len: usize, mean_len: f64) f64 {
 /// `haystack`. Case folding is deliberate and one-sided: the posting lane that
 /// nominates candidates is exact, but once a document is in hand, `Freshness`
 /// in a doc comment is the same evidence as `freshness` in an identifier, and
-/// counting only one of them mis-grades the file that is most about the term.
+/// counting only one of them gives the most relevant file the wrong grade.
 pub fn occurrences(haystack: []const u8, needle: []const u8) usize {
     if (needle.len == 0 or haystack.len < needle.len) return 0;
     var count: usize = 0;

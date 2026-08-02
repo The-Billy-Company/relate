@@ -1,0 +1,55 @@
+{
+  // The commands contributors actually run. Every build task assumes irregex
+  // and gist are checked out beside this repository, as CONTRIBUTING explains.
+  "version": "2.0.0",
+  "presentation": {
+    "reveal": "always",
+    "panel": "dedicated",
+    "clear": true
+  },
+  "tasks": [
+    {
+      "label": "relate: check",
+      "type": "shell",
+      "command": "zig build check",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "relate: test",
+      "type": "shell",
+      "command": "zig build test",
+      "group": "test",
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "relate: test filter",
+      "type": "shell",
+      "command": "zig build test -Dtest-filter='${input:testFilter}'",
+      "group": "test",
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "relate: check watch",
+      "type": "shell",
+      "command": "zig build check --watch",
+      "isBackground": true,
+      "group": "build",
+      "problemMatcher": "$gcc"
+    },
+    {
+      "label": "relate: lab",
+      "type": "shell",
+      "command": "zig build lab",
+      "group": "test",
+      "problemMatcher": "$gcc"
+    }
+  ],
+  "inputs": [
+    {
+      "id": "testFilter",
+      "type": "promptString",
+      "description": "Substring matched against Zig test names"
+    }
+  ]
+}

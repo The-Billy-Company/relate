@@ -1,0 +1,16 @@
+# One benchmark script today, the next script tomorrow. The shebang owns the
+# dialect; ShellCheck follows local sources and turns on checks worth keeping.
+external-sources=true
+source-path=SCRIPTDIR
+enable=add-default-case
+enable=avoid-negated-conditions
+enable=avoid-nullary-conditions
+enable=check-extra-masked-returns
+enable=check-set-e-suppressed
+enable=check-sourced
+enable=check-unassigned-uppercase
+enable=deprecate-which
+enable=quote-safe-variables
+enable=require-double-brackets
+enable=require-variable-braces
+enable=useless-use-of-cat

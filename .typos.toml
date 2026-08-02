@@ -1,0 +1,34 @@
+# typos checks authored source and prose; ignored build trees already disappear
+# through the VCS-aware default. The list below is only bytes we do not author.
+
+[files]
+extend-exclude = [
+  "mise.lock",
+  "**/Cargo.lock",
+  "**/target/**",
+  "**/.venv/**",
+  "**/.zig-cache/**",
+  "**/zig-out/**",
+  "**/zig-pkg/**",
+]
+
+[default]
+locale = "en-us"
+extend-ignore-identifiers-re = [
+  "^[A-Za-z0-9]{20,}$",
+]
+
+[default.extend-words]
+# Compression and information-retrieval vocabulary.
+clen = "clen"
+flate = "flate"
+lits = "lits"
+LZJD = "LZJD"
+LZJDs = "LZJDs"
+sais = "sais"
+Ziv = "Ziv"
+Merhav = "Merhav"
+# Short names used in formulas and benchmark fixtures.
+ba = "ba"
+nd = "nd"
+ths = "ths"

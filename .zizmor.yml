@@ -1,0 +1,19 @@
+# GitHub Actions is the whole delivery plane here. Hash pins keep a moved tag
+# from changing what runs with the repository token; Dependabot keeps them live.
+rules:
+  dependabot-cooldown:
+    config:
+      days: 7
+
+  unpinned-uses:
+    config:
+      policies:
+        "*": hash-pin
+
+  forbidden-uses:
+    config:
+      deny:
+        # Compromised tags exfiltrated runner secrets in March 2025.
+        - tj-actions/*
+        # Multiple reviewdog actions carried coordinated impostor commits.
+        - reviewdog/*

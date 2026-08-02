@@ -1,8 +1,8 @@
 # What has to be true before a change lands.
 #
-# Four faces plus a formatter gate, five jobs, deliberately not one: a Zig
-# engine regression and a Rust clippy nit are different news, and a single job
-# would report them as the same red X.
+# Four build faces, three contract/format checks, and one discipline gate;
+# eight jobs deliberately not one. A Zig regression, a stale contract, and a
+# prose error are different news and deserve different red Xs.
 #
 # Absent here on purpose: `lab`, `relate-knn`, and `codex-scale`. They are
 # measurement instruments, and a timing number produced on a shared runner is
@@ -76,20 +76,23 @@ jobs:
       run:
         working-directory: relate
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/gist
           path: gist
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: mlugg/setup-zig@v2
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: ${{ env.ZIG_VERSION }}
       # Compile-only first: when this fails, the test log below is noise, and
@@ -112,23 +115,26 @@ jobs:
       run:
         working-directory: relate/bindings/python
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/gist
           path: gist
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: mlugg/setup-zig@v2
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: ${{ env.ZIG_VERSION }}
-      - uses: astral-sh/setup-uv@v5
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
       # Every binding suite drives the real `relate` binary and skips when it
       # cannot find one, and a suite that skipped everything still exits 0. The
       # `go` job below carries the full note on why this step asserts the
@@ -160,23 +166,26 @@ jobs:
       run:
         working-directory: relate/bindings/go
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/gist
           path: gist
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: mlugg/setup-zig@v2
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: ${{ env.ZIG_VERSION }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           # Workspace-relative, not working-directory-relative.
           go-version-file: relate/bindings/go/go.mod
@@ -186,6 +195,11 @@ jobs:
           # spend every run warning about a dependency file that correctly does
           # not exist, to restore a cache that could never hold anything.
           cache: false
+      - uses: golangci/golangci-lint-action@4afd733a84b1f43292c63897423277bb7f4313a9 # v8
+        with:
+          version: v2.12.2
+          working-directory: relate/bindings/go
+          args: --config .golangci.yml
       - name: Build the relate binary the suite drives
         working-directory: relate
         run: |
@@ -236,20 +250,23 @@ jobs:
       run:
         working-directory: relate/bindings/rust
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/gist
           path: gist
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
-      - uses: mlugg/setup-zig@v2
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: ${{ env.ZIG_VERSION }}
       # rust-toolchain.toml pins the channel; installing it explicitly would
@@ -264,6 +281,20 @@ jobs:
       - run: cargo fmt --check
       - run: cargo clippy --all-targets -- -D warnings
       - run: cargo test
+      # A prebuilt binary rather than the Docker action, which takes a
+      # repo-root-relative manifest path and would have to be told about a
+      # layout that differs in every one of these repositories. This is a
+      # plain step, so it inherits the working directory and the toolchain
+      # rustup already resolved above.
+      - uses: taiki-e/install-action@67729d5c413db75907f0ad1e39bb04b9c868ff60 # v2.85.7
+        with:
+          tool: cargo-deny@0.19.0
+      # deny.toml has been checked in the whole time with nothing running it.
+      # `check` is all four: a RustSec advisory against anything in the graph,
+      # the banned crates that would mean this binding grew a TLS stack or an
+      # async runtime, the license allowlist, and the registries a crate may
+      # come from.
+      - run: cargo deny check
 
   fmt:
     # Zig was the one language here whose formatter nothing checked, while Rust
@@ -286,8 +317,10 @@ jobs:
     # a different Zig would be checking against a different grid.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: mlugg/setup-zig@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
         with:
           version: ${{ env.ZIG_VERSION }}
       - name: zig fmt --check
@@ -329,8 +362,10 @@ jobs:
     # Stdlib-only, no Zig and no build — it reads lines.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
       - run: uv run --no-project --python 3.12 python tools/version_parity.py
 
   contract:
@@ -358,11 +393,13 @@ jobs:
     # logs instead of from the tree.
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           path: relate
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           repository: The-Billy-Company/irregex
           path: irregex
           token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
@@ -371,3 +408,34 @@ jobs:
       # on a developer's machine, so there is no CI-only path spelled anywhere.
       - name: The vendored copy must still match what this repo authored
         run: python3 irregex/tools/sync_contract.py --check
+
+  discipline:
+    # Source can compile while its public paper trail, package manifests, and
+    # workflow perimeter quietly rot. Keep those failures in one cheap,
+    # build-free job; none needs the sibling checkouts or a Zig compiler.
+    #
+    # The install paths mirror each tool's native distribution. Python tools
+    # run in uv's isolated environments, while the non-Python binaries come
+    # from hash-pinned setup actions. Every command below is the command run
+    # locally before this job was added.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: DavidAnson/markdownlint-cli2-action@6bf21b07787794f89a243495939cd651942aeabe # v24.1.0
+      - uses: crate-ci/typos@bee27e3a4fd1ea2111cf90ab89cd076c870fce14 # v1
+      - uses: uncenter/setup-taplo@b18c8c8302695fe63d6853bc004006215ac52b91 # v2
+        with:
+          version: "0.10.0"
+      - run: taplo fmt --check
+      - run: taplo lint
+      - uses: editorconfig-checker/action-editorconfig-checker@d2ed4fd072ae6f887e9407c909af0f585d2ad9f4 # v2
+      - run: shellcheck bench/bounds/codex/race.sh
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+      - run: uv run --no-project --with yamllint==1.38.0 yamllint .
+      - run: uv run --no-project --with zizmor==1.29.0 zizmor --no-online-audits --strict-collection .
+      - name: Ruff checks every tracked Python file
+        run: |
+          git ls-files -z '*.py' | xargs -0 uv run --no-project --with ruff==0.16.1 ruff check --config quality/ruff.toml
+          git ls-files -z '*.py' | xargs -0 uv run --no-project --with ruff==0.16.1 ruff format --check --config quality/ruff.toml

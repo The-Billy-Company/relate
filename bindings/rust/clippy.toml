@@ -1,0 +1,9 @@
+# Cargo.toml chooses lint levels; this file only tunes Clippy's suggestions.
+# Keep them honest to the crate's supported floor, not merely today's compiler.
+msrv = "1.85"
+check-incompatible-msrv-in-tests = true
+
+# Tests may use unwrap and expect to state a fixture invariant. Shipping code
+# gets no such carve-out; `cargo clippy -- -D warnings` remains the gate.
+allow-unwrap-in-tests = true
+allow-expect-in-tests = true

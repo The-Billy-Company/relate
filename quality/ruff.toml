@@ -1,0 +1,10 @@
+# Root tools and the binding use one Python shape. The package repeats these
+# settings in pyproject.toml because Ruff resolves from the nearest ancestor.
+line-length = 100
+
+[lint]
+select = [ "E", "F", "I", "UP", "B", "SIM" ]
+ignore = [ "E501" ]
+
+[lint.isort]
+known-first-party = [ "relate", "irgx", "gist" ]
