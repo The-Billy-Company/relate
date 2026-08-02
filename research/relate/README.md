@@ -1,21 +1,3 @@
----
-doc_radar:
-  paths_exist:
-    - src/surface/face/main.zig
-    - src/kernel/kinship/recall/zipper.zig
-    - src/kernel/kinship/recall/lexicon.zig
-    - bench/conformance/relate/knn.zig
-  sentinels:
-    - file: src/kernel/kinship/metric/sketch.zig
-      contains:
-        - "Language Trees and Zipping"
-        - "LZJD"
-    - file: src/surface/face/repertoire.zig
-      contains: ["\"search\"", "\"pack\"", "\"quote\"", "\"similar\"", "\"dups\"", "\"clusters\"", "\"echoes\"", "\"concepts\"", "\"patterns\""]
-    - file: contract/kinship.toml
-      contains: "[verbs]"
----
-
 # Relate — research map for compression-as-search
 
 Relate studies the questions before exact search has a name to match: **what

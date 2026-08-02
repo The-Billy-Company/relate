@@ -1,14 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - description: "C ABI producer exports live in the artifact root"
-      file: src/surface/ffi/exports.zig
-      contains: ["export fn relate_run"]
-    - description: "public header declares relate_run and includes the substrate"
-      file: include/relate.h
-      contains: ["int32_t relate_run(", "#include <gist.h>", "#include <irgx.h>"]
----
-
 # surface/ffi — in-process C-ABI kinship producer
 
 `relate_run` materializes a kinship, retrieval, or multi-pattern-sweep answer

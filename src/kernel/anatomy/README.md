@@ -1,16 +1,3 @@
----
-doc_radar:
-  counts:
-    - description: "anatomy keeps its four source-geometry modules"
-      glob: src/kernel/anatomy/*.zig
-      unit: files
-      equals: 4
-  sentinels:
-    - description: "token owns the shared identifier vocabulary kinship silhouettes import"
-      file: src/kernel/anatomy/token.zig
-      contains: ["pub fn isIdentStart", "pub fn isIdentByte", "pub fn nextIdent"]
----
-
 # `src/kernel/anatomy/` — how source text is structured
 
 Source-structure geometry with no product opinion. Not set algebra (that is

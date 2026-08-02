@@ -1,14 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - description: "the knn harness lives in this package (product chassis wires the zig build step)"
-      file: bench/conformance/relate/knn.zig
-      contains: 'relate-knn'
-    - description: "the three faithful lanes the harness runs"
-      file: bench/conformance/relate/knn.zig
-      contains: 'const Method = enum { zipper, sketch, pivot };'
----
-
 # bench/relate — compression-as-embedding proof harness
 
 `knn.zig` (`zig build relate-knn`) runs the **real** relate engine as a

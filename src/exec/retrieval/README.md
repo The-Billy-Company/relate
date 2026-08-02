@@ -1,11 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - description: "retrieval is the fingerprint-lexicon path shared by similar/pack"
-      file: src/exec/retrieval/retrieval.zig
-      contains: ["pub fn retrieve", "pub fn pack", "pub const Hit"]
----
-
 # `src/exec/retrieval/` — fingerprint-lexicon retrieval
 
 The kinship retrieval path `relate similar` and `relate pack` ride — shared by

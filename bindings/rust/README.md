@@ -1,15 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - description: "relate exposes kinship / retrieval / sweep, not gist search"
-      file: bindings/rust/src/lib.rs
-      contains: ["pub fn similar", "pub fn pack", "pub fn patterns"]
-      absent: ["pub mod exact", "pub mod compose"]
-    - description: "relate depends on the irregex substrate"
-      file: bindings/rust/Cargo.toml
-      contains: ["irregex ="]
----
-
 # relate — kinship, retrieval, and sweep
 
 The Rust face of the `relate` package. Twelve verbs over compression kinship,

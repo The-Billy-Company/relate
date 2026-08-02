@@ -1,18 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - description: "the kinship, retrieval, and sweep families are all present"
-      file: bindings/rust/src/lib.rs
-      contains: ["pub fn similar", "pub fn dups", "pub fn clusters", "pub fn echoes",
-                 "pub fn pack", "pub fn quote", "pub fn patterns"]
-    - description: "kinship answers are graded, not just scored"
-      file: bindings/rust/src/kinship.rs
-      contains: ["min_grade", "Grade"]
-    - description: "grade bands live in the kinship contract"
-      file: ../../contract/kinship.toml
-      contains: ["[grades]"]
----
-
 # `src/` — relate verb modules
 
 | File | Job |

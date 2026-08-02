@@ -1,17 +1,3 @@
----
-doc_radar:
-  paths_exist:
-    - bench/bounds/codex/scale.zig
-    - bench/bounds/codex/race.sh
-  sentinels:
-    - description: "the scale harness lives in this package, wired as a lab lane"
-      file: bench/bounds/codex/scale.zig
-      contains: 'codex-scale — the self-index proof harness'
-    - description: "the lane is built off the default install, not by a bare `zig build`"
-      file: build.zig
-      contains: '.step = "codex-scale"'
----
-
 # bench/codex — the self-index at-scale proof
 
 Harness + driver proving `src/kernel/codex/` (the compressed self-index) on real

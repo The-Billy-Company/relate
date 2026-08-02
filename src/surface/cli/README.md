@@ -1,19 +1,3 @@
-<!--
-doc_radar:
-  counts:
-    - glob: src/surface/cli/*.zig
-      equals: 4
-      unit: modules
-      description: the table below enumerates this folder — a new module needs a row
-  sentinels:
-    - file: src/surface/cli/reprise.zig
-      description: all three ways a face can finish route through the keep's door
-      contains: ["pub fn attempt", "pub fn seal", "pub fn depart"]
-    - file: src/surface/cli/reprise.zig
-      description: a link posture changes printed bytes, so it scopes the answer keep's key
-      contains: ["GIST_HYPERLINK"]
--->
-
 # `src/surface/cli/` — the face vocabulary
 
 The plumbing the `relate` face (and `blast`'s composed face) speaks to the

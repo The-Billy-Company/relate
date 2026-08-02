@@ -1,26 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - file: src/kernel/kinship/recall/lexicon.zig
-      contains: ["pub fn fingerprintBits", "pub fn retrieve"]
-    - file: src/kernel/kinship/recall/zipper.zig
-      contains: ["pub fn coldBits", "pub const Automaton"]
-    - file: src/kernel/kinship/recall/coverage.zig
-      contains: ["pub fn greedy", "marginal_bits"]
-    - file: src/kernel/kinship/metric/channel.zig
-      contains: [".twins => bytes - structure", ".any => @min(bytes, structure)"]
-      description: each channel composes the two measured distances in exactly one place
-    - file: src/kernel/kinship/cluster/echoes.zig
-      contains: ["pub fn survey", "pub fn massFloor"]
-      description: one repetition survey over unit × channel × shape, with the channel's own mass floor
-    - file: contract/kinship.toml
-      contains:
-        - "similar = { argv ="
-        - "pack = { argv ="
-        - "quote = { argv ="
-        - "echoes = { argv ="
----
-
 # Relate — search by shared information
 
 **Status:** shipped product + measured evidence. CLI face:

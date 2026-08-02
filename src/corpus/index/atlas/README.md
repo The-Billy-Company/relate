@@ -1,22 +1,3 @@
----
-doc_radar:
-  counts:
-    - description: "the atlas index — engine + adversarial/fold suite"
-      glob: src/corpus/index/atlas/*.zig
-      unit: files
-      equals: 2
-  sentinels:
-    - description: "the persisted artifact rides the shared GIST_DIR-relocatable artifact home"
-      file: src/corpus/index/atlas/atlas.zig
-      contains: 'const atlas_path = home.ArtifactPath("kinship.atlas");'
-    - description: "freshness folds through the same conservative T3 stat walk"
-      file: src/corpus/index/atlas/atlas.zig
-      contains: "try fresh.changedSince(gpa, io, roots, atl.built_ns, a, &changed);"
-    - description: "the lifecycle verb that builds it is relate's own"
-      file: ../gist/src/surface/face/relate/lifecycle.zig
-      contains: "try frame.writeAtomic(io, atlas_mod.atlasFile(), blob)"
----
-
 # atlas — the persisted kinship index
 
 The trigram index makes `gist` warm; the **atlas** makes `relate` warm. It

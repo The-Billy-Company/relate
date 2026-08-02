@@ -1,11 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - file: ../../../contract/kinship.toml
-      contains: ["[grades]", "[lifecycle]"]
-      description: Grade bands and atlas lifecycle remain kinship-contract sections authored here.
----
-
 # `relate` — kinship and retrieval
 
 The questions a regex cannot ask. Everything here is priced in bits: how

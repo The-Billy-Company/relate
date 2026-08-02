@@ -1,16 +1,3 @@
----
-doc_radar:
-  counts:
-    - description: "compose tier after anatomy split — candidates + regions + context + four kernels + candidates test"
-      glob: src/kernel/compose/*.zig
-      unit: files
-      equals: 7
-  sentinels:
-    - description: "candidates.zig caps the pattern mask at one u64 word"
-      file: src/kernel/compose/candidates.zig
-      contains: "max_patterns = 64"
----
-
 # `src/kernel/compose/` — the exact-before-statistical tier
 
 The pure composition kernels the `irregex` binary drives

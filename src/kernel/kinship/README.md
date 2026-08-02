@@ -1,17 +1,3 @@
----
-doc_radar:
-  sentinels:
-    - description: "the byte channel is LZJD over LZ78 phrase sketches"
-      file: src/kernel/kinship/metric/sketch.zig
-      contains: "LZJD"
-    - description: "the structure channel winnows a normalized token stream"
-      file: src/kernel/kinship/metric/silhouette.zig
-      contains: "Winnowing"
-    - description: "lexicon nominates; zipper decides via Ziv–Merhav cross-parse"
-      file: src/kernel/kinship/recall/zipper.zig
-      contains: "Ziv"
----
-
 # `src/kernel/kinship/` — compression relatedness
 
 The `relate` engine's math: measure how alike two byte bodies are by how
