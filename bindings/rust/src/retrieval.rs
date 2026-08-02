@@ -4,15 +4,15 @@
 //! *bits* — how cheaply the corpus can describe this text. They differ in what
 //! they return, not in what they ask, so they share one params struct.
 //!
-//! [`Rows::stats`](irregex::runtime::Rows::stats)'s `foreign` counter matters most here:
+//! [`Rows::stats`](irgx::runtime::Rows::stats)'s `foreign` counter matters most here:
 //! it counts query fingerprints the corpus has never seen, which is how a
 //! caller tells "your text isn't in this repo" from "no results".
 
 use std::path::PathBuf;
 
-use irregex::contract::schema::VERBS;
-use irregex::runtime::relay::{Bin, Invocation, Shape};
-use irregex::runtime::{Query, Result, Rows, Wire, answer, struct_size, sys};
+use irgx::contract::schema::VERBS;
+use irgx::runtime::relay::{Bin, Invocation, Shape};
+use irgx::runtime::{Query, Result, Rows, Wire, answer, struct_size, sys};
 
 /// A retrieval question over free text.
 #[derive(Debug, Clone)]

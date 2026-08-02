@@ -5,7 +5,7 @@
 //! plus the `relate` binary rooted at `src/surface/face/main.zig`, and the
 //! C-ABI dual artifact (`librelate` + `include/relate.h`). The C floors
 //! (PCRE2, libsais) ride in with the library; this package adds none of its
-//! own. `librelate` dynamically links `libirregex` for the substrate symbols
+//! own. `librelate` dynamically links `libirgx` for the substrate symbols
 //! it does not redefine.
 //!
 //! Test chassis mirrors the engine's: a ReleaseSafe
@@ -26,10 +26,10 @@ pub fn build(b: *std.Build) void {
     // The library and the product chassis beneath, at matching optimize —
     // irregex carries PCRE2 + libsais; gist carries the daemon the answer keep
     // dials. Linking `relate` links the whole stack.
-    const irregex_dep = b.dependency("irregex", .{ .target = target, .optimize = optimize });
+    const irgx_dep = b.dependency("irregex", .{ .target = target, .optimize = optimize });
     const gist_dep = b.dependency("gist", .{ .target = target, .optimize = optimize });
     const deps = [_]std.Build.Module.Import{
-        .{ .name = "irregex", .module = irregex_dep.module("irregex") },
+        .{ .name = "irregex", .module = irgx_dep.module("irregex") },
         .{ .name = "gist", .module = gist_dep.module("gist") },
     };
 
@@ -63,7 +63,7 @@ pub fn build(b: *std.Build) void {
     // resolve) and reached as `@import("relate").faces.*` / `.cli.*`.
     const face_imports = [_]std.Build.Module.Import{
         .{ .name = "irregex", .module = if (cli_optimize == optimize)
-            irregex_dep.module("irregex")
+            irgx_dep.module("irregex")
         else
             b.dependency("irregex", .{ .target = target, .optimize = cli_optimize }).module("irregex") },
         .{ .name = "relate", .module = cli_engine },
@@ -82,33 +82,33 @@ pub fn build(b: *std.Build) void {
     // ── the C-ABI dual artifact ──
     // Dynamic lib owns the header install. Named `relate` — its symbols and
     // header are this product's. Substrate symbols resolve through a link
-    // against libirregex (dynamic), so librelate does not redefine them and a
+    // against libirgx (dynamic), so librelate does not redefine them and a
     // host that also links libgist still sees one vocabulary. Rooted at the
     // export shims, NOT at `src/root.zig`, so the module dependents import
     // never carries a second copy of `relate_run`.
-    const irregex_lib = irregex_dep.artifact("irregex");
+    const irgx_lib = irgx_dep.artifact("irgx");
     const abi = b.createModule(.{
         .root_source_file = b.path("src/surface/ffi/exports.zig"),
         .target = target,
         .optimize = optimize,
         .pic = true,
-        .imports = &.{.{ .name = "irregex", .module = irregex_dep.module("irregex") }},
+        .imports = &.{.{ .name = "irregex", .module = irgx_dep.module("irregex") }},
     });
-    abi.linkLibrary(irregex_lib);
+    abi.linkLibrary(irgx_lib);
     // A shipped dylib has to find its substrate beside itself. `linkLibrary`
     // records only this build tree's own output dir — a RELATIVE
     // `.zig-cache/o/<hash>` path, meaningless on a consumer's machine — so
     // `dlopen("librelate.dylib")` from anywhere else cannot resolve
-    // `@rpath/libirregex.dylib` and fails at load. A loader-relative rpath makes
+    // `@rpath/libirgx.dylib` and fails at load. A loader-relative rpath makes
     // the shape we actually ship ("both libraries in one lib dir") the loadable
     // one, without naming an absolute path we do not own.
     abi.addRPathSpecial(if (target.result.os.tag == .macos) "@loader_path" else "$ORIGIN");
     const dynamic_lib = b.addLibrary(.{ .name = "relate", .linkage = .dynamic, .root_module = abi });
     dynamic_lib.installHeader(b.path("include/relate.h"), "relate.h");
-    // A host that #includes <relate.h> also needs <gist.h> and <irregex.h>;
+    // A host that #includes <relate.h> also needs <gist.h> and <irgx.h>;
     // install them beside ours so one -I covers the stack.
     dynamic_lib.installHeader(gist_dep.path("include/gist.h"), "gist.h");
-    dynamic_lib.installHeader(irregex_dep.path("include/irregex.h"), "irregex.h");
+    dynamic_lib.installHeader(irgx_dep.path("include/irgx.h"), "irgx.h");
     b.installArtifact(dynamic_lib);
     if (target.result.os.tag == .macos) {
         const obj = b.addObject(.{ .name = "relate", .root_module = abi });
@@ -120,7 +120,7 @@ pub fn build(b: *std.Build) void {
         const static_lib = b.addLibrary(.{ .name = "relate", .linkage = .static, .root_module = abi });
         b.installArtifact(static_lib);
     }
-    b.installArtifact(irregex_lib);
+    b.installArtifact(irgx_lib);
 
     // ── the measurement lab ──
     // Off the default install step, like the sibling packages': a bare
@@ -185,7 +185,7 @@ pub fn build(b: *std.Build) void {
         "test-shards",
         "how many parallel processes `zig build test` splits the unit-test binary across (default: 2x CPU count; 1 restores a single-process run)",
     ) orelse @min(@max(std.Thread.getCpuCount() catch 1, 1) * 2, 64);
-    const brigade = irregex_dep.path("brigade.zig");
+    const brigade = irgx_dep.path("brigade.zig");
     const tests = b.addTest(.{
         .root_module = test_module,
         .test_runner = .{ .path = brigade, .mode = .simple },

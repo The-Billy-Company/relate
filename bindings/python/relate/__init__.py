@@ -13,10 +13,10 @@ composed blast/provenance face.
 
 from __future__ import annotations
 
-from irregex.contract import Channel, Grade, grade_of
-from irregex.contract import grades as grade
-from irregex.runtime import shell as engine
-from irregex.runtime.errors import (
+from irgx.contract import Channel, Grade, grade_of
+from irgx.contract import grades as grade
+from irgx.runtime import shell as engine
+from irgx.runtime.errors import (
     GistError,
     GistNotFoundError,
     RowDecodeError,

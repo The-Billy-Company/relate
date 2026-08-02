@@ -9,7 +9,7 @@
 //! exactly where the `.a`/`.dylib` named after them is.
 //!
 //! Header: `include/relate.h`. Body: `analytic.zig`. Substrate walk symbols
-//! come from `libirregex`; the warm engine comes from `libgist`.
+//! come from `libirgx`; the warm engine comes from `libgist`.
 
 const irregex = @import("irregex");
 const analytic = @import("analytic.zig");

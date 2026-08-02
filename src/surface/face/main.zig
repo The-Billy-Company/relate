@@ -24,7 +24,7 @@ const relate = @import("relate");
 /// Sign diagnostics as the program the user actually typed. Only the name
 /// moves: the knob namespace and artifact directory stay the ecosystem's, since
 /// this binary reads the index and atlas `gist` writes.
-pub const irregex_brand: irregex.Brand = .{ .name = "relate" };
+pub const irgx_brand: irregex.Brand = .{ .name = "relate" };
 
 pub fn main(init: std.process.Init) void {
     // Thin exe root: driver code is analyzed inside the relate module (so

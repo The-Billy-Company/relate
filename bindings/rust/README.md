@@ -14,7 +14,7 @@ doc_radar:
 
 The Rust face of the `relate` package. Twelve verbs over compression kinship,
 priced retrieval, and multi-pattern sweeps. Every verb returns the shared
-[`irregex::runtime::Rows`] cursor.
+[`irgx::runtime::Rows`] cursor.
 
 ```rust
 use relate::{similar, Grade};

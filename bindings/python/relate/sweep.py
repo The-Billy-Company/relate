@@ -21,9 +21,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 
-from irregex.contract.table import verb_schema
-from irregex.runtime import analytic, cold, shell
-from irregex.runtime.decode import bind
+from irgx.contract.table import verb_schema
+from irgx.runtime import analytic, cold, shell
+from irgx.runtime.decode import bind
 
 from .corpus import Scope, scope_argv
 

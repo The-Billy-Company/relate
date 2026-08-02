@@ -34,7 +34,7 @@ go get github.com/The-Billy-Company/relate/bindings/go
 ```
 
 Default build is pure Go (answers through the `relate` binary). In-process is
-opt-in: `go build -tags irregex_ffi` after `zig build` has minted
+opt-in: `go build -tags irgx_ffi` after `zig build` has minted
 `zig-out/lib/librelate.dylib`.
 
 ```go

@@ -14,10 +14,10 @@
 
 use std::process::Command;
 
-use irregex::contract::schema::{SCHEMAS, VERBS};
-use irregex::contract::{Channel, Grade};
-use irregex::runtime::shell::binary_named;
-use irregex::runtime::{Row, Rows};
+use irgx::contract::schema::{SCHEMAS, VERBS};
+use irgx::contract::{Channel, Grade};
+use irgx::runtime::shell::binary_named;
+use irgx::runtime::{Row, Rows};
 
 /// Stop the run unless the compression face this suite exists to exercise is
 /// actually reachable.

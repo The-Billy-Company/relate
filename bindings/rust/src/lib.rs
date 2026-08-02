@@ -10,10 +10,10 @@
 //! * **sweep** ([`Sweep`]) — *N patterns, one walk*: `patterns` and the folded
 //!   `pattern_counts`.
 //!
-//! Every verb answers with [`Rows`](irregex::runtime::Rows) — the same cursor, decoded
+//! Every verb answers with [`Rows`](irgx::runtime::Rows) — the same cursor, decoded
 //! against the schema the contract binds to that op. Read fields by name
-//! ([`Row::text`](irregex::runtime::Row::text), [`f64`](irregex::runtime::Row::f64),
-//! [`variant`](irregex::runtime::Row::variant), [`rows`](irregex::runtime::Row::rows)); a field the
+//! ([`Row::text`](irgx::runtime::Row::text), [`f64`](irgx::runtime::Row::f64),
+//! [`variant`](irgx::runtime::Row::variant), [`rows`](irgx::runtime::Row::rows)); a field the
 //! engine did not fill is `None`, which for a distance is not the same as `0.0`.
 
 mod kinship;
@@ -24,8 +24,8 @@ pub use kinship::Kinship;
 pub use retrieval::Retrieval;
 pub use sweep::{Sweep, Tally};
 
-pub use irregex::contract::{Channel, Grade, Unit, Variant};
-pub use irregex::runtime::{
+pub use irgx::contract::{Channel, Grade, Unit, Variant};
+pub use irgx::runtime::{
     Batch, Error, OwnedRow, OwnedValue, Result, Row, RowSeq, Rows, Stats, Texts, Tier, Value,
 };
 
@@ -46,7 +46,7 @@ pub(crate) const OP_PATTERN_COUNTS: u32 = 12;
 /// Nearest files to `path` by compression kinship, closest first.
 ///
 /// Distance is `1 − Jaccard` over LZ78 phrase sketches: `0.0` is byte-identical.
-/// Every row carries a calibrated [`Grade`](irregex::contract::Grade), so an answer made
+/// Every row carries a calibrated [`Grade`](irgx::contract::Grade), so an answer made
 /// only of background says so instead of looking like a hit — filter with
 /// [`Kinship::min_grade`].
 pub fn similar(path: impl Into<String>) -> Kinship {

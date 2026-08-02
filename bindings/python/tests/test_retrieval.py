@@ -18,7 +18,7 @@ from itertools import pairwise
 import pytest
 
 import relate
-from irregex.contract.grades import Channel, Grade, grade_of
+from irgx.contract.grades import Channel, Grade, grade_of
 from relate import retrieval
 
 

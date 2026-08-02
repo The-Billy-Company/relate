@@ -7,9 +7,9 @@
 
 use std::path::PathBuf;
 
-use irregex::contract::schema::VERBS;
-use irregex::runtime::relay::{Bin, Invocation};
-use irregex::runtime::{Error, Query, Result, Rows, Wire, answer, struct_size, sys};
+use irgx::contract::schema::VERBS;
+use irgx::runtime::relay::{Bin, Invocation};
+use irgx::runtime::{Error, Query, Result, Rows, Wire, answer, struct_size, sys};
 
 /// Which axis `pattern_counts` folds the walk onto.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

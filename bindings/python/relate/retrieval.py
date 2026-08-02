@@ -33,17 +33,17 @@ from dataclasses import dataclass, replace
 from dataclasses import field as dc_field
 from typing import TYPE_CHECKING, Literal
 
-from irregex.contract.grades import Channel, Grade, grade_of
-from irregex.contract.table import verb_schema
-from irregex.runtime import analytic, cold
-from irregex.runtime.decode import bind
+from irgx.contract.grades import Channel, Grade, grade_of
+from irgx.contract.table import verb_schema
+from irgx.runtime import analytic, cold
+from irgx.runtime.decode import bind
 
 from .corpus import CORPUS_TIMEOUT, Scope, matching_argv, run, scope_argv
 
 if TYPE_CHECKING:
     import os
 
-    from irregex.runtime.analytic import Stats
+    from irgx.runtime.analytic import Stats
 
 
 @bind("recalled", extra=("grade",))

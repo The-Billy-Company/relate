@@ -16,10 +16,10 @@
 
 use std::path::PathBuf;
 
-use irregex::contract::schema::VERBS;
-use irregex::contract::{Channel, Grade, Polarity, Unit};
-use irregex::runtime::relay::{Bin, Invocation};
-use irregex::runtime::{Error, Query, Result, Rows, Wire, answer, struct_size, sys};
+use irgx::contract::schema::VERBS;
+use irgx::contract::{Channel, Grade, Polarity, Unit};
+use irgx::runtime::relay::{Bin, Invocation};
+use irgx::runtime::{Error, Query, Result, Rows, Wire, answer, struct_size, sys};
 
 /// How one contract op is spelled by today's `relate`, and which defaults the
 /// verb implies. `shape` is the axis the fold introduced; `thresholds` is false

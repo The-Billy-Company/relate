@@ -14,12 +14,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from irregex.runtime.errors import SearchFailedError
+from irgx.runtime.errors import SearchFailedError
 
 if TYPE_CHECKING:
     import os
 
-    from irregex.runtime.shell import Output
+    from irgx.runtime.shell import Output
 
 
 class IndexState(StrEnum):
@@ -142,7 +142,7 @@ def _relate(
     ok_codes: tuple[int, ...] = (0,),
 ) -> Output:
     """Invoke the `relate` binary via the shared substrate shell."""
-    from irregex.runtime.shell import run_verb
+    from irgx.runtime.shell import run_verb
 
     return run_verb("relate", argv, cwd=cwd, timeout=timeout, ok_codes=ok_codes)
 

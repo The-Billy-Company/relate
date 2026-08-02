@@ -1,8 +1,8 @@
 // Standalone Go module — intentionally NOT in any parent workspace.
 //
 // Default build is pure Go and answers through the installed `relate` binary.
-// The in-process tier is opt-in (`-tags irregex_ffi`) and links `librelate`
-// plus `libirregex` from this checkout's zig-out/.
+// The in-process tier is opt-in (`-tags irgx_ffi`) and links `librelate`
+// plus `libirgx` from this checkout's zig-out/.
 //
 // Contract + runtime come from the irregex module; this module is kinship,
 // retrieval, and sweep only.

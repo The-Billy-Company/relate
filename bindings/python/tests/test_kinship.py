@@ -24,7 +24,7 @@ import pytest
 
 import gist
 import relate
-from irregex.contract.grades import Channel, Grade, grade_of
+from irgx.contract.grades import Channel, Grade, grade_of
 from relate.kinship import Pair
 
 

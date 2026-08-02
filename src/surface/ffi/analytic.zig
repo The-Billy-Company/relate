@@ -6,8 +6,8 @@
 //! new verb adds no C symbol. Compose verbs live in `libblast`; `rank` lives
 //! in `libgist`.
 //!
-//! The cursor itself (`Answer`) and the four walk symbols (`irregex_rows_*`)
-//! live in `libirregex`. This module only produces: it builds an Answer, fills
+//! The cursor itself (`Answer`) and the four walk symbols (`irgx_rows_*`)
+//! live in `libirgx`. This module only produces: it builds an Answer, fills
 //! the arena, and hands it over. A host walks it with the shared substrate.
 //!
 //! ## Declinature is a feature, not a stub
@@ -24,7 +24,7 @@
 //! An analytic verb has no meaningful partial state: `clusters` must see every
 //! edge before it knows a component, `pack` prices each pick against the picks
 //! before it. So the work runs to completion into one arena, and the cursor
-//! walks a finished slice. Rows stay valid until `irregex_rows_close`.
+//! walks a finished slice. Rows stay valid until `irgx_rows_close`.
 
 const std = @import("std");
 const api = @import("irregex").api;

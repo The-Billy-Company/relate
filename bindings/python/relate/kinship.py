@@ -47,8 +47,8 @@ import os
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
-from irregex.contract.grades import Channel, Grade
-from irregex.runtime import shell
+from irgx.contract.grades import Channel, Grade
+from irgx.runtime import shell
 
 from .corpus import CORPUS_TIMEOUT, Kin, Scope, graded, matching_argv, run, shape_argv
 

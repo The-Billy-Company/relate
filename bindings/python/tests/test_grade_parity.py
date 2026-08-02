@@ -23,7 +23,7 @@ from pathlib import Path
 
 import pytest
 
-from irregex.contract.grades import Channel, Grade, grade_of
+from irgx.contract.grades import Channel, Grade, grade_of
 
 ZIG = Path(__file__).resolve().parents[3] / "src" / "kernel" / "kinship" / "metric" / "channel.zig"
 

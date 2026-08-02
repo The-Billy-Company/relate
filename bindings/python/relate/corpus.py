@@ -28,8 +28,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from irregex.contract.grades import Channel, Grade
-from irregex.runtime import shell
+from irgx.contract.grades import Channel, Grade
+from irgx.runtime import shell
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -178,7 +178,7 @@ def region(row: dict[str, object]) -> Region:
 
 def graded(row: dict[str, object], channel: Channel, score: float) -> Grade:
     """The engine's own grade for a row, or this channel's band for `score` when an older binary omitted the field. Zig stays the calibration authority; this only keeps a version-skewed row typed."""
-    from irregex.contract.grades import grade_of
+    from irgx.contract.grades import grade_of
 
     reported = row.get("grade")
     return Grade(reported) if isinstance(reported, str) else grade_of(channel, score)
