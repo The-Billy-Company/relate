@@ -140,10 +140,25 @@ pub fn build(b: *std.Build) void {
         repack.addArtifactArg(obj);
         b.getInstallStep().dependOn(&b.addInstallLibFile(aligned_a, "librelate.a").step);
     } else {
+        // Installed as a FILE, not an artifact. `installArtifact` publishes a
+        // name into the table a dependent's `dep.artifact("relate")` searches,
+        // and the dylib above already owns `relate`; a second registration
+        // makes that lookup ambiguous and panics the build runner in the
+        // DEPENDENT, never here — invisible on a laptop, since this is the arm
+        // macOS does not take. The macOS arm is already file-shaped for its own
+        // reason, so this makes both arms install `librelate.a` the same way.
         const static_lib = b.addLibrary(.{ .name = "relate", .linkage = .static, .root_module = abi });
-        b.installArtifact(static_lib);
+        b.getInstallStep().dependOn(&b.addInstallLibFile(static_lib.getEmittedBin(), "librelate.a").step);
     }
     b.installArtifact(irgx_lib);
+    // `librelate.a` deliberately does not fold the substrate in, so a static
+    // consumer links the pair — which means this prefix has to hold the other
+    // half. It is an install-file product of the irregex package rather than a
+    // named artifact, so it comes across as a named lazy path, built for this
+    // target rather than copied out of whatever a sibling checkout last built.
+    b.getInstallStep().dependOn(
+        &b.addInstallLibFile(irgx_dep.namedLazyPath("libirgx.a"), "libirgx.a").step,
+    );
 
     // ── the measurement lab ──
     // Off the default install step, like the sibling packages': a bare
