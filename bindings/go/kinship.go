@@ -49,13 +49,16 @@ func (c *Corpus) Rows(ctx context.Context, op analytic.Op, params analytic.Param
 // collect drains one verb into a typed slice. Stats are dropped here on purpose:
 // a typed row list is the common case, and a caller who needs the answer-level
 // counters (foreign, omitted) reaches for Rows instead.
-func collect[T any](ctx context.Context, c *Corpus, op analytic.Op, params analytic.Params, scan func(runtime.Row) T) ([]T, error) {
+func collect[T any](ctx context.Context, c *Corpus, op analytic.Op, params analytic.Params, scan func(runtime.Row) T) (out []T, err error) {
 	rows, err := c.Rows(ctx, op, params)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	var out []T
+	defer func() {
+		if closeErr := rows.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	for row, err := range rows.All() {
 		if err != nil {
 			return out, err

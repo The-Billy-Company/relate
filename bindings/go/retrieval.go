@@ -89,17 +89,21 @@ type Quotation struct {
 // Quote rewrites the query as corpus quotations, each phrase attributed to a
 // source file — the provenance question, answered statistically. It needs the
 // persisted codex shelf (`relate index --shelf`) and says so when it is missing.
-func (c *Corpus) Quote(ctx context.Context, r analytic.Retrieval) (Quotation, error) {
+func (c *Corpus) Quote(ctx context.Context, r analytic.Retrieval) (q Quotation, err error) {
 	rows, err := c.Rows(ctx, analytic.OpQuote, r)
 	if err != nil {
 		return Quotation{}, err
 	}
-	defer rows.Close()
+	defer func() {
+		if closeErr := rows.Close(); err == nil {
+			err = closeErr
+		}
+	}()
 	if !rows.Next() {
 		return Quotation{}, rows.Err()
 	}
 	row := rows.Row()
-	q := Quotation{
+	q = Quotation{
 		Bits:        row.Float("bits"),
 		BitsPerByte: row.Float("bits_per_byte"),
 		QuotedBytes: row.Int("quoted_bytes"),
