@@ -6,9 +6,16 @@
 # without it; PEP 695 syntax here makes 3.12 a parse-level requirement too.
 # There is no upper bound: the monorepo this was extracted from pins one
 # interpreter, but a published library has no business refusing 3.15.
+#
+# The distribution is `relate-search`; the import stays `relate`. The bare name
+# on PyPI belongs to an unrelated author (a discrete-mathematics relation
+# library), so publishing under it was never available — and a plain
+# `pip install relate` fetches that stranger's package into a tree that then
+# imports `relate`. Splitting the two names is the same shape bs4, PIL, and cv2
+# already ship, and the same split `gist-search` made next door.
 
 [project]
-name = "relate"
+name = "relate-search"
 version = "0.1.0"
 description = "Importable Python API for relate compression-as-search."
 requires-python = ">=3.12"
