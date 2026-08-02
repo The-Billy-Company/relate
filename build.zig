@@ -33,6 +33,24 @@ pub fn build(b: *std.Build) void {
         .{ .name = "gist", .module = gist_dep.module("gist") },
     };
 
+    // ── the one place this package's semver lives ──
+    // `build.zig.zon`'s `.version` is the single authority; `src/root.zig` reads
+    // it through this option instead of restating it, so `relate --version` and
+    // the `--schema` manifest answer with THIS package's number rather than the
+    // engine's. Every remaining copy is a publishing manifest that cannot import
+    // anything (Cargo, PyPI); those carry an `x-release-please-version` marker
+    // and are moved by the release bot, with `tools/version_parity.py` failing
+    // if one of them lags.
+    //
+    // The package name rides along so this generated file differs from the ones
+    // `irregex` and `gist` generate. Zig content-addresses it, and two packages
+    // whose only option was an identical version string produced the SAME file —
+    // which it then refuses as the root of two modules.
+    const zon = @import("build.zig.zon");
+    const version = b.addOptions();
+    version.addOption([:0]const u8, "version", zon.version);
+    version.addOption([:0]const u8, "package", @tagName(zon.name));
+
     const engine = b.addModule("relate", .{
         .root_source_file = b.path("src/root.zig"),
         .target = target,
@@ -40,6 +58,7 @@ pub fn build(b: *std.Build) void {
         .pic = true,
         .imports = &deps,
     });
+    engine.addOptions("build_options", version);
 
     // ── the product binary ──
     // Same ReleaseFast product posture as gist's face: a bare `zig build` must
@@ -51,13 +70,17 @@ pub fn build(b: *std.Build) void {
         "optimize mode for the installed relate CLI (default ReleaseFast — the product surface's whole point is speed)",
     ) orelse .ReleaseFast;
     const cli_deps = if (cli_optimize == optimize) deps else engines(b, target, cli_optimize);
-    const cli_engine = if (cli_optimize == optimize) engine else b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = cli_optimize,
-        .pic = true,
-        .imports = &cli_deps,
-    });
+    const cli_engine = if (cli_optimize == optimize) engine else blk: {
+        const twin = b.createModule(.{
+            .root_source_file = b.path("src/root.zig"),
+            .target = target,
+            .optimize = cli_optimize,
+            .pic = true,
+            .imports = &cli_deps,
+        });
+        twin.addOptions("build_options", version);
+        break :blk twin;
+    };
     // A face main is a thin exe root: real driver code is analyzed inside
     // the relate module (whose root is src/root.zig, so relative imports
     // resolve) and reached as `@import("relate").faces.*` / `.cli.*`.
@@ -172,13 +195,17 @@ pub fn build(b: *std.Build) void {
         "test-optimize",
         "optimize mode for the unit-test binary (default ReleaseSafe)",
     ) orelse .ReleaseSafe;
-    const test_module = if (test_optimize == optimize) engine else b.createModule(.{
-        .root_source_file = b.path("src/root.zig"),
-        .target = target,
-        .optimize = test_optimize,
-        .pic = true,
-        .imports = &engines(b, target, test_optimize),
-    });
+    const test_module = if (test_optimize == optimize) engine else blk: {
+        const twin = b.createModule(.{
+            .root_source_file = b.path("src/root.zig"),
+            .target = target,
+            .optimize = test_optimize,
+            .pic = true,
+            .imports = &engines(b, target, test_optimize),
+        });
+        twin.addOptions("build_options", version);
+        break :blk twin;
+    };
 
     const shards = b.option(
         usize,

@@ -177,6 +177,32 @@ restatement of the diff.
 Skip it only for comment-only, format-only, or genuinely invisible internal
 work. When unsure, write it.
 
+## The version is written once
+
+You will not edit a version by hand, and you should not try. `build.zig.zon`'s
+`.version` is the only place this package's number is written:
+
+- **Zig** reads it through a build option, which is what `relate --version` and
+  the `--schema` manifest answer with;
+- **Rust** reads `CARGO_PKG_VERSION`;
+- **Python** reads its installed distribution metadata.
+
+That leaves `Cargo.toml` and `pyproject.toml`, which cannot import anything.
+Both carry an `x-release-please-version` marker, `release-please-config.json`
+lists them, and one merged release PR moves all three in a single commit.
+`python3 tools/version_parity.py` proves they agree, and fails just as loudly on
+a marked line the release config was never told about. It runs in CI.
+
+The engines underneath are different axes. `irregex` and `gist` version on their
+own schedules and are pinned as dependencies, never mirrored here. This face
+used to print the engine's version as its own - 1.0.0 against a package at
+0.1.0 - which is exactly what the arrangement above makes impossible.
+
+**Cutting a release.** Merge the release PR that release-please opens; that tags
+`vX.Y.Z` and `release.yml` publishes the wheels. towncrier owns `CHANGELOG.md`,
+so run `towncrier build --version <the version the PR bumps to>` and push it
+onto the release branch - the tag and the notes should land together.
+
 ## Commits and pull requests
 
 Commit subjects here are a conventional prefix plus a lowercase sentence that

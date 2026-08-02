@@ -24,6 +24,14 @@
 
 const std = @import("std");
 
+/// This package's semver, read from `build.zig.zon`'s `.version` — the single
+/// place it is written. `build.zig` lifts it in as a build option, so
+/// `relate --version` and the `--schema` manifest answer with this binary's own
+/// number. They used to answer with the engine's, which is a different axis and
+/// a different schedule: the manifest read 1.0.0 while this package was 0.1.0.
+/// `@import("irregex").version_string` is still how you ask what is underneath.
+pub const version_string: [:0]const u8 = @import("build_options").version;
+
 // ── kinship: the metrics, the cluster machinery, the recall tier ──
 pub const kinship = struct {
     pub const sketch = @import("kernel/kinship/metric/sketch.zig");

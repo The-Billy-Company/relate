@@ -1,6 +1,6 @@
 .{
     .name = .relate,
-    .version = "0.1.0",
+    .version = "0.1.0", // x-release-please-version
     .fingerprint = 0xe89435dd16b21037,
     .minimum_zig_version = "0.16.0",
     .dependencies = .{

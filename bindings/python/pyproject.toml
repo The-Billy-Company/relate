@@ -16,7 +16,7 @@
 
 [project]
 name = "relate-search"
-version = "0.1.0"
+version = "0.1.0" # x-release-please-version
 description = "Importable Python API for relate compression-as-search."
 requires-python = ">=3.12"
 license = "Apache-2.0"

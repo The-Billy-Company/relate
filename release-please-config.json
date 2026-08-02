@@ -1,0 +1,83 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+
+  "_comment": [
+    "Conventional Commits → a version bump, a tag, and a GitHub Release.",
+    "",
+    "── One package, one version",
+    "This repository ships the `relate` binary, `librelate`, and the Python and",
+    "Rust bindings over them. They are released together, so they carry one",
+    "number, and `build.zig.zon`'s `.version` is where that number is written.",
+    "`src/root.zig` reads it through a build option (so `relate --version` and",
+    "the `--schema` manifest answer with it), Rust reads CARGO_PKG_VERSION, and",
+    "Python reads its installed distribution metadata. Only the two publishing",
+    "manifests restate it, below.",
+    "",
+    "── This is NOT the engine's version",
+    "`irregex` and `gist` version on their own schedules and are pinned as",
+    "dependencies, not mirrored here. Both faces used to print the ENGINE's",
+    "version as their own — 1.0.0 against a package at 0.1.0 — which is the",
+    "drift this arrangement exists to make impossible.",
+    "",
+    "── Why `simple` + generic extra-files",
+    "There is no Zig updater. `simple` keeps the manifest as the source of",
+    "truth and the `generic` updater rewrites the semver on any line carrying",
+    "an `x-release-please-version` annotation, so one release moves every",
+    "member of the lockstep atomically. `tools/version_parity.py` fails if a",
+    "marked line is missing from this list, so the two cannot drift apart.",
+    "",
+    "── Changelog ownership",
+    "towncrier owns CHANGELOG.md — the curated fragments under changelog.d/ are",
+    "the release notes, written for people. release-please would compile a",
+    "second, machine-derived changelog into the same file and fight it, so",
+    "`skip-changelog` is on and the bot handles versions and tags only. Build",
+    "the notes with `towncrier build --version <the version this bumps to>`.",
+    "",
+    "── The tag cascades",
+    "Merging the release PR tags `vX.Y.Z`, which is what `release.yml` waits",
+    "for to publish the wheels. A tag pushed by GITHUB_TOKEN does NOT trigger",
+    "another workflow, so that hand-off only happens when the workflow runs",
+    "with RELEASE_PLEASE_TOKEN — see .github/workflows/release-please.yml.",
+    "",
+    "── Publish order",
+    "`blast-search` depends on `relate-search` on PyPI, so this package's",
+    "release has to land before the sibling's for a version they share."
+  ],
+
+  "release-type": "simple",
+  "include-component-in-tag": false,
+  "include-v-in-tag": true,
+  "separate-pull-requests": false,
+  "draft": false,
+  "prerelease": false,
+  "bump-minor-pre-major": true,
+  "bump-patch-for-minor-pre-major": false,
+
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance" },
+    { "type": "refactor", "section": "Refactor" },
+    { "type": "deps", "section": "Dependencies" },
+    { "type": "revert", "section": "Reverts" },
+    { "type": "docs", "section": "Documentation", "hidden": true },
+    { "type": "test", "section": "Tests", "hidden": true },
+    { "type": "build", "section": "Build", "hidden": true },
+    { "type": "ci", "section": "CI", "hidden": true },
+    { "type": "chore", "section": "Chore", "hidden": true },
+    { "type": "style", "section": "Style", "hidden": true }
+  ],
+
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "relate-search",
+      "skip-changelog": true,
+      "extra-files": [
+        { "type": "generic", "path": "build.zig.zon" },
+        { "type": "generic", "path": "bindings/python/pyproject.toml" },
+        { "type": "generic", "path": "bindings/rust/Cargo.toml" }
+      ]
+    }
+  }
+}

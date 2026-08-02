@@ -1,0 +1,5 @@
+`relate --version` said `1.0.0`. relate was `0.1.0`. It was printing the engine's semver, because that was the only version in reach that nobody had to hand-maintain - the manifest module's own comment records the earlier shape of this bug, where both faces hardcoded `0.1.0` against an engine at `0.2.0`.
+
+Now `build.zig` lifts `.version` out of `build.zig.zon` as a build option and `src/root.zig` exposes it, so `--version` and the `--schema` manifest report this package's number, read from the one place it is written and restated nowhere. The engine stays askable through `@import("irregex").version_string`; it is a different axis on a different schedule, which is exactly why borrowing it was wrong.
+
+`Cargo.toml` and `pyproject.toml` keep a copy because neither can import anything, both marked with `x-release-please-version` and both listed in the new `release-please-config.json`, so one merged release PR moves all three together. `tools/version_parity.py` fails if a copy drifts or if a marked line was never declared to the bot, and runs in CI as the `version` job.

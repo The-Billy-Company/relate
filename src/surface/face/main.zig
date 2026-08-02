@@ -32,7 +32,7 @@ pub fn main(init: std.process.Init) void {
     // reached as `@import("relate").faces.*` / `.cli.*`.
     relate.cli.manifest.drive(
         relate.faces.repertoire.face,
-        irregex.version_string,
+        relate.version_string,
         init,
     );
 }
