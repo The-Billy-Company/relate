@@ -122,6 +122,13 @@ test {
     _ = @import("kernel/kinship/metric/silhouette_test.zig"); // structure channel: normalization invariance + winnow guarantee
     _ = @import("kernel/kinship/recall/lexicon_test.zig"); // retrieval proof (short-query recall, ΔAb sidedness, zero-bit boilerplate)
     _ = @import("kernel/compose/candidates_test.zig"); // CandidateSet ≡ substring set-algebra (any/all masks, 64-cap, error paths)
+    // `refAllDecls` reaches the `compose` struct without analyzing the files
+    // behind it, so these carry their tests in-file and need naming outright.
+    _ = @import("kernel/compose/blast.zig"); // the blast radius: seed/dependents/dependencies/twins/ripple/comments
+    _ = @import("kernel/compose/regions.zig"); // exact hits lifted into function/match units
+    _ = @import("kernel/compose/context.zig"); // narrowed coverage packing
+    _ = @import("kernel/compose/family.zig"); // narrowed fork families
+    _ = @import("kernel/compose/provenance.zig"); // quotation attribution over the shelf
     _ = @import("kernel/codex/cento_test.zig"); // Ziv–Merhav cross-parse vs greedy oracle over a live Codex
     _ = @import("corpus/index/atlas/atlas_test.zig"); // atlas round-trip, fail-closed parse, freshness-fold semantics
     _ = @import("corpus/index/frag/frag_test.zig"); // frag round-trip, fail-closed parse, freshness-fold + deletion gate

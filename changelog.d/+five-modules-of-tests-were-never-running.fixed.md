@@ -1,0 +1,3 @@
+`refAllDecls` reaches a struct's declarations without analyzing the files behind them, so it goes exactly one level deep. Every `kernel/compose` module keeps its tests in-file rather than in a `_test.zig` sibling, which put all of them below that line: `blast`, `regions`, `context`, `family`, and `provenance` compiled in the suite and ran none of their assertions.
+
+They are named outright in the root test block now, the way the `_test.zig` siblings already were. All of them pass, so nothing was hiding - but nothing was proving it either, and a green suite that skips a kernel is worse than a red one.
