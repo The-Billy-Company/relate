@@ -1,1 +1,0 @@
-Windows is now a first-class runtime target. `install.ps1` builds and places `relate.exe` on the per-user PATH without elevation, optionally builds the atlas, and can be rerun safely. Native x64 and arm64 CI execute the Zig suite, a real corpus query, and the installer instead of treating a cross-compile as runtime evidence.
