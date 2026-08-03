@@ -447,7 +447,19 @@ novel-math claim in this kernel is Gist's Crest sieve
 - `src/exec/retrieval/` - text-probe retrieval by coding gain
 - `src/exec/session/warm/` - the warm tier: fold changed files into a
   persisted atlas, byte-identical to a cold rebuild
-- verb surface / CLI — ships from `gist` (`src/surface/face/relate/`)
+- verb surface / CLI - `src/surface/face/`
+
+## Install
+
+Build from source with Zig. On Windows, the PowerShell installer builds the
+binary, places it on the user PATH without elevation, and creates the atlas:
+
+```powershell
+.\install.ps1
+```
+
+Pass `-NoIndex` when setup should leave the corpus untouched; every query still
+has the correct live path.
 
 ## Build and test
 

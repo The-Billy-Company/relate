@@ -152,6 +152,10 @@ different news and deserve different red Xs.
 | `version` / `contract` | package versions agree, and irregex's vendored kinship contract still matches this one |
 | `discipline` | Markdown, spelling, YAML, TOML, EditorConfig, shell, Python format, and GitHub Actions security |
 
+The separate [`windows`](.github/workflows/windows.yml) workflow runs the Zig
+suite, CLI smoke, and idempotent installer on native x64 and arm64 Windows.
+Cross-compilation is not treated as runtime evidence.
+
 Absent on purpose: `lab`, `relate-knn`, and `codex-scale`. They are measurement
 instruments, and a timing number produced on a shared runner is noise wearing a
 decimal point.
