@@ -966,7 +966,6 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions track
   whitespace stripped hash identically before and after, and the three `cento`
   tests pass on both sides of the change.
 
-
 ## [0.2.0] - 2026-07-24
 
 ### Added
