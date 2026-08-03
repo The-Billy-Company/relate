@@ -5,6 +5,16 @@ and where a snippet came from, by compression rather than embeddings. Twelve
 verbs over compression kinship, priced retrieval, and multi-pattern sweeps.
 Every verb returns the shared [`irgx::runtime::Rows`] cursor.
 
+```bash
+cargo add relate-search
+```
+
+The package on crates.io is
+[`relate-search`](https://crates.io/crates/relate-search) and the library is
+`relate`, so you still write `use relate::…`. The bare name belongs to an
+unrelated crate and names there are permanent, which is the same reason the PyPI
+distribution is `relate-search` too.
+
 ```rust
 use relate::{similar, Grade};
 
@@ -15,6 +25,10 @@ for row in kin.iter() {
 }
 ```
 
-Depends on [`irregex`](../../../irregex/bindings/rust/) for the substrate
-(path in-tree; crates.io version once published). Does not re-export gist's
-search surface or blast's composed verbs.
+Every verb answers by running the `relate` binary, so that has to be on `PATH`
+(or `$RELATE_BIN`); [the repository](https://github.com/The-Billy-Company/relate)
+builds it with `zig build`.
+
+Depends on [`irgx`](https://crates.io/crates/irgx) for the substrate - resolved
+from the registry in a published build, by path in this checkout. Does not
+re-export gist's search surface or blast's composed verbs.

@@ -18,6 +18,10 @@ The distribution is `relate-search`; the import stays `relate`. The bare name
 on PyPI belongs to an unrelated author, so this is the same split bs4, PIL, and
 cv2 already ship.
 
+This package is the bindings, not the engine: every verb answers by running the
+`relate` binary, so that has to be on `PATH` (or `$RELATE_BIN`). Without it the
+first call raises `GistNotFoundError` rather than failing quietly.
+
 ## Two questions, not ten verbs
 
 `similar` is the neighbor verb: one probe, one ranked answer. `echoes` is the
