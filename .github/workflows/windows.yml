@@ -75,7 +75,9 @@ jobs:
           if ($got -ne $build.shasum) { throw "sha256 mismatch: got $got, expected $($build.shasum)" }
 
           $into = Join-Path $env:RUNNER_TEMP 'zig'
-          Expand-Archive -LiteralPath $zip -DestinationPath $into -Force
+          New-Item -ItemType Directory -Force -Path $into | Out-Null
+          tar.exe -xf $zip -C $into
+          if ($LASTEXITCODE -ne 0) { throw "tar could not extract the Zig archive" }
           $root = (Get-ChildItem -Directory -LiteralPath $into | Select-Object -First 1).FullName
           if (-not $root) { throw "the archive extracted no directory into $into" }
           Add-Content -LiteralPath $env:GITHUB_PATH -Value $root
