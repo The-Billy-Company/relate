@@ -1,7 +1,7 @@
 name: Wrong kinship answer
 description: similar, echoes, pack, or quote returned something that is not true.
 title: "kin: "
-labels: ["kinship"]
+labels: ["topic/kinship"]
 body:
   - type: markdown
     attributes:
