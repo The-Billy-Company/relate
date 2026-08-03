@@ -451,8 +451,9 @@ novel-math claim in this kernel is Gist's Crest sieve
 
 ## Install
 
-Build from source with Zig. On Windows, the PowerShell installer builds the
-binary, places it on the user PATH without elevation, and creates the atlas:
+The CLI is the product, and it is built from source with Zig. On Windows, the
+PowerShell installer builds the binary, places it on the user PATH without
+elevation, and creates the atlas:
 
 ```powershell
 .\install.ps1
@@ -460,6 +461,23 @@ binary, places it on the user PATH without elevation, and creates the atlas:
 
 Pass `-NoIndex` when setup should leave the corpus untouched; every query still
 has the correct live path.
+
+The language bindings are published, and each drives that same binary rather
+than reimplementing it, so the CLI is a prerequisite for all three:
+
+| | Install | You write |
+|---|---|---|
+| Python | `pip install relate-search` | `import relate` |
+| Rust | `cargo add relate-search` | `use relate::…` |
+| Go | `go get github.com/The-Billy-Company/relate/bindings/go` | `import ".../bindings/go"` |
+
+The bare name `relate` was taken on both PyPI and crates.io and names there are
+permanent, so the distribution carries the `-search` suffix while the identifier
+you type stays `relate` — the bs4 / PIL split. All three pull the shared
+substrate, which is `irregex` on PyPI and `irgx` on crates.io. Per-language
+detail is in [`bindings/python`](bindings/python/README.md),
+[`bindings/rust`](bindings/rust/README.md), and
+[`bindings/go`](bindings/go/README.md).
 
 ## Build and test
 
