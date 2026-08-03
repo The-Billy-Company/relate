@@ -3,8 +3,11 @@
 [workspace]
 
 [package]
-name = "relate"
-version = "0.1.0" # x-release-please-version
+# `relate` on crates.io is an unrelated crate, and crate names are permanent,
+# so this takes the same `-search` name the PyPI distribution does. The `[lib]`
+# below keeps the identifier callers actually type as `relate`.
+name = "relate-search"
+version = "1.0.0" # x-release-please-version
 edition = "2024"
 rust-version = "1.85"
 license = "Apache-2.0"
@@ -31,15 +34,20 @@ categories = [
   "algorithms",
   "api-bindings",
 ]
-publish = false
 
 exclude = [ "/target", "/.cargo" ]
 
+# Load-bearing, not decorative: the package is `relate-search` on the index, so
+# without this the library would be `relate_search` and every caller would have
+# to type it. `use relate::…` is the API.
+[lib]
+name = "relate"
+
 [dependencies]
-# Local path for in-tree development. Once `irregex` is on crates.io, consumers
-# resolve the same version range through the registry; the path override is
+# Local path for in-tree development. A published build ignores it and resolves
+# the same version range of `irgx` through the registry; the path override is
 # only for this checkout.
-irregex = { version = "1.0.0", path = "../../../irregex/bindings/rust" }
+irgx = { version = "1.0.0", path = "../../../irregex/bindings/rust" }
 
 [dev-dependencies]
 tempfile = "3"

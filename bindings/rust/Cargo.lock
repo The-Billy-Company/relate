@@ -42,7 +42,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "irregex"
+name = "irgx"
 version = "1.0.0"
 dependencies = [
  "serde",
@@ -104,10 +104,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
-name = "relate"
-version = "0.1.0"
+name = "relate-search"
+version = "1.0.0"
 dependencies = [
- "irregex",
+ "irgx",
  "tempfile",
 ]
 
