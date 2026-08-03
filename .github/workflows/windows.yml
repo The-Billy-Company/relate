@@ -90,8 +90,8 @@ jobs:
 
       - name: Test and build shipped artifacts
         run: |
-          zig build test -Dtarget=$env:ZIG_TARGET -j1
-          zig build -Dtarget=$env:ZIG_TARGET -Doptimize=ReleaseFast -j1
+          zig build test "-Dtarget=$($env:ZIG_TARGET)" -j1
+          zig build "-Dtarget=$($env:ZIG_TARGET)" -Doptimize=ReleaseFast -j1
 
       - name: CLI smoke
         shell: pwsh
