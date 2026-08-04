@@ -8,7 +8,7 @@
 // exact-search library beneath (including the FM-index and its shelf) is the
 // `irregex` module; the resident daemon and answer keep the face dials are
 // the `gist` module — both reached only through `@import(...)` (a file
-// import cannot cross a package boundary). Judged by `ward verify`.
+// import cannot cross a package boundary). Judged by `zoning verify`.
 
 package relate {
     // root.zig is the module's public face: it re-exports every tier for the
@@ -19,7 +19,7 @@ package relate {
 }
 
 // Tiers, low to high. An import may only point back up the page.
-tiers {
+zones {
     // Source anatomy — comment spans, identifier tokens, structural leans:
     // how a file decomposes into comparison units. Pure compute.
     anatomy     kernel/anatomy/**
