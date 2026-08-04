@@ -396,6 +396,25 @@ jobs:
       # as a well-formed URL on a published page pointing at nothing.
       - run: uv run --no-project --python 3.12 python tools/registry_readme.py --check
 
+  changelog:
+    # Nothing was checking the news fragments, and the failure mode is quiet by
+    # construction: `towncrier build --draft` will cheerfully render a clean
+    # changelog while silently dropping any file whose name it does not
+    # recognize. This runs the same shared engine every other public repo in
+    # the org runs (`irregex`/`gist`), rather than a third bespoke copy of the
+    # same bash: fragment filenames and bodies are checked, then towncrier
+    # itself renders the draft, so a fragment `_changelog.py` didn't reject but
+    # towncrier's own parser still can't read is still caught.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: The-Billy-Company/.github/actions/package-release@deb135f046122a10cabc861e96eb9941c2d09ddc # main
+        with:
+          command: changelog
+          args: --root .
+
   contract:
     # `contract/kinship.toml` is this repository's, and irregex keeps a copy.
     #
@@ -459,8 +478,12 @@ jobs:
       # The fix is in the code, or in a `variance ... because "..."` that says
       # what would retire it - never in quietly widening the contract to match
       # what the imports happen to do today.
+      #
+      # `--complete` adds the claim no law can make: every package here carries a
+      # contract. A green run over the packages that opted in says nothing about
+      # the one somebody adds next week, and coverage nobody checks decays.
       - name: Import topology
-        run: uv run --no-project --with zoning==0.1.1 zoning verify
+        run: uv run --no-project --with zoning==0.2.0 zoning verify --complete
 
   discipline:
     # Source can compile while its public paper trail, package manifests, and
@@ -492,3 +515,28 @@ jobs:
         run: |
           git ls-files -z '*.py' | xargs -0 uv run --no-project --with ruff==0.16.1 ruff check --config quality/ruff.toml
           git ls-files -z '*.py' | xargs -0 uv run --no-project --with ruff==0.16.1 ruff format --check --config quality/ruff.toml
+
+  release-ready:
+    # The one check `release.yml`'s preflight polls for on the exact tagged
+    # commit (`release.toml`'s `[ci].required_check`). Everything above feeds
+    # into it, so a red job blocks the tag rather than the publish workflow
+    # discovering it minutes into a build. `if: always()` is required — the
+    # default `if` on a job would skip this one the moment anything upstream
+    # failed, which is exactly the case it has to report on.
+    if: always()
+    needs: [engine, python, go, rust, fmt, version, changelog, contract, topology, discipline]
+    runs-on: ubuntu-latest
+    steps:
+      - name: every required job is green
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          python3 -c "
+          import json, os
+          needs = json.loads(os.environ['NEEDS'])
+          failed = sorted(name for name, info in needs.items() if info['result'] != 'success')
+          if failed:
+              raise SystemExit(f'not release-ready: {failed} did not succeed')
+          print(f'release-ready: {len(needs)} required jobs all succeeded')
+          "
