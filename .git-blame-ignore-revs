@@ -2,3 +2,9 @@
 #
 # Add full commit SHAs for mass-format or migration commits below. They vanish
 # from blame without vanishing from history.
+#
+# Empty on purpose. This history was audited for the shape blame mistakes -
+# broad, balanced churn where lines were rewritten without being rethought -
+# by pairing each removed line with its replacement and asking what fraction
+# differ by a single bare token. The rename sweeps here score low: they carried
+# real prose changes alongside the renaming, so blame is right to point at them.

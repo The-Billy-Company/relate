@@ -30,6 +30,20 @@
 *.gen.zig      linguist-generated
 schema.gen.*   linguist-generated
 
+# ── Apparatus ───────────────────────────────────────────────────────────────
+# Code that measures or operates this project, rather than being it. `linguist-
+# detectable=false` drops it from the language breakdown only - it stays in the
+# tree, in review, in diffs, and in the tarball.
+#
+# bench/ is the harness behind the warm-tier numbers, tools/ is build tooling,
+# and .github/ operates the repository. None of it is the kinship engine.
+bench/**    linguist-detectable=false
+tools/**    linguist-detectable=false
+.github/**  linguist-detectable=false
+
+# NOT excluded: bindings/ is the C ABI's Python, Rust, and Go surface - shipped
+# code a consumer imports, so its share of the bar is a true statement.
+
 # ── Diff drivers ────────────────────────────────────────────────────────────
 # Git ships hunk-header patterns for these; naming them here is what makes
 # `@@ ... fn whatever` appear above a hunk instead of a bare line number.
