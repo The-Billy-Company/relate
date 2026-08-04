@@ -71,6 +71,30 @@ zones {
     face        surface/face/**
 }
 
+// Reach outside the package: the modules the build graph hands us.
+//
+// Everything above orders what this package owns. These are the only names it
+// says that it does not, and each is a dependency `build.zig` has to satisfy.
+// `std`, `builtin` and `root` are the language's, granted without asking.
+
+// The engine, everywhere: corpus walk, scope, JSON escaping, the FM-index this
+// package's quoter reads. A file import cannot cross a package boundary, so
+// every zone reaches it by module name.
+use irregex
+
+// The version string, injected by `b.addOptions`.
+use build_options
+
+// The resident daemon and the answer keep live in the product chassis, and only
+// the two callers that dial it need it: the face, and `cli/reprise.zig`, which
+// is the recall path itself.
+use gist by cli face
+
+// A face dispatches through this package's own module rather than by path: a
+// binary's root file is its own module root, so relative imports beneath it
+// would not resolve. It reads as a self-import because it is one.
+use relate by face
+
 // Guest lists: regions only the named importers may reach at all.
 
 // The face is this package's one product surface. Nothing else in the tree
