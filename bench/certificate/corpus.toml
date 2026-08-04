@@ -1,0 +1,69 @@
+# What relate is allowed to publish a certificate OVER.
+#
+# Read by `guard/publish.py` (vendored); enforced by
+# `guard/artifacts.py --public-safe`, which `mint/mint.sh` runs immediately
+# before it copies a bundle into `artifact/`. This file is per-package and
+# committed: what counts as a public corpus is a property of what relate
+# measures, not of the gate that checks it.
+#
+# WHY THIS FILE EXISTS. Every certificate minted before the repository split was
+# measured over a private monorepo, and said so in five places at once: a
+# manifest listing twenty thousand proprietary paths with sizes and hashes, a
+# `machine.json` naming that tree's roots and commit, and absolute `/Users/…`
+# invocations throughout the command log. The receipts were therefore gitignored,
+# and every gate that reads committed evidence has answered "pending
+# regeneration" ever since — the claims stayed in the README while the proof left
+# the repository. A corpus nobody outside can fetch is not just a privacy
+# problem; it is an unreproducible measurement. So the corpus is now declared,
+# not discovered, and a bundle over an undeclared tree fails the mint.
+
+# ── The ecosystem corpus ──────────────────────────────────────────────────────
+#
+# The four packages of this project side by side — the same tree `irregex`
+# certifies over, and for a sharper reason here. relate's layers are about
+# *kinship*: F prices retrieval by coding gain, G measures what repeats, K races
+# the multi-pattern surface. Every one of those is a claim about a population,
+# so a monoglot corpus does not merely narrow the result — it changes what the
+# answer means. "Which files are near each other" over 449 Zig files is a
+# statement about one language's idioms; over nine languages it is a statement
+# about code.
+#
+# It also has the property a synthetic corpus cannot fake for these layers: the
+# near-duplicates are REAL. The four packages genuinely share a vendored
+# apparatus, genuinely fork each other's READMEs, and genuinely carry sibling
+# implementations of the same idea — which is exactly the population `echoes`
+# and `similar` exist to find. A generator that planted duplicates would be
+# grading relate against its own author's idea of a duplicate.
+[corpus.ecosystem-v1]
+description = "the four sibling packages (irregex · gist · relate · blast), ~1,486 files / ~46 MiB across nine languages, carrying real vendored twins and real forked prose"
+roots = ["irregex", "gist", "relate", "blast"]
+allow_prefixes = ["irregex/", "gist/", "relate/", "blast/"]
+fetch = "bash bench/apparatus/corpora/ecosystem.sh <dir>"
+
+# ── The self corpus ───────────────────────────────────────────────────────────
+#
+# relate searching its own checkout. Honest and publishable, but 172 files of
+# mostly one language is a thin population for a statistical claim: a kinship
+# result there is dominated by which two files happen to be large. Kept declared
+# because the index-lifecycle lanes legitimately measure it, and a lane with no
+# declared corpus cannot publish at all.
+[corpus.relate-self-v1]
+description = "the relate checkout itself — atlas build and lifecycle lanes only, never a population claim"
+roots = ["src", "bench", "bindings", "contract"]
+allow_prefixes = ["src/", "bench/", "bindings/", "contract/"]
+fetch = "git clone https://github.com/The-Billy-Company/relate"
+
+# ── Never present in a published bundle ───────────────────────────────────────
+#
+# Absolute home paths are caught structurally by `publish.py` and need no entry
+# here. These are the substrings that would say "this was minted over the private
+# monorepo" even after the paths were made relative — the roots that tree has and
+# no public corpus does. A bundle carrying one is not redactable; re-mint it.
+[deny]
+substrings = [
+  "Billy-Company",
+  "services/backend",
+  "services/ai",
+  "clients/web",
+  "infra/pulumi",
+]
