@@ -40,10 +40,10 @@ const std = @import("std");
 const assay = @import("irregex").assay;
 const fault = @import("irregex").fault;
 const fresh = @import("irregex").fresh;
-const persist = @import("irregex").persist;
+const persist = @import("irregex").index.persist;
 const dirtylog = @import("irregex").inner.session.dirty;
 const Seqlock = @import("irregex").inner.session.seqlock.Seqlock;
-const Ward = @import("irregex").ward.Ward;
+const Ward = @import("irregex").math.lease.Ward;
 const retrieval = @import("../../retrieval/retrieval.zig");
 const Dir = std.Io.Dir;
 

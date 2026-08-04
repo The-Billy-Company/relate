@@ -23,7 +23,7 @@
 //! allocation lands in the returned `Report`'s arena, freed by `deinit`.
 
 const std = @import("std");
-const patterns = @import("irregex").irregex.patterns;
+const patterns = @import("irregex").slate.patterns;
 const regions = @import("regions.zig");
 const spans = @import("../anatomy/spans.zig");
 const lexspan = @import("irregex").inner.lexspan;

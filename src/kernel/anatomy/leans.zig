@@ -41,7 +41,7 @@
 const std = @import("std");
 const lexspan = @import("irregex").inner.lexspan;
 const spans = @import("spans.zig");
-const patterns = @import("irregex").irregex.patterns;
+const patterns = @import("irregex").slate.patterns;
 const signals = @import("irregex").signals;
 
 /// An identifier the seed's body leans on, resolved to its own definition

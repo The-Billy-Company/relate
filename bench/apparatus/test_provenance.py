@@ -163,7 +163,7 @@ class ManifestTests(unittest.TestCase):
         """
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            raw = b"caf\xe9.txt"
+            raw = "café.txt".encode("latin-1")
             try:
                 with open(os.path.join(os.fsencode(root), raw), "wb") as sink:
                     sink.write(b"x")

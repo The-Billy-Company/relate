@@ -45,7 +45,7 @@ const channel_mod = @import("../metric/channel.zig");
 const pairs_mod = @import("pairs.zig");
 const families_mod = @import("families.zig");
 const signals = @import("irregex").signals;
-const parallel = @import("irregex").parallel;
+const parallel = @import("irregex").math.parallel;
 
 const Sketch = sketch_mod.Sketch;
 const Silhouette = silhouette_mod.Silhouette;

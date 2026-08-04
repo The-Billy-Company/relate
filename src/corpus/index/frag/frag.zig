@@ -41,7 +41,7 @@ const regions = @import("../../../kernel/compose/regions.zig");
 const corpus_mod = @import("irregex").corpus;
 const fresh = @import("irregex").fresh;
 const frame = @import("irregex").inner.corpus.frame;
-const parallel = @import("irregex").parallel;
+const parallel = @import("irregex").math.parallel;
 
 const Silhouette = silhouette_mod.Silhouette;
 const Dir = std.Io.Dir;
@@ -57,8 +57,8 @@ const MAGIC = "FRAG";
 // v2 replaced the FNV-1a u64 trailer with a BLAKE3 signet; an older blob reads
 // as corrupt and the fold rebuilds it live.
 const VERSION: u32 = 2;
-const signet = @import("irregex").signet;
-const home = @import("irregex").home;
+const signet = @import("irregex").index.signet;
+const home = @import("irregex").index.home;
 
 /// A fragment's location: byte range in its file (for on-demand byte slicing)
 /// and 1-based line range (for display). Byte range fits u32 — files are capped

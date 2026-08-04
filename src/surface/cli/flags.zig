@@ -8,7 +8,7 @@
 
 const std = @import("std");
 const corpus_mod = @import("irregex").corpus;
-const scope = @import("irregex").commands.scope.filter;
+const scope = @import("irregex").scope.filter;
 
 const die = @import("irregex").inner.cli.outcome.die;
 

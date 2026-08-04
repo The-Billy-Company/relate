@@ -128,7 +128,7 @@ class CommitIsProvenanceTests(unittest.TestCase):
             assert mint.commit is None
             assert mint.platform == "linux"
 
-    def test_an_unparseable_machine_json_degrades_instead_of_failing(self) -> None:
+    def test_an_unparsable_machine_json_degrades_instead_of_failing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bundle = _bundle(Path(tmp))
             (bundle / "machine.json").write_text("{not json")

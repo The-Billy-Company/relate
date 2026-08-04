@@ -17,7 +17,7 @@
 //! dominated the cost of every `relate` verb.
 
 const std = @import("std");
-const parallel = @import("irregex").parallel;
+const parallel = @import("irregex").math.parallel;
 
 /// Fingerprint every doc in `docs` into the doc-parallel `out`, returning how
 /// many degraded to `empty`. `T` needs an `empty` decl (the maximally-far

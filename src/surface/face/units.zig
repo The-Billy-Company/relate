@@ -29,7 +29,7 @@ const corpus_mod = @import("irregex").corpus;
 const frag = @import("../../corpus/index/frag/frag.zig");
 const candidates = @import("../../kernel/compose/candidates.zig");
 const regions = @import("../../kernel/compose/regions.zig");
-const patterns_mod = @import("irregex").irregex.patterns;
+const patterns_mod = @import("irregex").slate.patterns;
 const echoes = @import("../../kernel/kinship/cluster/echoes.zig");
 const sketch_mod = @import("../../kernel/kinship/metric/sketch.zig");
 const silhouette_mod = @import("../../kernel/kinship/metric/silhouette.zig");
@@ -600,9 +600,14 @@ fn dieCompile(e: Fault) noreturn {
         error.BadPattern => die("--matching: a pattern is not valid regex syntax (use -F to match it literally)\n", .{}),
         error.TooManyPatterns => die("--matching: too many patterns (max {d})\n", .{candidates.max_patterns}),
         // The rest have no bespoke guidance to give, so naming the fault is the
-        // honest report — listed, never `else`-caught.
+        // honest report — listed, never `else`-caught. `BoundUnsupported` is a
+        // PCRE2-with-a-live-window refusal, and `--matching` offers neither, so
+        // it cannot arrive here; it is reported rather than asserted away
+        // because a fault that "cannot happen" is still cheaper to print than to
+        // trip over.
         error.PowersetCapHit,
         error.NeedleTooShort,
+        error.BoundUnsupported,
         error.OutOfMemory,
         error.TimedOut,
         error.Exhausted,

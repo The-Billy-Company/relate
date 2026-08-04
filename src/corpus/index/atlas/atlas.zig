@@ -71,8 +71,8 @@ const putInt = frame.putInt;
 const Cursor = frame.Cursor;
 // The seal. A 64 MB atlas behind a 64-bit non-cryptographic trailer was the
 // weakest integrity claim of any artifact here; `signet` makes it a real one.
-const signet = @import("irregex").signet;
-const home = @import("irregex").home;
+const signet = @import("irregex").index.signet;
+const home = @import("irregex").index.home;
 
 /// Serialize `paths` + their `sketches` and `silhouettes` (same order) under
 /// the `built_ns` anchor, plus the `roots` the corpus was built over (so a
