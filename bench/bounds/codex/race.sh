@@ -2,7 +2,7 @@
 # codex-scale race driver — the full at-scale proof in one command.
 #
 # 1. snapshots a deterministic real-source corpus (sorted-path concat of the
-#    repo's text files) into .local/codex-bench/corpus.bin,
+#    corpus's text files) into .local/codex-bench/corpus.bin,
 # 2. runs the codex-scale harness (build/count/find/restore across slices),
 # 3. sizes identical slices with gzip/bzip2/zstd/xz for the space table.
 #
@@ -13,28 +13,30 @@
 #                         (the certificate builds it once via `zig build lab`)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-# bench/bounds/codex → package root (three hops). Formerly climbed into a
-# parent monorepo; this package is the repo.
-REPO="$(cd "${HERE}/../../.." && pwd)"
-KERNEL="${REPO}"
-OUT="${CODEX_OUT:-${REPO}/.local/codex-bench}"
+# The vendored resolver rather than a hand-counted climb: it also honors
+# GIST_CORPUS_ROOT, so this snapshot follows the same tree every other lane in
+# the mint measures instead of always being this checkout.
+# shellcheck source=../../apparatus/roots.sh
+source "${HERE}/../../apparatus/roots.sh"
+gist_resolve_roots "${HERE}" || exit 1
+OUT="${CODEX_OUT:-${KERNEL}/.local/codex-bench}"
 SIZES="${1:-1,4,16,64,128}"
 mkdir -p "${OUT}"
 
 if [[ ! -f "${OUT}/corpus.bin" ]]; then
   echo "── snapshotting corpus (deterministic sorted-path concat) ──"
-  python3 - "${REPO}" "${OUT}/corpus.bin" << 'PY'
+  python3 - "${CORPUS}" "${OUT}/corpus.bin" << 'PY'
 import os
 import sys
 from pathlib import Path
 
-repo, out = Path(sys.argv[1]), Path(sys.argv[2])
+corpus, out = Path(sys.argv[1]), Path(sys.argv[2])
 CAP = 192 << 20
 # Corpus scope: $GIST_ROOTS override (product env — same name the CLIs read),
 # else this package's source trees, else the whole checkout.
 ROOTS = os.environ.get("GIST_ROOTS", "").replace(":", " ").replace(",", " ").split() or [
     "src", "bench", "research"]
-ROOTS = [r for r in ROOTS if (repo / r).is_dir()] or ["."]
+ROOTS = [r for r in ROOTS if (corpus / r).is_dir()] or ["."]
 EXTS = {".zig", ".py", ".go", ".ts", ".tsx", ".rs", ".swift", ".sql", ".sh",
         ".md", ".toml", ".proto", ".ex", ".exs", ".css", ".yaml", ".yml", ".json"}
 SKIP = {".git", ".local", "node_modules", "target", "dist", "dist-types", "build",
@@ -45,13 +47,19 @@ SKIP = {".git", ".local", "node_modules", "target", "dist", "dist-types", "build
 total = files = 0
 with out.open("wb") as fh:
     for root in ROOTS:
-        base = repo / root
+        base = corpus / root
         if not base.is_dir():
             continue
         for p in sorted(base.rglob("*")):
             if total >= CAP:
                 break
-            if not p.is_file() or p.suffix not in EXTS or any(s in p.parts for s in SKIP):
+            # Skip tokens are judged against the path INSIDE the corpus, never the
+            # absolute one. A materialized corpus lives under `.local/corpus/<id>`,
+            # so matching on absolute parts skipped every file in it and handed
+            # Layer F a zero-byte snapshot that still looked like a successful walk.
+            if not p.is_file() or p.suffix not in EXTS:
+                continue
+            if SKIP.intersection(p.relative_to(corpus).parts):
                 continue
             try:
                 data = p.read_bytes()
