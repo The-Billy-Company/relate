@@ -166,7 +166,7 @@ pub fn build(b: *std.Build) void {
     // `zig build` pays only for the product surface. Both lanes below run at
     // the CLI's ReleaseFast posture, because both are timing tools and a
     // debug-built number is a claim about the build mode.
-    const lab_step = b.step("lab", "Build + install the measurement-lab executables (relate-knn, codex-scale) → zig-out/bin");
+    const lab_step = b.step("lab", "Build + install the measurement-lab executables (relate-knn, codex-scale, multipattern) → zig-out/bin");
 
     for ([_]struct {
         step: []const u8,
@@ -182,6 +182,11 @@ pub fn build(b: *std.Build) void {
             .step = "codex-scale",
             .root = "bench/bounds/codex/scale.zig",
             .blurb = "Prove the codex self-index at scale: entropy-bound space, flat-in-n count, exact restore",
+        },
+        .{
+            .step = "multipattern",
+            .root = "bench/rungs/multipattern/bench.zig",
+            .blurb = "Multi-pattern race arm: per-document attribution throughput, fail-closed against N independent searches",
         },
     }) |lane| {
         const mod = b.createModule(.{
