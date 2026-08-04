@@ -53,6 +53,7 @@ actually clone.
 | the Rust binding | rustup | `bindings/rust/rust-toolchain.toml` |
 | the Go binding | Go | `bindings/go/go.mod` |
 | the discipline gate | markdownlint-cli2, typos, shellcheck, golangci-lint | the actions in [`ci.yml`](.github/workflows/ci.yml), mirrored into `.mise.toml` |
+| the topology gate | [zoning](https://github.com/The-Billy-Company/zoning) **0.1.0** | the `topology` job in [`ci.yml`](.github/workflows/ci.yml), mirrored into `.mise.toml` |
 | coverage | kcov | only for `zig build coverage`, a local instrument |
 
 If you run [mise](https://mise.jdx.dev), that table is one command:
@@ -258,6 +259,11 @@ READMEs describe would be convention.
 zone list, low to high, where an import may only point back up the page. If your
 change needs a new import edge, edit the contract in the same commit and say why
 in the variance. Do not route around it.
+
+`mise install` puts `zoning` on your PATH, so you can run it while you edit
+instead of reading its verdict in review: `zoning verify` is what the topology
+job runs, `zoning map` draws the zone stack, and `zoning status --suggest`
+drafts the variance a new edge would need.
 
 The vocabulary has the same property.
 [`contract/kinship.toml`](contract/kinship.toml) is where the record kinds, the
