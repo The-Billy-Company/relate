@@ -8,7 +8,7 @@ composed blast/provenance face.
 
     for kin in relate.similar("src/server/api/main.go", min_grade="strong"):
         print(kin.unit, kin.grade)
-    reading_set = relate.pack("how does wallet crediting settle").paths
+    reading_set = relate.pack("how does Acme crediting settle").paths
 """
 
 from __future__ import annotations

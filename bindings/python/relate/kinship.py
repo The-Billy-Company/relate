@@ -186,7 +186,7 @@ def similar(
     spellings (`bytes`/`structure`/`echo`/`fused`) parse too.
 
     `matching` narrows the population to units an exact pattern admitted first —
-    "among the files that mention `SessionStore`, which resembles this one?".
+    "among the files that mention `AcmeStore`, which resembles this one?".
 
     Generated units stay in the population here (unlike the repetition verbs): a
     hand-written file's generated twin is a legitimate, often wanted answer. Units

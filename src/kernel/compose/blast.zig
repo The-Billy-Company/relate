@@ -844,11 +844,11 @@ test "prose and data files are mentioned, never definitions" {
     // confidence signal reads as declarations — `name:` and `name =` — and both
     // sort before the code that actually declares the symbol.
     const docs = [_][]const u8{
-        "ledger: the append-only wallet log\n",
+        "ledger: the append-only Acme log\n",
         "ledger = \"charges\"\n",
         "fn ledger() u32 {\n    return 1;\n}",
     };
-    const paths = [_][]const u8{ "docs/wallet.md", "spec/wallet.socket", "z/wallet.zig" };
+    const paths = [_][]const u8{ "docs/acme.md", "spec/acme.socket", "z/acme.zig" };
     var report = try compute(gpa, &docs, &paths, "ledger", .{});
     defer report.deinit();
 

@@ -125,17 +125,17 @@ const compileSet = candidates.compileSet;
 
 test "context: packs only inside the exact filter, never a non-matching file" {
     const gpa = t.allocator;
-    // The query describes wallet-grant code. Doc 2 does not contain the pattern
+    // The query describes Acme-grant code. Doc 2 does not contain the pattern
     // literal, so the exact filter must exclude it however well it would score.
     //
-    // Each admitted doc owns one aspect outright — `wallet` in a.zig, `ledger`
+    // Each admitted doc owns one aspect outright — `acme` in a.zig, `ledger`
     // in b.zig — so both earn a pick well clear of `minGain`. A fixture where
     // every admitted doc merely mentions the terms prices them at ~0 bits
     // (df == n ⇒ −log₂(1) == 0) and packs nothing, which would vacuously pass
     // the "never a non-matching file" loop below.
-    const terms = [_][]const u8{ "wallet", "grant", "ledger" };
+    const terms = [_][]const u8{ "acme", "grant", "ledger" };
     const docs = [_][]const u8{
-        "fn grant() { the wallet wallet credit lands on the balance }",
+        "fn grant() { the acme acme credit lands on the balance }",
         "grant helper: ledger ledger rows land on the audit trail",
         "unrelated telemetry sampling notes for the fleet dashboards here",
         "grant summary: totals only, nothing else of note here",
@@ -160,13 +160,13 @@ test "context: packs only inside the exact filter, never a non-matching file" {
 
 test "context: local pricing keeps a rare-in-the-set term discriminating" {
     const gpa = t.allocator;
-    // `wallet` sits in one of the three admitted docs. Corpus-wide it might be
+    // `acme` sits in one of the three admitted docs. Corpus-wide it might be
     // house vocabulary; inside this narrowed set it is the whole signal, and
     // the doc that owns it must be pickable.
-    const terms = [_][]const u8{ "wallet", "grant" };
+    const terms = [_][]const u8{ "acme", "grant" };
     const docs = [_][]const u8{
         "grant grant grant grant ledger notes",
-        "grant wallet wallet wallet wallet wallet balance",
+        "grant acme acme acme acme acme balance",
         "grant grant grant audit trail rows",
     };
     const paths = [_][]const u8{ "a.zig", "b.zig", "c.zig" };

@@ -257,7 +257,7 @@ test "recall bands separate a quotation from a paraphrase from a stranger" {
     try t.expectEqual(Grade.identical, of(.recall, 0.9496)); // lifted verbatim
     try t.expectEqual(Grade.strong, of(.recall, 0.8245)); // on-target paraphrase
     try t.expectEqual(Grade.strong, of(.recall, 0.6349));
-    try t.expectEqual(Grade.weak, of(.recall, 0.4410)); // wallet query, irregex scope
+    try t.expectEqual(Grade.weak, of(.recall, 0.4410)); // Acme query, irregex scope
     try t.expectEqual(Grade.weak, of(.recall, 0.4277)); // the one-word `def` query
     try t.expectEqual(Grade.none, of(.recall, 0.2316)); // nonsense
 }

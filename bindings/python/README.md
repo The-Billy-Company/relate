@@ -53,7 +53,7 @@ than filtering after the fact.
 ```python
 # The anti-redundant reading set: each pick priced by what it adds BEYOND the
 # picks before it, so a near-duplicate of an earlier pick never makes the cut.
-packed = relate.pack("how does wallet crediting settle", top=6)
+packed = relate.pack("how does Acme crediting settle", top=6)
 print(packed.paths, packed.coverage, packed.foreign)
 
 # Where did this text come from? Rewrites it as corpus quotations, priced in
@@ -63,7 +63,7 @@ for phrase in quoted.phrases:
     print(phrase.source, phrase.text)
 
 # N patterns, one attributed walk, instead of N cold searches.
-for hit in relate.patterns(["WalletService", "billing_check", "grant"]):
+for hit in relate.patterns(["AcmeService", "acme_check", "acme_grant"]):
     print(hit.pattern, hit.path)
 ```
 
@@ -71,11 +71,11 @@ for hit in relate.patterns(["WalletService", "billing_check", "grant"]):
 
 `similar`, `families`, and `pack` all take `matching`, which narrows the
 population to units an exact pattern admitted _first_. "Among the files that
-mention `WalletService`, which are forks of each other?" is one call, not a
+mention `AcmeService`, which are forks of each other?" is one call, not a
 pipe, and the noise floor becomes the matching set instead of the whole corpus.
 
 ```python
-relate.families(matching=["WalletService"], channel="copies")
+relate.families(matching=["AcmeService"], channel="copies")
 ```
 
 ## What it needs

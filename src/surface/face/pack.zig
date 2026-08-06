@@ -405,8 +405,8 @@ test "a pick names the aspects it is there for, and the patterns that admitted i
 
     // The exact evidence is its own column and never folded into the bits.
     buf.clearRetainingCapacity();
-    pick(&buf, gpa, &o, &answer, 2, "persist.zig", 3.0, 0.15, 0.77, 0b10, &.{ "grant", "wallet" });
-    try t.expectEqualStrings("+3.0 bits  0.77  persist.zig  mtime  [grant, wallet]\n", buf.items);
+    pick(&buf, gpa, &o, &answer, 2, "persist.zig", 3.0, 0.15, 0.77, 0b10, &.{ "grant", "acme" });
+    try t.expectEqualStrings("+3.0 bits  0.77  persist.zig  mtime  [grant, acme]\n", buf.items);
 
     // A pick attributed to no single aspect still renders — its gain was spread
     // too thin for any one term to claim it, which is itself information.

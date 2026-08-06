@@ -128,7 +128,7 @@ test "select all: only docs matching every pattern survive the intersection" {
 
 test "select: membership equals independent single-pattern matching" {
     const gpa = t.allocator;
-    const docs = [_][]const u8{ "the wallet grant path", "budget only", "grant only", "unrelated" };
+    const docs = [_][]const u8{ "the Acme grant path", "budget only", "grant only", "unrelated" };
     var set = try compileSet(gpa, &.{ "grant", "budget" });
     defer set.deinit(gpa);
     var cs = try select(gpa, &docs, &set, .any);

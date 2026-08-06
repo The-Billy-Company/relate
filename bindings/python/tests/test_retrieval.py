@@ -36,18 +36,18 @@ needs_relate = pytest.mark.skipif(not _binary_available(), reason="no relate bin
 
 # One distinctive sentence, planted in exactly one file. Long enough that its
 # phrases survive the minimum-phrase floors both verbs apply.
-PLANTED = "the wallet ledger reconciles every credit against the stripe charge identifier"
+PLANTED = "the Acme ledger reconciles every credit against the external charge identifier"
 
 
 @pytest.fixture
 def corpus(tmp_path, monkeypatch):
     """A four-file corpus, plus a private artifact home so nothing global is touched."""
-    (tmp_path / "wallet.py").write_text(
+    (tmp_path / "acme.py").write_text(
         f'"""{PLANTED}."""\n\n\ndef reconcile(ledger, charge_id):\n    return ledger.get(charge_id)\n'
     )
-    # A near-copy of wallet.py: `pack` must not spend a pick on it once wallet.py
+    # A near-copy of acme.py: `pack` must not spend a pick on it once acme.py
     # is chosen, because it adds almost no bits the first pick did not.
-    (tmp_path / "wallet_copy.py").write_text(
+    (tmp_path / "acme_copy.py").write_text(
         f'"""{PLANTED}."""\n\n\ndef reconcile(ledger, charge_id):\n    return ledger.get(charge_id)\n'
     )
     (tmp_path / "unrelated.py").write_text(
@@ -63,7 +63,7 @@ def test_recall_ranks_the_planting_above_the_unrelated(corpus):
     hits = retrieval.recall(PLANTED, roots=["."], top=4, cwd=corpus)
     assert hits, "expected at least one recalled file"
     ranked = [h.path.removeprefix("./") for h in hits]
-    assert ranked[0] in {"wallet.py", "wallet_copy.py"}
+    assert ranked[0] in {"acme.py", "acme_copy.py"}
     # Coding gain descends, and the file that shares no vocabulary must not
     # outrank the one that contains the sentence verbatim.
     assert all(x.gain >= y.gain for x, y in pairwise(hits))
@@ -97,8 +97,8 @@ def test_pack_refuses_to_spend_a_pick_on_a_near_duplicate(corpus):
     picks = [p.removeprefix("./") for p in packed.paths]
     assert picks, "expected a reading set"
     # The whole claim of marginal pricing: both twins can never be worth reading.
-    assert not {"wallet.py", "wallet_copy.py"} <= set(picks)
-    assert picks[0] in {"wallet.py", "wallet_copy.py"}
+    assert not {"acme.py", "acme_copy.py"} <= set(picks)
+    assert picks[0] in {"acme.py", "acme_copy.py"}
 
 
 @needs_relate
@@ -134,7 +134,7 @@ def test_quote_attributes_phrases_that_really_occur(corpus):
         assert phrase.text in body, f"attributed {phrase.text!r} to a file that lacks it"
     # A sentence lifted verbatim out of the corpus is almost entirely quotable.
     assert quoted.novelty < 0.5
-    assert set(quoted.sources) <= {"./wallet.py", "wallet.py", "./wallet_copy.py", "wallet_copy.py"}
+    assert set(quoted.sources) <= {"./acme.py", "acme.py", "./acme_copy.py", "acme_copy.py"}
 
 
 @needs_relate
