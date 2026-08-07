@@ -10,10 +10,11 @@
 # persisted artifacts, and the verbs that ship them.
 /src/                   @GriffinCanCode
 
-# The two contracts. `relate.ward` is the import topology; `kinship.toml` is the
+# The two contracts. `charter.zone` is the import topology; `kinship.toml` is the
 # vocabulary - record kinds, channels, grade bands, the closed verb set - and
 # the gist repository vendors a copy to check its bindings against, so a change
 # here reaches another repository.
+/charter.zone           @GriffinCanCode
 /contract/              @GriffinCanCode
 
 # The C ABI other packages link against.

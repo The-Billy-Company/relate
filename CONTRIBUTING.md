@@ -260,7 +260,7 @@ grows two spellings of the same bug.
 
 Zig has no visibility rules between files in a package, so every boundary the
 READMEs describe would be convention.
-[`contract/relate.zone`](contract/relate.zone) is the machine-checkable half: a
+[`charter.zone`](charter.zone) is the machine-checkable half: a
 zone list, low to high, where an import may only point back up the page. If your
 change needs a new import edge, edit the contract in the same commit and say why
 in the variance. Do not route around it.

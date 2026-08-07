@@ -1,0 +1,57 @@
+// relate-search — import topology of the Python binding.
+//
+// The wheel is not the engine. Every verb here answers by running the `relate`
+// binary and decoding what it prints, so this package is a decode layer over
+// the two questions the CLI exposes — what is near THIS one (`similar`), and
+// what repeats among ALL of them (`echoes`) — plus the atlas lifecycle that
+// keeps both warm. Small contract, and the one law worth having is that the
+// shape stays a stack: build hooks below, the importable package above them,
+// tests on top of both.
+//
+// Judged by `zoning verify` under the `python` dialect, from the repository
+// root, alongside `charter.zone` (the Zig side).
+
+package relate-search {
+    root     .
+    language python
+}
+
+// Tiers, low to high. An import may only point back up the page.
+zones {
+    // The wheel's build hooks — `hatch_readme.py` rewrites the PyPI long
+    // description at build time. It runs under hatchling and never under the
+    // package, so it sits at the bottom and imports nothing of ours.
+    packaging  *.py
+
+    // The importable surface. Flat on purpose: `corpus` holds the scope, the
+    // timeout, and the run helper that every other module is a specialization
+    // of, `__init__` is the facade, and the rest are one question each
+    // (`kinship` · `retrieval` · `sweep` · `lifecycle`). One zone because the
+    // modules are peers over a shared base, not layers.
+    binding    relate/**
+
+    // Behavioral tests. They drive the binding the way a caller does, and pull
+    // `gist` purely as an independent oracle.
+    tests      tests/**
+}
+
+// Reach outside the package: the distributions the wheel declares.
+
+// The C-ABI floor's Python side — the shell runner, the grade bands, the
+// decode table, and the error taxonomy every one of these bindings shares.
+// The binding is a thin layer on top of it.
+use irgx by binding tests
+
+// The exact-search binding, held only by the tests. Kinship answers by
+// compression; checking it against the tool that answers by pattern is what
+// makes a parity test worth running.
+use gist by tests
+
+// Build- and test-time only, carried by the tier that runs under them.
+use hatchling by packaging
+use pytest by tests
+
+// Structural laws. Three tiers and no indirection, so a hop ceiling of one is
+// what the tree needs; lower it if a layer ever collapses, never raise it.
+limit  reach to 1 hop
+forbid cycles across directories

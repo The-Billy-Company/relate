@@ -500,7 +500,7 @@ zig build coverage    # per-function coverage
 
 Depends on `irregex` - the library - for the corpus walk,
 the pattern engines behind `--matching`, and the shared primitives.
-Architecture is machine-checked by `contract/relate.zone`.
+Architecture is machine-checked by `charter.zone`.
 
 ## Provenance
 

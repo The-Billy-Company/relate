@@ -64,7 +64,7 @@ of the same bug.
 - [ ] No gate was made to skip, soften, or self-satisfy in order to go green
 - [ ] A change to the vocabulary - a channel, a grade band, a verb, a retired
       spelling - moved `contract/kinship.toml` with it
-- [ ] `contract/relate.ward` is updated in this PR if a new import edge was
+- [ ] `charter.zone` is updated in this PR if a new import edge was
       needed
 - [ ] Anything borrowed from a paper or another tool is cited in
       `research/relate/PRIOR_ART.md` and at the call site

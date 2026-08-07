@@ -124,7 +124,7 @@ kind of report we want:
 - the suite runs ReleaseSafe by design, because the differential suites exist
   partly to trip the safety checks a release build elides, on Linux and macOS
   both;
-- an architecture contract ([`contract/relate.zone`](contract/relate.zone)) that
+- an architecture contract ([`charter.zone`](charter.zone)) that
   machine-checks the import topology, and a vocabulary contract
   ([`contract/kinship.toml`](contract/kinship.toml)) that the sibling bindings
   are checked against;
