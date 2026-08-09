@@ -37,8 +37,8 @@ categories = [
 
 # `LICENSE` and `NOTICE` are copies of the repository's, kept beside this manifest
 # rather than referenced upward: Cargo cannot package a file outside the crate
-# directory, so without the copies an Apache-2.0 crate shipped no license text and
-# no attribution notice at all - the two things section 4 of that license requires a
+# directory, so without the copies an Apache-2.0 crate shipped no licence text and
+# no attribution notice at all - the two things section 4 of that licence requires a
 # redistributor to hand on. Keep them byte-identical to the root pair.
 #
 # `rust-toolchain.toml` is deliberately not shipped. It pins 1.96.0 so this
@@ -57,7 +57,7 @@ name = "relate"
 # Local path for in-tree development. A published build ignores it and resolves
 # the same version range of `irgx` through the registry; the path override is
 # only for this checkout.
-irgx = { version = "1.0.0", path = "../../../irregex/bindings/rust" }
+irgx = { version = "2.0.0", path = "../../../irregex/bindings/rust" }
 
 [dev-dependencies]
 tempfile = "3"

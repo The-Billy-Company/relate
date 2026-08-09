@@ -18,7 +18,10 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # the mint measures instead of always being this checkout.
 # shellcheck source=../../apparatus/roots.sh
 source "${HERE}/../../apparatus/roots.sh"
-gist_resolve_roots "${HERE}" || exit 1
+# `set -e` already aborts the script on a nonzero return; invoking this
+# separately from an `|| exit` (rather than in one line) keeps errexit live
+# for the call, per shellcheck SC2310.
+gist_resolve_roots "${HERE}"
 OUT="${CODEX_OUT:-${KERNEL}/.local/codex-bench}"
 SIZES="${1:-1,4,16,64,128}"
 mkdir -p "${OUT}"
