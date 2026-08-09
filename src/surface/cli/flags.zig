@@ -1,7 +1,8 @@
 //! Shared CLI vocabulary — argv value parsing + corpus-root resolution.
 //!
-//! The face-agnostic plumbing every product face (`gist` · `relate` ·
-//! `irregex`) and their verb-support modules speak: pull the value after a
+//! The face-agnostic plumbing the faces that import this shelf (`relate` ·
+//! `blast`) and their verb-support modules speak — gist keeps its own primer
+//! rather than consuming this one: pull the value after a
 //! flag, parse a bounded number, resolve positional args to corpus roots, test
 //! root membership. It lives once here so no face re-spells `parseInt … catch
 //! die` and no face forks the root-boundary rule.

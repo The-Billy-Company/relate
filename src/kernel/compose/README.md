@@ -1,6 +1,6 @@
 # `src/kernel/compose/` — the exact-before-statistical tier
 
-The pure composition kernels the `irregex` binary drives
+The pure composition kernels the `blast` binary drives
 (exact ∩ compression over current bytes).
 A loaded corpus plus a compiled `PatternSet` (the MATCH primitive) yields a
 typed **`CandidateSet`**: the subset of docs the exact selector admits, each
@@ -20,7 +20,7 @@ whole-corpus noise.
 
 ## Invariants
 
-- **Pure kernels.** No I/O, no argv, no stdout. The `blast` face (`blast/src/surface/face/irregex/`)
+- **Pure kernels.** No I/O, no argv, no stdout. The `blast` face (`blast/src/surface/face/blast/`)
   loads the corpus / codex shelf and renders; these compute.
 - **The mask is one `u64`.** `candidates` caps at 64 patterns — well past any
   composed workflow's ask; a caller with more intents is running a `relate

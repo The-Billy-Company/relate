@@ -3,7 +3,7 @@
 | File | Job |
 |---|---|
 | `lib.rs` | twelve free functions + re-exports from `irregex` |
-| `kinship.rs` | `similar` · `dups` · `clusters` · `echoes` · … |
+| `kinship.rs` | `similar` · `echoes` (legacy `dups`/`clusters`/`concepts` wrappers spell today's CLI) · … |
 | `retrieval.rs` | `recall` · `pack` · `quote` |
 | `sweep.rs` | `patterns` · `pattern_counts` |
 

@@ -33,7 +33,7 @@ Cited at the point of use in:
   gzip-per-pair NCD)
 - `src/kernel/kinship/recall/lexicon.zig` / `zipper.zig` (asymmetric "which docs
   describe this query cheaply?")
-- `src/surface/face/relate/README.md` § Prior art
+- `src/surface/face/README.md` § Prior art (and this dossier)
 
 ---
 
@@ -108,7 +108,7 @@ Relate's `patterns` verb deliberately **does not** follow Hyperscan-style
 fused multi-pattern DFAs. Those win throughput by collapsing attribution.
 The agent loop needs _which_ of N intents hit. Contract: one walk, N
 patterns, answer ≡ N independent single-pattern runs (prefilter forced on
-and off). Engine: `src/kernel/slate/`. Race harness:
+and off). Engine: `irregex/src/kernel/slate/`. Race harness:
 `bench/races/multipattern.sh` (~6× vs sequential `gist -l` on a 10-pattern
 slate, with attribution preserved).
 

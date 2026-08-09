@@ -11,6 +11,6 @@ index tiers.
 | `cento.zig` | Ziv–Merhav cross-parse + Shannon phrase pricing |
 | `cento_test.zig` | parse ≡ greedy oracle; native < kindred < foreign bits |
 
-Product face: `relate quote <text>` (and `irregex provenance`, which re-checks
+Product face: `relate quote <text>` (and `blast provenance`, which re-checks
 each attributed phrase against live bytes). Build the shelf first with
 `relate index --shelf` or `gist codex build`.

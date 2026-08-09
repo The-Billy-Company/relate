@@ -1,7 +1,7 @@
 # `src/kernel/kinship/recall/` — query → the files that best explain it
 
 Content retrieval by compression, not regex: price how cheaply each corpus file
-would describe a query, then either rank the winners (`search`) or greedily
+would describe a query, then either rank the winners (a bare-text `similar`) or greedily
 assemble the non-redundant set that covers it (`pack`).
 
 ## Files
@@ -27,5 +27,5 @@ read engine that folds it against live bytes is
 ## When to edit
 
 Pricing model, candidate nomination, or coverage marginals. Verb dispatch stays
-in the gist product chassis
-(`gist/src/surface/face/relate/`).
+in this package's face
+(`src/surface/face/`).

@@ -105,7 +105,7 @@ unknown-command error — it exits 2 with the invocation that answers it:
 The last two are the composition fold: exact-then-compression is a **modifier**
 (`--matching`) on the questions relate already asks, not a parallel binary of
 its own.
-`irregex` keeps only the two verbs that are genuinely new compositions rather
+`blast` keeps only the two verbs that are genuinely new compositions rather
 than a filtered relate query — `provenance` and `blast`.
 
 Plus the conventions every irregex face keeps: `--help` / `--version` /
@@ -259,9 +259,9 @@ its typed flags, and the handler that runs it — and
 [`surface/cli/manifest.zig`](https://github.com/The-Billy-Company/gist/blob/main/src/surface/cli/manifest.zig) renders `--help`,
 `--schema`, the dispatch, the unknown-verb line, **and the process itself**
 from that one table. So `main.zig` holds no surface at all: it names its
-repertoire and hands over. The work lives in five sibling drivers — `probe.zig`
-(the neighbor verb) · `repeat.zig` (the repetition verb) · `pack.zig` ·
-`quote.zig` · `attribute.zig` — plus `lifecycle.zig`, over three shared layers
+repertoire and hands over. The work lives in five sibling drivers —
+`similar.zig` (the neighbor verb) · `echoes.zig` (the repetition verb) ·
+`pack.zig` · `quote.zig` · `patterns.zig` — plus `lifecycle.zig`, over three shared layers
 that exist precisely because the two kinship verbs used to duplicate them:
 `options.zig` parses one flag vocabulary into one `Opts`, `units.zig` resolves
 any `unit × warmth × optional exact filter` into one comparison table, and
@@ -270,11 +270,12 @@ sorting, grading, and the closing verdict are shared through
 [`surface/cli/grade.zig`](https://github.com/The-Billy-Company/gist/blob/main/src/surface/cli/grade.zig)'s `Sift`, so a verb contributes
 only its question. The engines live under
 `relate/src/kernel/kinship/`
-(sketch · silhouette · concepts · lexicon · zipper),
+(sketch · silhouette · lexicon · zipper),
 `irregex/src/kernel/slate/`
-(patterns · loom), `relate/src/kernel/codex/` (FM
-math) + `relate/src/corpus/index/shelf/` (the
-persisted SHLF behind `quote`), and
+(patterns · loom), `irregex/src/kernel/codex/` (FM-index
+math) + `irregex/src/corpus/index/shelf/` (the
+persisted SHLF behind `quote`, with `relate/src/kernel/codex/cento.zig` as the
+Ziv–Merhav quoter over it), and
 `relate/src/corpus/index/atlas/` (the persisted kinship
 atlas behind the warm verbs).
 
@@ -438,12 +439,13 @@ novel-math claim in this kernel is Gist's Crest sieve
 
 - `src/kernel/kinship/` - metric · cluster · recall
 - `src/kernel/anatomy/` - structure silhouettes (the "shapes" channel)
-- `src/kernel/codex/` - the compression codebook + FM-index (vendored libsais)
+- `src/kernel/codex/` - the Ziv–Merhav cento over irregex's FM-index (libsais is
+  vendored in irregex, not here)
 - `src/kernel/compose/` - the composed queries: blast radius,
   provenance, `--matching` candidates, family, regions (the engines the
   `blast` face drives)
-- `src/corpus/index/{atlas,frag,shelf}/` - the persisted artifacts:
-  file kinship atlas, function fragment atlas, the codex shelf
+- `src/corpus/index/{atlas,frag}/` - the persisted artifacts:
+  file kinship atlas, function fragment atlas (the codex shelf is in irregex)
 - `src/exec/retrieval/` - text-probe retrieval by coding gain
 - `src/exec/session/warm/` - the warm tier: fold changed files into a
   persisted atlas, byte-identical to a cold rebuild
@@ -481,8 +483,9 @@ detail is in [`bindings/python`](bindings/python/README.md),
 
 ## Build and test
 
-Zig 0.16, no network; libsais builds from `vendor/libsais/` (the zon
-entry is a `.lazy` url + hash pin for provenance only).
+Zig 0.16, no network; libsais builds inside the `irregex` dependency rather than
+being vendored here (its zon entry is a `.lazy` url + hash pin for provenance
+only).
 
 ```bash
 zig build check       # compile everything, run nothing
@@ -508,4 +511,4 @@ Extracted from a package path inside a private monorepo
 (cut at ce430bbaab). The engine was born as the kernel's
 kinship/codex tiers and split out along the tuning boundary: everything
 priced against the same corpus statistics stays here, together.
-Apache-2.0; `NOTICE` attributes the vendored libsais.
+Apache-2.0; third-party notices for libsais live with the `irregex` package.

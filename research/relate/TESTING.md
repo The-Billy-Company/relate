@@ -45,7 +45,7 @@ to that equality.
 
 ## 3. Warm atlas byte-identity
 
-`similar` / `dups` / `clusters` / `echoes`:
+`similar` / `echoes` (incl. `--as copies` / `--shape families`):
 
 - missing / corrupt atlas → live build;
 - `--no-index` → live build;
@@ -56,7 +56,7 @@ to that equality.
   relate CLI README). Warm speed depends on atlas size, freshness churn, and
   scope; the atlas is an accelerator, never a latency guarantee or authority.
 
-`search` / `pack` reuse Gist's persisted trigram codebook, fold changed files
+Text-probe `similar` / `pack` reuse Gist's persisted trigram codebook, fold changed files
 through the shared freshness overlay, and retain the live fingerprint lexicon
 as the missing-index fallback. Their CLI gate must include a three-byte
 positive, a descriptive query, a scoped query, and a multi-file pack.
@@ -97,7 +97,7 @@ The historical labeled lint-registry run found strong top-10 echo precision,
 but no checked-in labeled artifact currently ratchets that number; treat it as
 an observation, not a product guarantee. Structure has **no** clean absolute
 dup threshold across corpora (measured overlap of family-max vs cross-min at
-every winnow setting) — that is why `echoes` ranks a _gap_, while `dups`
+every winnow setting) — that is why `echoes` ranks a _gap_, while `echoes --as copies`
 verifies byte-near candidates.
 
 ---

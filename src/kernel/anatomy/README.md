@@ -7,14 +7,14 @@ identifiers, and function extents?"_ so every face can agree.
 
 Extracted from the old `compose/` grab-bag because none of these files was
 set algebra: their consumers cross all three faces (gist `--in-comments`,
-relate’s frag units, irregex blast).
+relate’s frag units, blast’s radius).
 
 | File | Job |
 | ---- | --- |
 | `token.zig` | Source-token vocabulary — `isIdentStart` / `isIdentByte` / `nextIdent` / `wordRun`. Kinship silhouettes import this so token boundaries cannot drift between anatomy’s dependency rows and structure fingerprints |
-| `lexspan.zig` | Comment / code / string span lexer |
+| `lexspan.zig` (in irregex) | Comment / code / string span lexer, reached as `irregex.inner.lexspan` |
 | `spans.zig` | Function / context geometry (frag index, blast, regions) |
 | `leans.zig` | Identifier-dependency resolution (blast’s dependency tier); keyword stoplists stay private |
 
 Pure kernel: feed it bytes, get geometry. Walk policy and `-t` tables live in
-`corpus/scope/`.
+irregex's `corpus/scope/`.

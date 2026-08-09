@@ -9,7 +9,7 @@
 //!
 //! It lives here, beside the records it builds, because two rungs need it and
 //! they sit on opposite sides of the tree: the LIVE rung
-//! (`surface/face/relate/kinship.zig`) fingerprints a whole scoped corpus, and
+//! (`surface/face/kinship.zig`) fingerprints a whole scoped corpus, and
 //! the atlas FRESHNESS FOLD (`corpus/index/atlas/atlas.zig`) re-fingerprints
 //! whatever changed since the anchor. The fold used to do it one file at a time
 //! in a serial loop — on a tree ~10 coworker agents are editing, that is

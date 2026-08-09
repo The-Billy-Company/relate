@@ -3,7 +3,7 @@
 The `relate` engine's math: measure how alike two byte bodies are by how
 cheaply one describes the other — no parsers, no language list, no embeddings.
 Pure kernel math; verb dispatch and rendering live in
-`gist/src/surface/face/relate/`.
+`src/surface/face/` in this package.
 
 The floor splits by the **question** each group answers:
 

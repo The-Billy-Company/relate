@@ -1,8 +1,8 @@
 # Relate — search by shared information
 
 **Status:** shipped product + measured evidence. CLI face:
-`src/surface/face/relate/`. Engines: `src/kernel/kinship/` + `src/kernel/slate/` +
-`src/corpus/index/{atlas,codex}/`. Public contract: `relate --schema` /
+`src/surface/face/`. Engines: `src/kernel/kinship/` + irregex's slate and codex +
+`src/corpus/index/{atlas,frag}/`. Public contract: `relate --schema` /
 [`contract/kinship.toml`](../../contract/kinship.toml). Prior art:
 `PRIOR_ART.md`; evidence: `TESTING.md`.
 
@@ -35,14 +35,15 @@ the sources that made the description short.
 
 #### Find the neighborhood
 
-`similar` finds the nearest files. `dups` finds copy-paste drift. `clusters`
-returns entire fork families rather than a pair list the caller must join.
+`similar` finds the nearest files. `echoes --as copies` finds copy-paste drift.
+Adding `--shape families` returns entire fork families rather than a pair list
+the caller must join.
 `echoes` finds the stranger case: files far apart in words but close in
 shape—the repeated abstraction hiding beneath renamed identifiers.
 
 #### Retrieve a useful set
 
-`search` asks which individual files describe a query cheaply. `pack` asks the
+A bare-text `similar` asks which individual files describe a query cheaply. `pack` asks the
 more important context-window question: which **set** adds the most distinct
 information? Every pick carries a marginal-bit receipt, so the caller can see
 what it contributed and when coverage stopped growing.
@@ -66,12 +67,12 @@ although its machinery is exact matching rather than compression.
 
 | verb               | question                                     | engine                      |
 | ------------------ | -------------------------------------------- | --------------------------- |
-| `search`           | which files describe this text cheapest?     | lexicon → zipper            |
+| `similar <text>`   | which files describe this text cheapest?     | lexicon → zipper            |
 | `pack`             | which _set_ covers it without redundancy?    | priced coverage + greedy    |
 | `quote`            | rewrite as priced corpus quotations          | codex shelf + cento         |
-| `similar`          | what else is like this file?                 | sketch / silhouette / fused |
-| `dups`             | near-duplicate pairs                         | sketch distance ≤ T         |
-| `clusters`         | fork families (transitive dups)              | connected components        |
+| `similar <path>`   | what else is like this file?                 | sketch / silhouette / fused |
+| `echoes --as copies` | near-duplicate pairs                       | sketch distance ≤ T         |
+| `echoes --as copies --shape families` | fork families (transitive) | connected components        |
 | `echoes`           | same skeleton, different vocabulary          | bytes − structure           |
 | `patterns`         | N patterns, one walk, Gist-exact attribution | batch / loom                |
 | `index` / `status` | atlas (+ optional shelf) lifecycle           | atlas + codex               |

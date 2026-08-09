@@ -33,8 +33,8 @@ stronger novel-math claim lives on the Gist side in the Crest sieve
 | `src/surface/face/`        | product face (query verbs + lifecycle + schema; ships the `relate` binary)     |
 | `src/kernel/kinship/`      | sketch (LZJD) · silhouette (structure) · lexicon (recall) · zipper (exact ΔAb) |
 | `../irregex/src/kernel/slate/` | `patterns` / loom (N-pattern exact attribution; lives in the library)       |
-| `src/corpus/index/atlas/`  | persisted kinship atlas (warm `similar`/`dups`/`clusters`/`echoes`)            |
-| `src/kernel/codex/` + `src/corpus/index/shelf/` | FM-index math + persisted SHLF behind `quote` (shared with `gist codex`) |
+| `src/corpus/index/atlas/`  | persisted kinship atlas (warm `similar`/`echoes`)                              |
+| `src/kernel/codex/` (cento) + `irregex/src/corpus/index/shelf/` | Ziv–Merhav quoter over irregex's FM-index + its persisted SHLF behind `quote` (shared with `gist codex`) |
 | `bench/conformance/relate/` | compression-vs-embeddings knn harness (`zig build lab`)                       |
 
 ## Run

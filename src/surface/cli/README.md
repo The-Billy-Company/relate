@@ -30,6 +30,6 @@ Flag-value parse shapes, the corpus-root resolution/membership rule, how a
 face renders itself, or what a kinship score is worth. What each face's verbs
 _are_ stays in that face's `repertoire.zig`
 ([relate](../face/repertoire.zig) ·
-`blast/src/surface/face/irregex/repertoire.zig`) — this directory renders a
+`blast/src/surface/face/blast/repertoire.zig`) — this directory renders a
 verb table, it never enumerates one. Kinship math stays in
 `src/kernel/kinship/`.
