@@ -611,6 +611,7 @@ fn dieCompile(e: Fault) noreturn {
         error.OutOfMemory,
         error.TimedOut,
         error.Exhausted,
+        error.BudgetExceeded,
         => die("--matching: {s}\n", .{@errorName(e)}),
     }
 }
