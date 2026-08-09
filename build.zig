@@ -27,7 +27,7 @@ pub fn build(b: *std.Build) void {
     // The library and the product chassis beneath, at matching optimize —
     // irregex carries PCRE2 + libsais; gist carries the daemon the answer keep
     // dials. Linking `relate` links the whole stack.
-    const irgx_dep = b.dependency("irregex", .{ .target = target, .optimize = optimize });
+    const irgx_dep = b.dependency("irregex", engineOptions(target, optimize));
     const gist_dep = b.dependency("gist", .{ .target = target, .optimize = optimize });
     const deps = [_]std.Build.Module.Import{
         .{ .name = "irregex", .module = irgx_dep.module("irregex") },
@@ -89,7 +89,7 @@ pub fn build(b: *std.Build) void {
         .{ .name = "irregex", .module = if (cli_optimize == optimize)
             irgx_dep.module("irregex")
         else
-            b.dependency("irregex", .{ .target = target, .optimize = cli_optimize }).module("irregex") },
+            b.dependency("irregex", engineOptions(target, cli_optimize)).module("irregex") },
         .{ .name = "relate", .module = cli_engine },
     };
     const exe = b.addExecutable(.{
@@ -260,7 +260,25 @@ fn engines(
     optimize: std.builtin.OptimizeMode,
 ) [2]std.Build.Module.Import {
     return .{
-        .{ .name = "irregex", .module = b.dependency("irregex", .{ .target = target, .optimize = optimize }).module("irregex") },
+        .{ .name = "irregex", .module = b.dependency("irregex", engineOptions(target, optimize)).module("irregex") },
         .{ .name = "gist", .module = b.dependency("gist", .{ .target = target, .optimize = optimize }).module("gist") },
     };
+}
+
+/// The option set every `b.dependency("irregex", …)` in this package must pass.
+///
+/// Zig keys dependency dedup on the WHOLE option set, not on target/optimize,
+/// and `gist` asks the engine for `lib-optimize` so its C-ABI pair matches its
+/// own mode. A sibling passing two options where gist passes three therefore
+/// gets a SECOND instance of `irregex/src/root.zig`, and the two collide the
+/// moment one binary imports both this package and gist — "file exists in
+/// modules 'irregex' and 'irregex0'". It is a link-time error from a build
+/// graph that reads as if it matched, so the set lives in one function rather
+/// than at three call sites that have to agree by eye.
+fn engineOptions(target: std.Build.ResolvedTarget, optimize: std.builtin.OptimizeMode) struct {
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+    @"lib-optimize": std.builtin.OptimizeMode,
+} {
+    return .{ .target = target, .optimize = optimize, .@"lib-optimize" = optimize };
 }
