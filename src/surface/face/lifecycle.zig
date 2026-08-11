@@ -40,7 +40,9 @@ pub fn runIndex(gpa: std.mem.Allocator, io: std.Io, argv: []const []const u8) !v
 
     const run = assay.Run.open(gpa, io, false);
     const built_ns: i64 = @intCast(assay.anchor(io).ns());
-    const roots = try corpus_mod.resolveRoots(gpa);
+    // A build verb: stand at the checkout root, so the atlas keys its sketches
+    // by the tree-relative paths `similar`/`echoes` will probe it with.
+    const roots = try corpus_mod.enterTree(gpa, io, &.{});
     defer corpus_mod.freeRoots(gpa, roots);
     var corpus = try corpus_mod.load(gpa, io, roots, .contiguous);
     defer corpus.deinit();
