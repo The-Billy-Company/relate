@@ -1,6 +1,6 @@
 """Hermetic tests for the certificate mint ledger (ledger.py).
 
-VENDORED, BYTE-IDENTICAL across irregex/gist/relate/blast
+VENDORED, BYTE-IDENTICAL across all four ecosystem packages
 (`bench/apparatus/SHARED.sha256`, checked by `shared_drift.py`).
 
 Pins the four contracts the ledger exists to hold: a **dropped layer is loud**
@@ -128,7 +128,7 @@ class CommitIsProvenanceTests(unittest.TestCase):
             assert mint.commit is None
             assert mint.platform == "linux"
 
-    def test_an_unparsable_machine_json_degrades_instead_of_failing(self) -> None:
+    def test_an_unparseable_machine_json_degrades_instead_of_failing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             bundle = _bundle(Path(tmp))
             (bundle / "machine.json").write_text("{not json")
