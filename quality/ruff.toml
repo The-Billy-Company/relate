@@ -1,6 +1,10 @@
 # Root tools and the binding use one Python shape. The package repeats these
 # settings in pyproject.toml because Ruff resolves from the nearest ancestor.
 line-length = 100
+# The version every checkout pins in .mise.toml. Undeclared, ruff assumes a
+# floor old enough to call tomllib a third-party import, which sorts the shared
+# certificate tooling into a block the siblings' formatters reject.
+target-version = "py312"
 
 [lint]
 select = [ "E", "F", "I", "UP", "B", "SIM" ]
