@@ -280,10 +280,23 @@ jobs:
       id-token: write # crates.io exchanges this OIDC token for a short-lived registry token.
     defaults:
       run:
-        working-directory: bindings/rust
+        working-directory: relate/bindings/rust
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          path: relate
+          persist-credentials: false
+      # `cargo publish` resolves the whole manifest, including the `irgx` path
+      # dependency it rewrites into a registry one - so the sibling has to be on
+      # disk beside this checkout or the publish dies on a missing Cargo.toml,
+      # which is how blast's v1.1.0 was lost after its wheel and Go module had
+      # already shipped. Both checkouts are placed rather than defaulted so the
+      # `../../../irregex` in the manifest means what it says.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: The-Billy-Company/irregex
+          path: irregex
+          token: ${{ secrets.ECOSYSTEM_TOKEN || github.token }}
           persist-credentials: false
 
       # `preflight` already re-verified this against every mirror; reading it
@@ -293,14 +306,14 @@ jobs:
         uses: The-Billy-Company/.github/actions/package-release@18530e6f8b7ad634dcfe52e423e2a0a8e7bd521e # main
         with:
           command: version
-          args: --root . --tag ${{ github.ref_name }}
+          args: --root relate --tag ${{ github.ref_name }}
 
       # crates.io renders a README as the entire project page, so the one it gets
       # is a link-corrected copy of the repository README rather than the short
       # one beside these sources. It is gitignored and minted here, immediately
       # before publishing: absent fails loudly, stale would ship quietly.
       - name: Mint the registry landing page
-        working-directory: .
+        working-directory: relate
         run: python3 tools/registry_readme.py
 
       # Idempotent, for the same reason the Go tag step is, and probed before

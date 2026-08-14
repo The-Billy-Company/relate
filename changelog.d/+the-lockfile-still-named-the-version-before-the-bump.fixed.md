@@ -20,3 +20,11 @@ tested, which is the reason `--locked` is there at all. `cargo update
 graph, so it wants a sibling `irregex` checkout for the `irgx` path dependency
 that this job has no reason to make, and relate's v1.1.0 failed exactly there
 while `cargo publish --locked` had never needed it.
+
+`cargo publish` also resolves the manifest it is publishing, path dependencies
+included, before it rewrites them into registry ones. `relate` and `blast` were
+checking out only themselves, so the `../../../irregex` beside them pointed at
+nothing and the publish died on a missing `Cargo.toml` - which is how blast's
+v1.1.0 was lost with its wheel and Go module already shipped. Both now place
+their own checkout and irregex's side by side, the way `gist` already did, so
+that relative path means what it says.
