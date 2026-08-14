@@ -1,5 +1,0 @@
-`relate` did not build at all, and the error blamed a file nobody had touched: `gist/src/root.zig:1:1: file exists in modules 'irregex' and 'irregex0'`.
-
-Zig keys dependency dedup on the whole option set, not on target and optimize. `gist` asks the engine for `lib-optimize` so its C-ABI pair matches its own mode; relate asked for two options where gist asks for three, so the two calls resolved to two separate instances of the same `irregex/src/root.zig`. Nothing collides while they stay apart - which is why the library built fine - and the moment one binary imports both relate and gist, they land in one compilation and the compiler refuses one file as the root of two modules. The build graph reads as if it matched; only the link says otherwise.
-
-So the option set now lives in one function, `engineOptions`, instead of at three call sites that had to agree by eye. That is the actual fix: matching target and optimize was necessary and never sufficient, and a comment saying "same target/optimize on every sibling" is not something a fourth call site can be held to.
