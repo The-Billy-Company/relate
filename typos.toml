@@ -1,0 +1,31 @@
+# The spelling gate discovers this file on its own. It exists to name the words in
+# this tree that are correct and only look wrong, so a real misspelling still fails
+# the build. Every entry is a word the gate cannot judge from the token alone -
+# a stdlib module, a library name, a code identifier, or a deliberate fixture byte
+# string. Nothing here is a spelling anyone chose.
+
+[default.extend-words]
+# `b"caf\xe9.txt"` in bench/apparatus/test_provenance.py is latin-1 "café" - a
+# deliberately non-UTF-8 fixture path, because a provenance walk has to survive
+# filenames that are not valid UTF-8. The gate sees the truncated `caf` and reads
+# it as `calf`. Correcting it would destroy the only fixture that tests the case.
+caf = "caf"
+
+# `std.compress.flate` - Zig's DEFLATE module, named by the language, not by us.
+flate = "flate"
+
+# `sais.zig` - the suffix-array construction after Nong, Zhang & Chan. The name is
+# the algorithm's (SA-IS), and the gate hears "says".
+sais = "sais"
+
+# A local holding the literals a prefilter admitted, in src/surface/face/patterns.zig.
+lits = "lits"
+
+# A two-character query in a fixture table of pattern/text pairs. The whole point of
+# those rows is to be short and adversarial; "ba" is data, not prose.
+ba = "ba"
+
+# Both spellings are current English and dictionaries carry each; this tree uses
+# the -eable form throughout, so the gate is agreeing with the tree rather than
+# with its own preference.
+unparseable = "unparseable"
