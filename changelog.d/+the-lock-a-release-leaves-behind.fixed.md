@@ -11,7 +11,7 @@
   lock instead of quietly reconciling it — and the rewrite that makes the lock
   true then leaves the checkout uncommitted, which cargo refuses separately.
 
-  So both halves are answered. [`tools/relock.py`](../tools/relock.py) finds the
+  So both halves are answered. `tools/relock.py` finds the
   local packages by walking the manifest graph instead of being told their
   names, reads each declared version off disk, and rewrites that one
   `version = "..."` line — a third local package added later is covered the day

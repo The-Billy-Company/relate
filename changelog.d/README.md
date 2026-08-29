@@ -24,3 +24,9 @@ bullets. Everything under `changelog.d/` becomes the GitHub Release body
 verbatim on tag, so write for the person landing on the release page.
 
 Scaffolding is [`../towncrier.toml`](../towncrier.toml).
+
+A relative link is the one thing that does not survive: the fold lands these
+paragraphs in `CHANGELOG.md` at the repository root, so `../tools/x.py` — right
+from this directory — resolves outside the repository there, and the link check
+fails on the release PR rather than on the commit that wrote it. Name the path
+in backticks, or link it absolutely.
