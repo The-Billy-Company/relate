@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions track
 
 <!-- towncrier release notes start -->
 
+## [1.2.1] - 2026-09-05
+
+### Fixed
+
+- We configure stripping before creating the install step, so Windows wheels install the executable without looking for an omitted debug file.
+
 ## [1.2.0] - 2026-09-05
 
 ### Added

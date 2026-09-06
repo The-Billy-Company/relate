@@ -101,8 +101,8 @@ pub fn build(b: *std.Build) void {
             .imports = &face_imports,
         }),
     });
-    b.installArtifact(exe);
     exe.root_module.strip = b.option(bool, "strip", "Omit debug info from the installed CLI (packaging)");
+    b.installArtifact(exe);
 
     // ── the C-ABI dual artifact ──
     // Dynamic lib owns the header install. Named `relate` — its symbols and

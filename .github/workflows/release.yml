@@ -27,19 +27,8 @@ concurrency:
 
 jobs:
   preflight:
-    # The shared release contract (`release.toml` + the org's `package-release`
-    # action), run once before anything is built: is the tag the version
-    # `build.zig.zon` and every mirror declare, is the changelog folded with
-    # the exact `## [X.Y.Z]` heading and no fragment left un-folded, did
-    # `release-ready` go green on this exact commit, and is this commit
-    # actually reachable from `main`? The search family also releases in a
-    # fixed order — `irregex` before `gist`/`relate`, both before `blast` — so
-    # this additionally probes that this package's declared floor of
-    # `irregex` is already on the registries it depends on, rather than
-    # discovering the gap when the built wheel's floor-install step 404s.
-    # Every step below is conditioned on an actual tag, so a `workflow_dispatch`
-    # dry run (no tag) passes through as a no-op and `build` still runs
-    # unpublished.
+    # Validate version mirrors, changelog, main ancestry and the normal CI verdict.
+    # Dependency availability is checked at upload so native builds can overlap.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
