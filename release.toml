@@ -22,4 +22,4 @@ default_branch = "main"
 
 [registries]
 pypi = "relate-search"
-crates = "relate"
+crates = "relate-search"

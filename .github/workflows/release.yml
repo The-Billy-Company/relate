@@ -324,7 +324,7 @@ jobs:
         uses: The-Billy-Company/.github/actions/package-release@18530e6f8b7ad634dcfe52e423e2a0a8e7bd521e # main
         with:
           command: registry-probe
-          args: crates relate ${{ steps.tag.outputs.version }}
+          args: crates relate-search ${{ steps.tag.outputs.version }}
       - name: probe answered
         env:
           STATE: ${{ steps.state.outputs.result }}
