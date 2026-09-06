@@ -453,6 +453,12 @@ novel-math claim in this kernel is Gist's Crest sieve
 
 ## Install
 
+Install the Python package to get the bindings and the native CLI together:
+
+```bash
+pip install relate-search
+```
+
 The CLI is the product, and it is built from source with Zig. On Windows, the
 PowerShell installer builds the binary, places it on the user PATH without
 elevation, and creates the atlas:

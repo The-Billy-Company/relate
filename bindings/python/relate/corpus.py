@@ -124,7 +124,7 @@ def run(
     """
     out = shell.run_verb(
         tool,
-        [verb, *argv, "--json", *scope_argv(roots)],
+        [verb, "--json", *argv, *scope_argv(roots)],
         cwd=cwd,
         timeout=timeout,
         ok_codes=(0, 1),

@@ -175,7 +175,14 @@ pub fn parse(
     var i: usize = 0;
     while (i < argv.len) : (i += 1) {
         const arg = argv[i];
-        if (cfg.max_dist and std.mem.eql(u8, arg, "--max-distance")) {
+        if (std.mem.eql(u8, arg, "--")) {
+            for (argv[i + 1 ..]) |operand| {
+                if (cfg.positional and opts.arg == null) {
+                    opts.arg = operand;
+                } else try roots.append(gpa, scope.normalizeRoot(operand));
+            }
+            break;
+        } else if (cfg.max_dist and std.mem.eql(u8, arg, "--max-distance")) {
             opts.max_dist = flags.unitFloat(flags.need(argv, &i, "--max-distance needs a number in [0,1]\n"), "--max-distance");
         } else if (cfg.min_echo and std.mem.eql(u8, arg, "--min-echo")) {
             opts.min_echo = flags.unitFloat(flags.need(argv, &i, "--min-echo needs a number in [0,1]\n"), "--min-echo");
@@ -394,4 +401,21 @@ test "a named channel outlives the unit's default, whatever order they arrive in
         try t.expectEqual(Channel.copies, o.channel);
         try t.expectEqual(Unit.function, o.unit);
     }
+}
+
+test "end of options keeps flag-shaped queries and roots literal" {
+    const gpa = t.allocator;
+    var roots: std.ArrayList([]const u8) = .empty;
+    defer roots.deinit(gpa);
+    var o: Opts = .{ .top = 0 };
+    defer o.deinit(gpa);
+    try parse(gpa, &.{ "--json", "--", "--top", "--json", "-nested" }, &o, &roots, .{
+        .positional = true,
+        .strict = "similar",
+    });
+    try t.expect(o.json);
+    try t.expectEqualStrings("--top", o.arg.?);
+    try t.expectEqual(@as(usize, 2), roots.items.len);
+    try t.expectEqualStrings("--json", roots.items[0]);
+    try t.expectEqualStrings("-nested", roots.items[1]);
 }

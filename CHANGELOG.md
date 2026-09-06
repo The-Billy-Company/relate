@@ -6,6 +6,12 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions track
 
 <!-- towncrier release notes start -->
 
+## [1.2.0] - 2026-09-05
+
+### Added
+
+- We now ship the relate executable in platform wheels and matching release archives. The package works with irregex 2.4 and Gist in one environment; queries after `--` remain literal even when they start with a flag name.
+
 ## [1.1.2] - 2026-08-29
 
 ### Fixed

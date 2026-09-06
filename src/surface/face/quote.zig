@@ -38,8 +38,11 @@ const jsonStr = emit.jsonStr;
 pub fn runQuote(gpa: std.mem.Allocator, io: std.Io, argv: []const []const u8) !void {
     var query_text: ?[]const u8 = null;
     var json = false;
+    var operands = false;
     for (argv) |arg| {
-        if (std.mem.eql(u8, arg, "--json")) {
+        if (!operands and std.mem.eql(u8, arg, "--")) {
+            operands = true;
+        } else if (!operands and std.mem.eql(u8, arg, "--json")) {
             json = true;
         } else if (query_text == null) {
             query_text = arg;

@@ -197,13 +197,14 @@ def similar(
     if named is not None and not named.pairwise:
         msg = f"similar: {named.value!r} is chosen by the probe's shape, not by channel=; pass text with channel=None"
         raise ValueError(msg)
-    argv = [os.fspath(probe)]
+    argv: list[str] = []
     if named is not None:
         argv += ["--as", named.value]
     if unit is not None:
         argv += ["--unit", unit]
     argv += matching_argv(matching, match=match, fixed=fixed, ignore_case=ignore_case)
     argv += shape_argv(top=top, min_grade=min_grade, no_index=no_index)
+    argv += ["--", os.fspath(probe)]
     rows, report = run("relate", "similar", argv, roots, cwd=cwd, timeout=timeout)
     # The probe's shape — not this argument list — decides how the answer was
     # priced, so the channel is read back from the engine's own summary rather

@@ -18,9 +18,9 @@ The distribution is `relate-search`; the import stays `relate`. The bare name
 on PyPI belongs to an unrelated author, so this is the same split bs4, PIL, and
 cv2 already ship.
 
-This package is the bindings, not the engine: every verb answers by running the
-`relate` binary, so that has to be on `PATH` (or `$RELATE_BIN`). Without it the
-first call raises `GistNotFoundError` rather than failing quietly.
+We bundle the native `relate` executable in the wheel and install it on `PATH`.
+The bindings resolve that bundled binary directly; `$RELATE_BIN` can select
+a custom build.
 
 ## Two questions, not ten verbs
 
@@ -80,9 +80,7 @@ relate.families(matching=["AcmeService"], channel="copies")
 
 ## What it needs
 
-The `relate` binary on `PATH` (or `$RELATE_BIN`), which
-[the repository](https://github.com/The-Billy-Company/relate) builds with
-`zig build`. Warm answers want an atlas:
+Python 3.12 or later; the wheel supplies the engine. Warm answers want an atlas:
 
 ```python
 relate.atlas_index(shelf=True)   # kinship + fragment atlas, plus the codex shelf

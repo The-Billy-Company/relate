@@ -183,8 +183,9 @@ def recall(
     best?" — the lexicon is then built over that subset, so prices are relative
     to it rather than to the whole corpus.
     """
-    argv = [text, "--top", str(top)]
+    argv = ["--top", str(top)]
     argv += matching_argv(matching, match=match, fixed=fixed, ignore_case=ignore_case)
+    argv += ["--", text]
 
     def cold_rung() -> analytic.Rows:
         raw, report = run("relate", "similar", argv, roots, cwd=cwd, timeout=timeout)
@@ -234,8 +235,9 @@ def pack(
     never names the thing can still rank, because coverage is a statistical
     measure and knows nothing about the word.
     """
-    argv = [text, "--top", str(top)]
+    argv = ["--top", str(top)]
     argv += matching_argv(matching, match=match, fixed=fixed, ignore_case=ignore_case)
+    argv += ["--", text]
     scope, schema = scope_argv(roots), verb_schema("pack")
     # Narrowed, this *is* the composed verb: same pick rows, an exact set admitting
     # the candidates. The CLI spells both as `relate pack`, so only the cold rung's
@@ -282,7 +284,7 @@ def quote(
     """
 
     def cold_rung() -> analytic.Rows:
-        raw, report = run("relate", "quote", [text], cwd=cwd, timeout=timeout)
+        raw, report = run("relate", "quote", ["--", text], cwd=cwd, timeout=timeout)
         # The CLI streams the summary first and the phrases after it; the schema
         # nests them, which is the shape the in-process plane returns.
         summary, phrases = (raw[0], raw[1:]) if raw else ({}, [])
