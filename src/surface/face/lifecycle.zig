@@ -25,6 +25,9 @@ const atlas_mod = @import("../../corpus/index/atlas/atlas.zig");
 const frag_mod = @import("../../corpus/index/frag/frag.zig");
 const shelf_mod = @import("irregex").codex.shelf;
 const assay = @import("irregex").assay;
+const home = @import("irregex").index.home;
+const allowance = @import("irregex").index.allowance;
+const portal = @import("irregex").portal;
 const kinship = @import("kinship.zig");
 const flags = @import("../cli/flags.zig");
 
@@ -37,6 +40,13 @@ pub const schema_version = 1;
 /// atomically; `--shelf` also rebuilds the codex shelf from the same read.
 pub fn runIndex(gpa: std.mem.Allocator, io: std.Io, argv: []const []const u8) !void {
     const with_shelf = flags.onlyFlag(argv, "--shelf", "usage: relate index [--shelf]\n");
+    // Every artifact this verb writes is corpus-shaped — the atlas is a sketch
+    // per file, the fragment atlas one per function, the shelf a compressed
+    // copy of the whole corpus (69 + 40 + 87 MB on this repository). So both
+    // of the artifact home's laws bind here, and harder than they do on the
+    // trigram pair: a tree with no edge is not indexed at all, and a tier that
+    // does not fit the tree's disk allowance is not written.
+    if (!home.hosted()) return refuseUnbounded();
 
     const run = assay.Run.open(gpa, io, false);
     const built_ns: i64 = @intCast(assay.anchor(io).ns());
@@ -53,7 +63,13 @@ pub fn runIndex(gpa: std.mem.Allocator, io: std.Io, argv: []const []const u8) !v
     defer gpa.free(silhouettes);
     const blob = try atlas_mod.save(gpa, corpus.paths, sketches, silhouettes, built_ns, roots);
     defer gpa.free(blob);
+    // Spend is charged as the verb goes, in the order the tiers are worth
+    // having: the atlas is what `similar` and `echoes` read at all, so it asks
+    // first and the later tiers ask against what it took.
+    var spent: u64 = 0;
+    if (!affordable("atlas", blob.len, spent)) return;
     try frame.writeAtomic(io, atlas_mod.atlasFile(), blob);
+    spent += blob.len;
     const atlas_dur = run.elapsed().ms();
     run.emit("atlas: {d} files · {d:.1} MiB corpus → {d:.1} MiB atlas · {d:.0} ms → {s}\n", .{
         corpus.docs.len,
@@ -77,7 +93,9 @@ pub fn runIndex(gpa: std.mem.Allocator, io: std.Io, argv: []const []const u8) !v
     defer fbuild.deinit();
     const fblob = try frag_mod.save(gpa, &fbuild, built_ns, roots);
     defer gpa.free(fblob);
+    if (!affordable("frag", fblob.len, spent)) return;
     try frame.writeAtomic(io, frag_mod.fragFile(), fblob);
+    spent += fblob.len;
     const frag_dur = frag_span.read(io).ms();
     run.emit("frag:  {d} fragment(s) → {d:.1} MiB · {d:.0} ms → {s}\n", .{
         fbuild.count(),
@@ -93,6 +111,12 @@ pub fn runIndex(gpa: std.mem.Allocator, io: std.Io, argv: []const []const u8) !v
     });
 
     if (with_shelf) {
+        // The shelf publishes itself, so its size is not in hand to charge.
+        // The corpus is the ceiling on what a compressed copy of the corpus
+        // can weigh, which is the conservative direction: the only error this
+        // can make is declining a shelf that would have fitted, and losing it
+        // costs `quote` and the exact-count tier — never an answer.
+        if (!affordable("shelf", corpus.bytes, spent)) return;
         const shelf_span = assay.Span.open(io);
         const shelf = try shelf_mod.persist(gpa, io, corpus.docs, corpus.paths, built_ns);
         const shelf_dur = shelf_span.read(io).ms();
@@ -109,6 +133,36 @@ pub fn runIndex(gpa: std.mem.Allocator, io: std.Io, argv: []const []const u8) !v
             .{ "path", "s", shelf_mod.shelfFile() },
         });
     }
+}
+
+/// The refusal for a corpus with no edge — `$HOME`, a filesystem root — where
+/// an index would take the whole machine as its subject (`irregex`'s
+/// `index.home`). Exit 2, because there is no slower way to have an atlas and
+/// a caller who asked for one is owed a straight answer; the read verbs keep
+/// working here, live, exactly as they do without an atlas.
+fn refuseUnbounded() !void {
+    var here: [portal.max_path]u8 = undefined;
+    const where = portal.realpath(".", &here) orelse "this directory";
+    assay.diag("relate: index — {s} is not a project, and a corpus rooted here has no edge (it would be the whole machine)\n", .{where});
+    assay.diag("relate: try   — cd into the directory you mean and run `relate index` there; the read verbs work here either way\n", .{});
+    std.process.exit(2);
+}
+
+/// May this tier be written, given what the build has already spent of the
+/// tree's disk allowance (`irregex`'s `index.allowance`)?
+///
+/// Declining is a `return`, not a fault: every verb these artifacts accelerate
+/// has a live path that answers the same thing more slowly. It says so out
+/// loud for the reason the whole family says so — a silently-unwritten
+/// accelerator is indistinguishable from a slow tool.
+fn affordable(tier: []const u8, want: u64, spent: u64) bool {
+    if (allowance.admits(want, spent)) return true;
+    assay.diag(
+        "relate: note: {s} declined — {d} MiB does not fit what is left of the tree's {d} MiB artifact allowance ({d} MiB spent)\n" ++
+            "relate: note: the verbs it accelerates still answer, live and slower (GIST_DISK_MB raises the allowance)\n",
+        .{ tier, want >> 20, allowance.ceiling() >> 20, spent >> 20 },
+    );
+    return false;
 }
 
 fn fileBytes(io: std.Io, path: []const u8) ?u64 {
