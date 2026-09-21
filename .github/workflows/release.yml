@@ -73,13 +73,13 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: The-Billy-Company/irregex
-          ref: v2.4.1
+          ref: v2.5.0
           path: irregex
           persist-credentials: false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: The-Billy-Company/gist
-          ref: 32366aa5fb2242639b150aeafd4934e4a792e39d
+          ref: v1.3.0
           path: gist
           persist-credentials: false
       - uses: mlugg/setup-zig@d1434d08867e3ee9daa34448df10607b98908d29 # v2
