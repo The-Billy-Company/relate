@@ -6,6 +6,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/); versions track
 
 <!-- towncrier release notes start -->
 
+## [1.2.3] - 2026-09-21
+
+No significant changes.
+
 ## [1.2.2] - 2026-09-21
 
 ### Fixed
