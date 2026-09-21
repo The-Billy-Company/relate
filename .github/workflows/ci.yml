@@ -513,9 +513,15 @@ jobs:
           version: "0.10.0"
       - run: taplo fmt --check
       - run: taplo lint
-      - uses: editorconfig-checker/action-editorconfig-checker@d2ed4fd072ae6f887e9407c909af0f585d2ad9f4 # v2
       - run: shellcheck bench/bounds/codex/race.sh
       - uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+      # The upstream action resolves its own binary from a release asset and
+      # stopped finding one (`The binary 'ec-linux-amd64*' not found`), so the
+      # job failed on the downloader rather than on anything in this tree. The
+      # published package is the same checker with a version this repository
+      # pins itself, and it is already what `gist` runs.
+      - name: EditorConfig conformance
+        run: uv run --no-project --with editorconfig-checker==3.8.0 ec
       - run: uv run --no-project --with yamllint==1.38.0 yamllint .
       - run: uv run --no-project --with zizmor==1.29.0 zizmor --no-online-audits --strict-collection .
       - name: Ruff checks every tracked Python file
