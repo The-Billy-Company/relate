@@ -417,7 +417,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: The-Billy-Company/.github/actions/package-release@deb135f046122a10cabc861e96eb9941c2d09ddc # main
+      - uses: The-Billy-Company/.github/actions/package-release@6c01d8eff573b11acc63e43ecfe89561213228da # main
         with:
           command: changelog
           args: --root .
